@@ -1,2 +1,3 @@
-# IRP-framework
-Algorithms for a revisited Inventory routing problem with some heurestics and some visualisation
+# Revisited Inventory Routing problem
+
+Here are some python functions to build a framework of inventory routing problem heurstics, espacially usefull for visualization. 
