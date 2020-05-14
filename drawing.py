@@ -6,7 +6,7 @@ from copy import deepcopy
 
 
 COLORS = {"school" : "green", "warehouse": "blue"}
-
+TITLE = 'WFP Inventory problem'
 
 
 
@@ -38,11 +38,12 @@ class Warehouse :
 
 
 class Route : 
-    def __init__(self, warehouse, SCHOOLS, X):
+    def __init__(self, warehouse, SCHOOLS, X, cost = 0):
         self.w = warehouse
         self.S = SCHOOLS
         self.X =X
         self.Mk = len(self.S)
+        self.cost = cost
         food = sum(X)
         self.C = food
         self.food_in_truck = [food]
@@ -52,6 +53,7 @@ class Route :
             self.food_in_truck.append(food-X[i])
         self.edges.append((self.S[-1],warehouse))
         self.food_in_truck.append(0)
+        
 
     def do_tour(self):
         self.w.deliver(self.C)
@@ -99,6 +101,9 @@ class Map :
         self.R_possible = possible_routes 
         self.K = len(possible_routes )
         self.t = t
+        self.total_cost = 0
+        self.cost = 0
+        self.title = TITLE + "        Cost = %s          Total Cost = " %str(self.cost) + str(self.total_cost)
         self.build_Rmat()
         self.fig = go.Figure()
 
@@ -134,7 +139,11 @@ class Map :
                 if r.verify_capacity():break
 
             self.R.append(r)
+            self.cost += r.cost
             r.do_tour()
+        self.total_cost += self.cost
+        self.title = TITLE + "        Cost = %s          Total Cost = " %str(self.cost) + str(self.total_cost)
+        self.cost = 0
 
     def eat(self):
         for s in self.S:
@@ -176,7 +185,8 @@ class Map :
             showticklabels=True,
             )
 
-        self.fig.update_layout(title= 'WFP Inventory problem',
+        self.fig.update_layout(title= self.title,
+              annotations= self.make_annotations(), 
               font_size=12,
               showlegend=False,
               xaxis=axis,
@@ -201,6 +211,7 @@ class Map :
         return annotations
 
     def make_updatemenu(self):
+
         arrows = []
         annotations = self.make_annotations()
         if self.t.is_integer():
@@ -212,7 +223,7 @@ class Map :
         else : 
             period = "  (evening)"
 
-        return dict(label="t = "+str(int(self.t))+ period, method = "relayout", args=[{"shapes":arrows, "annotations": annotations }])
+        return dict(label="t = "+str(int(self.t))+ period, method = "relayout", args=[{"shapes":arrows, "annotations": annotations, "title":self.title }])
 
     def run(self, T=10):
         '''
@@ -232,7 +243,7 @@ class Map :
             L.append(self.make_updatemenu())
             self.t += 0.5
             
-        self.fig.update_layout( updatemenus=[ dict(buttons = L) ] )
+        self.fig.update_layout( updatemenus=[ dict(buttons = L, type = "buttons") ] )
 
 
 
