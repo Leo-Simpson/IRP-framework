@@ -2,7 +2,7 @@ import plotly.graph_objects as go
 import numpy as np
 import time
 import numpy.random as rd
-from copy import deepcopy 
+from copy import copy 
 
 
 COLORS = {"school" : "green", "warehouse": "blue"}
@@ -38,12 +38,16 @@ class Warehouse :
 
 
 class Route : 
-    def __init__(self, warehouse, SCHOOLS, X, cost = 0):
+    def __init__(self, warehouse, SCHOOLS, X, costs = None):
         self.w = warehouse
         self.S = SCHOOLS
         self.X =X
         self.Mk = len(self.S)
-        self.cost = cost
+
+        if costs is None : self.costs = [0]*(self.Mk+1)
+        else : self.costs = costs
+        self.cost = sum(costs)
+
         food = sum(X)
         self.C = food
         self.food_in_truck = [food]
@@ -53,7 +57,7 @@ class Route :
             self.food_in_truck.append(food-X[i])
         self.edges.append((self.S[-1],warehouse))
         self.food_in_truck.append(0)
-        
+
 
     def do_tour(self):
         self.w.deliver(self.C)
@@ -65,28 +69,23 @@ class Route :
             if self.X[i] > (self.S[i].C-self.S[i].inventory) : return False
         return True
 
-    def make_arrows(self):
-        arrows, annot = [] , []
-        for e in range(len(self.edges)) : 
+    def make_data(self) : 
+        self.data= []
+        for e in range(self.Mk+1):
             edge = self.edges[e]
-            food = self.food_in_truck[e]
+            x1, x2, y1, y2 = edge[0].pos[0], edge[1].pos[0], edge[0].pos[1], edge[1].pos[1]
+            text1 = str(self.food_in_truck[e]) +" in the truck"
+            text2 = "cost = "+ str(self.costs[e])
 
-            dicti1 = dict(
-                        type="line",
-                        x0=edge[0].pos[0], y0=edge[0].pos[1],
-                        x1=edge[1].pos[0], y1=edge[1].pos[1],
-                        line=dict(color="red",width=3)
-            )
-            dicti2 = dict(
-                        text = str(food) +" in the truck",
-                        x =(edge[0].pos[0]+edge[1].pos[0])/2, 
-                        y =(edge[0].pos[1]+edge[1].pos[1])/2, 
-                        font=dict(color='red', size=15),
-                        showarrow = False
-            )
-            arrows.append(dicti1)
-            annot.append(dicti2)
-        return arrows, annot
+            arrow = go.Scatter(x=[(7*x1+x2)/8,(x1+7*x2)/8],
+                    y=[(7*y1+y2)/8,(y1+7*y2)/8],
+                    line= dict(color="red"),
+                    text = [text1+"  ;  "+text2,text1+"  ;  "+text2],
+                    hoverinfo='text',
+                    visible = False
+                    )
+
+            self.data.append(arrow)
 
 
 
@@ -98,6 +97,7 @@ class Map :
         self.S = schools
         self.M = len(schools)
         self.W = warehouses
+        self.N = len(warehouses)
         self.R_possible = possible_routes 
         self.K = len(possible_routes )
         self.t = t
@@ -105,7 +105,11 @@ class Map :
         self.cost = 0
         self.title = TITLE + "        Cost = %s          Total Cost = " %str(self.cost) + str(self.total_cost)
         self.build_Rmat()
-        self.fig = go.Figure()
+        for k in range(self.K): 
+            r = self.R_possible[k]
+            r.make_data()
+            r.number = k
+
 
     def build_Rmat(self):
         '''
@@ -152,7 +156,7 @@ class Map :
     def init_draw(self):
 
         #plot the schools
-        self.fig.add_trace(go.Scatter(x=[school.pos[0] for school in self.S],
+        plot_schools = go.Scatter(x=[school.pos[0] for school in self.S],
                         y=[school.pos[1] for school in self.S],
                         mode='markers',
                         name='schools',
@@ -163,29 +167,30 @@ class Map :
                         text=[s.name+" C = "+str(s.C)+"  ;   q = "+str(s.q) for s in self.S],
                         hoverinfo='text',
                         opacity=0.8
-                        ))
-
+                        )
         #plot the warehouses
-        self.fig.add_trace(go.Scatter(x=[warehouse.pos[0] for warehouse in self.W],
-                        y=[warehouse.pos[1] for warehouse in self.W],
-                        mode='markers',
-                        name='warehouses',
-                        marker=dict(symbol='circle-dot',
-                                        size=70,
-                                        color=COLORS["warehouse"]
-                                        ),
-                        text=[w.name+" C = "+str(w.C) for w in self.W],
-                        hoverinfo='text',
-                        opacity=0.8
-                        ))
-        
+        plot_warehouses = go.Scatter(x=[warehouse.pos[0] for warehouse in self.W],
+                            y=[warehouse.pos[1] for warehouse in self.W],
+                            mode='markers',
+                            name='warehouses',
+                            marker=dict(symbol='circle-dot',
+                                            size=70,
+                                            color=COLORS["warehouse"]
+                                            ),
+                            text=[w.name+" C = "+str(w.C) for w in self.W],
+                            hoverinfo='text',
+                            opacity=0.8
+                            )
+
         axis = dict(showline=False, # hide axis line, grid, ticklabels and  title
             zeroline=True,
             showgrid=True,
             showticklabels=True,
             )
 
-        self.fig.update_layout(title= self.title,
+
+        layout = dict(
+            title= self.title,
               annotations= self.make_annotations(), 
               font_size=12,
               showlegend=False,
@@ -193,8 +198,20 @@ class Map :
               yaxis=axis,
               margin=dict(l=40, r=40, b=85, t=100),
               hovermode='closest',
-              plot_bgcolor='rgb(248,248,248)'
-              )
+              plot_bgcolor='rgb(248,248,248)',
+              updatemenus= []
+        )
+
+        self.layout = layout
+        self.data = [plot_schools,plot_warehouses]
+        self.arrows = [-1,-1]
+        for r in self.R_possible : 
+            number = r.number
+            for x in r.data : 
+                self.data.append(x)
+                self.arrows.append(number)
+
+        
 
     def make_annotations(self):
         couples = [(school.pos, "I = "+str(school.inventory)) for school in self.S] + [(warehouse.pos, "I = "+str(warehouse.inventory)) for warehouse in self.W]
@@ -212,18 +229,31 @@ class Map :
 
     def make_updatemenu(self):
 
-        arrows = []
         annotations = self.make_annotations()
+        l = len(self.data)
+        visible = [True]*2 + [False]*(l-2)
+
+
         if self.t.is_integer():
             period = " (before lunch)"
             for r in self.R : 
-                arr, annot = r.make_arrows()
-                arrows.extend(arr), annotations.extend(annot)
-                
+                i = self.arrows.index(r.number)
+                a = len(r.data)
+                visible[i:i+a]=[True]*a
+        
         else : 
             period = "  (evening)"
+            visible[2:] = [False]*(l-2)
 
-        return dict(label="t = "+str(int(self.t))+ period, method = "relayout", args=[{"shapes":arrows, "annotations": annotations, "title":self.title }])
+        
+
+
+        args = [
+            {"visible" : copy(visible)  },
+            {"annotations": annotations, "title":self.title }
+            ]
+
+        return dict(label="t = "+str(int(self.t))+ period, method = "update", args=args)
 
     def run(self, T=10):
         '''
@@ -238,12 +268,17 @@ class Map :
             self.R = []
             self.t += 0.5
             
-            # afternoon
+            # evening
             self.eat()
             L.append(self.make_updatemenu())
             self.t += 0.5
-            
-        self.fig.update_layout( updatemenus=[ dict(buttons = L, type = "buttons") ] )
+
+
+
+        self.layout["updatemenus"]    = [ dict(buttons = L, type = "buttons") ]
+        
+
+        self.fig = dict(data=self.data, layout=self.layout)
 
 
 
