@@ -63,9 +63,11 @@ class Route :
         for i in range(len(self.X)):
             self.S[i].receive(self.X[i])
 
-    def verify_capacity(self):
+    def verify_capacity(self,sname):
         for i in range(self.Mk):
             if self.X[i] > (self.S[i].C-self.S[i].inventory) : return False
+            if self.S[i].name==sname and self.S[i].q > self.X[i]  : return False
+        
         return True
 
     def make_data(self) : 
@@ -97,7 +99,7 @@ class Map :
         self.M = len(schools)
         self.W = warehouses
         self.N = len(warehouses)
-        self.R_possible = sorted(possible_routes, key=lambda x: float(x.cost)/x.C)
+        self.R_possible = possible_routes
         self.K = len(possible_routes )
         self.t = t
         self.total_cost = 0
@@ -108,7 +110,6 @@ class Map :
             r = self.R_possible[k]
             r.make_data()
             r.number = k
-
 
     def build_Rmat(self):
         '''
@@ -122,28 +123,33 @@ class Map :
                 m = names.index(stop.name)
                 self.Rmat[k,m] = True
 
-    def choose_tours(self):
+    def do_tours(self):
         '''
         this method will choose which tour we do at this point, and do them (but not plot them, only update the quantities of food)
         the function is not really good fo now, but for the example it should work :) 
         '''
         self.R = []
+        L = []
         for m in range(self.M):
             s = self.S[m]
             name = s.name
-            if (s.inventory >= s.q ): continue # we only look for the school that need a supply today
-            route_indices = np.arange(self.K)[self.Rmat[:,m]]
-            L = [self.R_possible[k] for k in route_indices ] # list of the possible routes that serve s
+            l = np.zeros(self.K, dtype = bool)
+            if (s.inventory < s.q ):  # we only look for the school that need a supply today
+                route_indices = np.arange(self.K)[self.Rmat[:,m]]
+                for k in route_indices :
+                    if self.R_possible[k].verify_capacity(s.name) : 
+                        l[k] = True
+                
+                L.append(l)
 
-            # I don't know how to choose the right route for now... 
-            # let's take the first one possible for the example, which means that routes are already ordered by preference
-            for k in range(len(L)) :
-                r = L[k]
-                if r.verify_capacity():break
-
-            self.R.append(r)
-            self.cost += r.cost
+        c = np.array([self.R_possible[k].cost / self.R_possible[k].C  for k in range(self.K)]) # let's consider the cost per quantity of food delivered
+        if L : self.R = choose_tours( np.array(L), c )
+        
+        for k in self.R :
+            r = self.R_possible[k] 
             r.do_tour()
+            self.cost += r.cost
+
         self.total_cost += self.cost
         self.title = TITLE + "        Cost = %s          Total Cost = " %str(self.cost) + str(self.total_cost)
         self.cost = 0
@@ -209,9 +215,7 @@ class Map :
             for x in r.data : 
                 self.data.append(x)
                 self.arrows.append(number)
-
-        
-
+       
     def make_annotations(self):
         couples = [(school.pos, "I = "+str(school.inventory)) for school in self.S] + [(warehouse.pos, "I = "+str(warehouse.inventory)) for warehouse in self.W]
         annotations = []
@@ -235,7 +239,8 @@ class Map :
 
         if self.t.is_integer():
             period = " (before lunch)"
-            for r in self.R : 
+            for k in self.R : 
+                r = self.R_possible[k]
                 i = self.arrows.index(r.number)
                 a = len(r.data)
                 visible[i:i+a]=[True]*a
@@ -262,7 +267,7 @@ class Map :
         L = []
         for i in range(T):
             #morning
-            self.choose_tours()
+            self.do_tours()
             L.append(self.make_updatemenu())
             self.R = []
             self.t += 0.5
@@ -281,8 +286,26 @@ class Map :
 
 
 
+import cvxpy as cp
+def choose_tours(M,c):
+    '''
+    Basically, find x such that Mx >= 1 and the cost is c.x
+    So to be clear, we are not sure it is the optimal solution, but at least, we know it is the one that minimize the cost of each day separately
+    '''
 
 
+    v = cp.Variable(len(c), boolean=True)
+    constraints = []
+    for i in range(len(M)):
+        constraints.append(M[i].T@v >= 1)
+
+    problem = cp.Problem(cp.Minimize(c.T@v), constraints)
+    problem.solve()
+
+
+    x = np.array(v.value, dtype = bool)
+    indices = [ i for i in range(len(x)) if x[i] ]
+    return indices
                             
                             
 
