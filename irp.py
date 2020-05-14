@@ -38,25 +38,33 @@ class Warehouse :
 
 
 class Route : 
-    def __init__(self, warehouse, SCHOOLS, X, costs = None):
+    def __init__(self, warehouse, SCHOOLS, X):
         self.w = warehouse
         self.S = SCHOOLS
-        self.X =X
         self.Mk = len(self.S)
 
-        if costs is None : self.costs = [0]*(self.Mk+1)
-        else : self.costs = costs
-        self.cost = sum(costs)
+        self.X =X
+        self.C = sum(X)
 
-        food = sum(X)
-        self.C = food
+    def compute_edges(self):
+        food = self.C
         self.food_in_truck = [food]
-        self.edges = [(warehouse,SCHOOLS[0])]
+        self.edges = [(self.w,self.S[0])]
         for i in range(self.Mk-1):
             self.edges.append((self.S[i],self.S[i+1]))
-            self.food_in_truck.append(food-X[i])
-        self.edges.append((self.S[-1],warehouse))
+            self.food_in_truck.append(food-self.X[i])
+        self.edges.append((self.S[-1],self.w))
         self.food_in_truck.append(0)
+
+    def cost(edge,D):
+        return D.loc[edge[0].name, edge[1].name]
+
+    def compute_costs(self,D,fixed_costs=0.):
+            self.costs = []
+            for e in self.edges :
+                self.costs.append(Route.cost(e,D))
+            
+            self.cost = sum(self.costs) + fixed_costs
 
     def do_tour(self):
         self.w.deliver(self.C)
@@ -70,8 +78,8 @@ class Route :
         
         return True
 
-    def make_data(self) : 
-        self.data= []
+    def make_arrows(self) : 
+        self.arrows= []
         for e in range(self.Mk+1):
             edge = self.edges[e]
             x1, x2, y1, y2 = edge[0].pos[0], edge[1].pos[0], edge[0].pos[1], edge[1].pos[1]
@@ -86,30 +94,25 @@ class Route :
                     visible = False
                     )
 
-            self.data.append(arrow)
-
+            self.arrows.append(arrow)
 
 
 class Map :
-    def __init__(self, schools, warehouses, possible_routes = [], t=0.):
+    def __init__(self, schools, warehouses, possible_routes = []):
         '''
         This object represents the state of the problem at some time t 
         '''
         self.S = schools
-        self.M = len(schools)
         self.W = warehouses
-        self.N = len(warehouses)
         self.R_possible = possible_routes
-        self.K = len(possible_routes )
-        self.t = t
+
+        self.M, self.N, self.K = len(schools),len(warehouses), len(possible_routes )
+        self.t = 0.
         self.total_cost = 0
         self.cost = 0
-        self.title = TITLE + "        Cost = %s          Total Cost = " %str(self.cost) + str(self.total_cost)
-        self.build_Rmat()
+        
         for k in range(self.K): 
-            r = self.R_possible[k]
-            r.make_data()
-            r.number = k
+            self.R_possible[k].number = k
 
     def build_Rmat(self):
         '''
@@ -122,6 +125,15 @@ class Map :
             for stop in r.S : 
                 m = names.index(stop.name)
                 self.Rmat[k,m] = True
+
+
+    def compute_edges(self):
+        for r in self.R_possible : 
+            r.compute_edges()
+
+    def compute_costs(self,D, fixed_costs=0.):
+        for r in self.R_possible : 
+            r.compute_costs(D, fixed_costs=fixed_costs)
 
     def do_tours(self):
         '''
@@ -160,6 +172,10 @@ class Map :
 
     def init_draw(self):
 
+        # create arrows
+        for k in range(self.K): 
+            r = self.R_possible[k].make_arrows()
+
         #plot the schools
         plot_schools = go.Scatter(x=[school.pos[0] for school in self.S],
                         y=[school.pos[1] for school in self.S],
@@ -193,6 +209,7 @@ class Map :
             showticklabels=True,
             )
 
+        self.title = TITLE + "        Cost = %s          Total Cost = " %str(self.cost) + str(self.total_cost)
 
         layout = dict(
             title= self.title,
@@ -212,7 +229,7 @@ class Map :
         self.arrows = [-1,-1]
         for r in self.R_possible : 
             number = r.number
-            for x in r.data : 
+            for x in r.arrows : 
                 self.data.append(x)
                 self.arrows.append(number)
        
@@ -231,38 +248,32 @@ class Map :
         return annotations
 
     def make_updatemenu(self):
-
         annotations = self.make_annotations()
         l = len(self.data)
         visible = [True]*2 + [False]*(l-2)
-
 
         if self.t.is_integer():
             period = " (before lunch)"
             for k in self.R : 
                 r = self.R_possible[k]
                 i = self.arrows.index(r.number)
-                a = len(r.data)
+                a = len(r.arrows)
                 visible[i:i+a]=[True]*a
         
         else : 
             period = "  (evening)"
             visible[2:] = [False]*(l-2)
 
-        
 
+        return dict(label="t = "+str(int(self.t))+ period, method = "update", args=[{"visible" : copy(visible)  },{"annotations": annotations, "title":self.title }])
 
-        args = [
-            {"visible" : copy(visible)  },
-            {"annotations": annotations, "title":self.title }
-            ]
-
-        return dict(label="t = "+str(int(self.t))+ period, method = "update", args=args)
-
-    def run(self, T=10):
+    def run(self,D ,T=10):
         '''
         final function that make the process continue for T days, and plot it into self.fig 
         '''
+        self.build_Rmat()
+        self.compute_edges()
+        self.compute_costs(D)
         self.init_draw()
         L = []
         for i in range(T):
