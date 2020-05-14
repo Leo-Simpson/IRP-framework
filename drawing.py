@@ -58,7 +58,6 @@ class Route :
         self.edges.append((self.S[-1],warehouse))
         self.food_in_truck.append(0)
 
-
     def do_tour(self):
         self.w.deliver(self.C)
         for i in range(len(self.X)):
@@ -98,7 +97,7 @@ class Map :
         self.M = len(schools)
         self.W = warehouses
         self.N = len(warehouses)
-        self.R_possible = possible_routes 
+        self.R_possible = sorted(possible_routes, key=lambda x: float(x.cost)/x.C)
         self.K = len(possible_routes )
         self.t = t
         self.total_cost = 0

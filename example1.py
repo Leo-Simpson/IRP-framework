@@ -9,15 +9,19 @@ s2 = School([3.,10.], 3., 3. , 's2' )
 s3 = School([10.,3.], 2., 2. , 's3' )
 s4 = School([10.,0.], 4., 1.5, 's4')
 
+r1 = Route(w1,[s1],[.1],  costs  = [100,100])
+r2 = Route(w1,[s1],[.1],  costs  = [100,100])
+r3 = Route(w1,[s1],[.1],  costs  = [100,100])
+r4 = Route(w1,[s1],[.1],  costs  = [100,100])
+r5 = Route(w1,[s1,s2],[2.,3.],  costs  = [100,10,100])
+r6 = Route(w1,[s2,s3],[3.,2.],  costs = [100,140,100] )
+r7 = Route(w1,[s3,s4],[2.,3.],  costs  = [100,10,100] )
 
-r1 = Route(w1,[s1,s2],[2.,3.],  costs  = [100,10,100])
-r2 = Route(w1,[s3,s4],[2.,3.],  costs  = [100,10,100] )
-r3 = Route(w1,[s2,s3],[3.,2.],  costs = [100,140,100] )
 
 
 W = [w1]
 S = [s1,s2,s3,s4]
-R = [r1,r2,r3]
+R = [r1,r2,r3,r4,r5,r6,r7]
 
 
 map = Map(S, W, possible_routes=R)
