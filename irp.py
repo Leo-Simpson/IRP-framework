@@ -36,7 +36,6 @@ class Warehouse :
     def deliver(self, quantity):
         self.inventory -= quantity
 
-
 class Route : 
     def __init__(self, warehouse, SCHOOLS, X):
         self.w = warehouse
@@ -95,7 +94,6 @@ class Route :
                     )
 
             self.arrows.append(arrow)
-
 
 class Map :
     def __init__(self, schools, warehouses, possible_routes = []):
@@ -303,18 +301,20 @@ def choose_tours(M,c):
     Basically, find x such that Mx >= 1 and the cost is c.x
     So to be clear, we are not sure it is the optimal solution, but at least, we know it is the one that minimize the cost of each day separately
     '''
+    r_set = np.array([False]*len(c))
+    for i in range(M.shape[1]):
+        if sum(M[:,i])>0 : r_set[i] = True
+    c2 = c[r_set]
 
-
-    v = cp.Variable(len(c), boolean=True)
+    v = cp.Variable(len(c2), boolean=True)
     constraints = []
     for i in range(len(M)):
-        constraints.append(M[i].T@v >= 1)
-
-    problem = cp.Problem(cp.Minimize(c.T@v), constraints)
+        constraints.append(M[i,r_set].T@v >= 1)
+    problem = cp.Problem(cp.Minimize(c2.T@v), constraints)
     problem.solve()
 
-
-    x = np.array(v.value, dtype = bool)
+    x = np.zeros(len(c), dtype = bool)
+    x[r_set] = np.array(v.value, dtype = bool)
     indices = [ i for i in range(len(x)) if x[i] ]
     return indices
                             
