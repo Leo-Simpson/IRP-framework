@@ -10,13 +10,13 @@ s2 = School(position=[3.,10.], capacity = 3., consumption=3. , name='s2' )
 s3 = School(position=[10.,3.], capacity = 2., consumption=2. , name='s3' )
 s4 = School(position=[10.,0.], capacity = 4., consumption=1.5, name='s4' )
 
-r1 = Route(w1,[s1],   X=[5.])
-r2 = Route(w1,[s2],   X=[3.])
-r3 = Route(w1,[s3],   X=[2.])
-r4 = Route(w1,[s4],   X=[4.])
-r5 = Route(w1,[s1,s2],X=[2.,3.])
-r6 = Route(w1,[s2,s3],X=[3.,2.])
-r7 = Route(w1,[s3,s4],X=[2.,3.])
+r1 = Route(w1,[s1])
+r2 = Route(w1,[s2])
+r3 = Route(w1,[s3])
+r4 = Route(w1,[s4])
+r5 = Route(w1,[s1,s2])
+r6 = Route(w1,[s2,s3])
+r7 = Route(w1,[s3,s4])
 
 
 
@@ -40,7 +40,8 @@ D = pd.DataFrame(data=d, columns=names, index=names)
 map = Map(
     schools=[s1,s2,s3,s4],
     warehouses=[w1],
-    possible_routes=[r1,r2,r3,r4,r5,r6,r7]
+    possible_routes=[r1,r2,r3,r4,r5,r6,r7],
+    Q = 5.
     )
 
 
