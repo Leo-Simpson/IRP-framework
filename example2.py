@@ -2,6 +2,14 @@ from irp import Warehouse, School, Route, Map
 from plotly import offline
 
 import pandas as pd
+import numpy.random as rd
+
+for i in range(M):
+    name = 's%i' % i
+    capacity = rd.random()
+    S.append(School(position=[0.,10.], capacity = 5., consumption=1. , name='s1' ))
+
+
 
 
 w1 = Warehouse(position=[0.,0.],capacity = 100, name='w1')
@@ -17,8 +25,6 @@ r4 = Route(w1,[s4])
 r5 = Route(w1,[s1,s2])
 r6 = Route(w1,[s2,s3])
 r7 = Route(w1,[s3,s4])
-r8 = Route(w1,[s1,s2,s3])
-r9 = Route(w1,[s2,s3,s4])
 
 
 
@@ -42,7 +48,7 @@ D = pd.DataFrame(data=d, columns=names, index=names)
 map = Map(
     schools=[s1,s2,s3,s4],
     warehouses=[w1],
-    possible_routes=[r1,r2,r3,r4,r5,r6,r7,r8,r9],
+    possible_routes=[r1,r2,r3,r4,r5,r6,r7],
     Q = 5.
     )
 
