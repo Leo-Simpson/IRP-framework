@@ -177,7 +177,6 @@ class Matheuristic :
 
     def operator4(solution):
         pass
-<<<<<<< HEAD
 
 
     def choose_operator(operators):
@@ -203,9 +202,8 @@ TO DO LIST :
 - Write the operators
 - choose_operator
 - compute_a_and_b
-
-
-
 '''
-=======
->>>>>>> c1dfc2ce915375a3a49480c4abb8583aceda6c67
+
+
+
+
