@@ -351,7 +351,7 @@ def choose_tours(M,c):
     constraints = []
     for i in range(len(M)):
         constraints.append(M[i].T@v >= 1)
-    problem = cp.Problem(cp.Minimize(c.T@v), constraints)
+    problem = cp.Problem(cp.Minimize(c.T @ v), constraints)
     problem.solve()
 
     return np.array(v.value, dtype = bool)
