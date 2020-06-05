@@ -9,7 +9,7 @@ class Problem :
         self.Warehouses = Warehouses # list of tuple (capacity,fixed_cost, name)
         self.Schools = Schools  # list of tuple (capactiy, consumption, name)
         self.T = T # time horizon
-        self.K = K # number of vehicules
+        self.K = K # number of vehicles
         self.Q = Q # capacity of the trucks 
 
 
