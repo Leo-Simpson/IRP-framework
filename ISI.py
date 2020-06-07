@@ -56,6 +56,19 @@ class Solution :
                         small_tour = [s for s in tour[:i]] + [s for s in tour[i+1:]]
                         self.a[t,n,k,tour[i]-self.N] = length - self.compute_route_costs(small_tour)
         
+    def compute_a_and_b(self):
+        # to do 
+        self.a = np.zeros((self.T,self.N,self.K,self.M)) # routing cost reduction if school m is removed from the tour of vehicle k from WH n at time t ==> array TxKxMxN
+        self.b = np.zeros((self.T,self.N,self.K,self.M)) # routing cost addition if school m is added to the tour of vehicle k from WH n at time t ==> array TxKxMxN
+        
+        for t in range(self.T): #compute a
+            for n in range(self.N):
+                for k in range(self.K):
+                    tour, length = self.r[t][n][k]
+                    for i in range(1,len(tour)-1):
+                        small_tour = [s for s in tour[:i]] + [s for s in tour[i+1:]]
+                        self.a[t,n,k,tour[i]-self.N] = length - self.compute_route_costs(small_tour)
+        
         for t in range(self.T): #compute b
             for n in range(self.N):
                 for k in range(self.K):
@@ -63,9 +76,20 @@ class Solution :
                     w = [tour[0]]
                     s = np.ndarray.tolist(tour[1:-1])
                     for m in np.nonzero(1 - self.Y[t,n,k,:])[0]:
-                        big_tour = w + s + [m] + w
-                        self.b_tours[t][n][k][m], big_tour_length = tsp_tour(big_tour, self)
-                        self.b[t,n,k,m] = big_tour_length - length
+                        lowest_cost = 100000000
+                        if len(s) > 0:
+                            for i in range(len(s)):
+                                big_tour = w + [sc for sc in s[:i]] + [m] + [sc for sc in s[i:]] + w
+                                big_tour_length = self.compute_route_costs(big_tour)
+                                if big_tour_length < lowest_cost:
+                                    lowest_cost = big_tour_length
+                            self.b[t,n,k,m] = round(lowest_cost - length)
+                            if self.b[t,n,k,m] > 10000:
+                                print([t,n,k,m])
+                        else:
+                            big_tour = w + [m]  + w
+                            big_tour_length = self.compute_route_costs(big_tour)
+                            self.b[t,n,k,m] = round(big_tour_length - length)
                         
     def compute_r(self):
         # here are the TSP to be computed
