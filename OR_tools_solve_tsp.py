@@ -61,7 +61,7 @@ def tsp_tour_comp(distance_matrix):
 def tsp_tour(tour, solution):
     tour_temp = np.array(tour)
     name_warehouses, name_schools = np.array(solution.name_warehouses), np.array(solution.name_schools)
-    tour_in_names = np.concatenate([name_warehouses[tour_temp[:1]], name_schools[tour_temp[1:]]])
+    tour_in_names = np.concatenate([name_warehouses[tour_temp[:1]], name_schools[tour_temp[1:-1]]])
     distance_matrix = solution.problem.D.loc[tour_in_names, tour_in_names].values
     
     tsp_sol, route_distance = tsp_tour_comp(distance_matrix)
