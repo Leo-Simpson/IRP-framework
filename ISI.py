@@ -45,16 +45,28 @@ class Solution :
 
     def compute_a_and_b(self):
         # to do 
-        self.a = np.zeros((T,N,K,M)) # routing cost reduction if school m is removed from the tour of vehicle k from WH n at time t ==> array TxKxMxN
-        self.b = np.zeros((T,N,K,M)) # routing cost addition if school m is added to the tour of vehicle k from WH n at time t ==> array TxKxMxN
-        
-        for t in range(self.T):
+        self.a = np.zeros((self.T,self.N,self.K,self.M)) # routing cost reduction if school m is removed from the tour of vehicle k from WH n at time t ==> array TxKxMxN
+        self.b = np.zeros((self.T,self.N,self.K,self.M)) # routing cost addition if school m is added to the tour of vehicle k from WH n at time t ==> array TxKxMxN
+        self.b_tours = [[[[[] for i in range(self.M)] for i in range(self.K)] for i in range(self.N)] for i in range(self.T)]
+        for t in range(self.T): #compute a
             for n in range(self.N):
                 for k in range(self.K):
-                    for counter,i in enumerate(self.r[t][n][k]):
-                          pass
-                          
-
+                    tour, length = self.r[t][n][k]
+                    for i in range(1,len(tour)-1):
+                        small_tour = [s for s in tour[:i]] + [s for s in tour[i+1:]]
+                        self.a[t,n,k,tour[i]-self.N] = length - self.compute_route_costs(small_tour)
+        
+        for t in range(self.T): #compute a
+            for n in range(self.N):
+                for k in range(self.K):
+                    tour, length = self.r[t][n][k]
+                    w = [tour[0]]
+                    s = np.ndarray.tolist(tour[1:-1])
+                    for m in np.nonzero(1 - self.Y[t,n,k,:])[0]:
+                        big_tour = w + s + [m] + w
+                        self.b_tours[t][n][k][m], big_tour_length = tsp_tour(big_tour, self)
+                        self.b[t,n,k,m] = big_tour_length - length
+                        
     def compute_r(self):
         # here are the TSP to be computed
         self.r = [[[[] for i in range(self.K)] for i in range(self.N)] for i in range(self.T)] # for each time t, for each vehicle k, a list of ordered integer of [0, M+N] corresponding to a tour
@@ -62,14 +74,14 @@ class Solution :
             for n in range(self.N):
                 for k in range(self.K):
                     s = np.nonzero(self.Y[t,n,k,:])
-                    tour = [n]+ np.ndarray.tolist(np.array(s[0])+self.N) #  the tour starts at the warehouse then add the school in the wrong order
+                    tour = [n] + np.ndarray.tolist(np.array(s[0])+self.N) + [n] #  the tour starts at the warehouse then add the school in the wrong order
                           
                     # then do something for solving the associated TSP. 
 
                     #edit Chris 07.06.20:
-                    tour, _ = tsp_tour(tour, self)  #function returns optimal tour and length of optimal tour
+                    tour, length = tsp_tour(tour, self)  #function returns optimal tour and length of optimal tour
                     #end of edit Chris 07.06.20
-                    self.r[t][n][k] = tour
+                    self.r[t][n][k] = [tour, length]
 
     def compute_cost(self):
         self.cost = 0. # to do 
