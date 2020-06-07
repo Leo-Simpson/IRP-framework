@@ -52,7 +52,7 @@ class Solution :
 
     def compute_r(self):
         # here are the TSP to be computed
-        self.r = [[[[]]*self.K]*self.N]*self.T # for each time t, for each vehicle k, a list of ordered integer of [0, M+N] corresponding to a tour
+        self.r = [[[[] for i in range(self.K)] for i in range(self.N)] for i in range(self.T)] # for each time t, for each vehicle k, a list of ordered integer of [0, M+N] corresponding to a tour
         for t in range(self.T):
             for n in range(self.N):
                 for k in range(self.K):
@@ -64,7 +64,6 @@ class Solution :
                     #edit Chris 07.06.20:
                     tour, _ = tsp_tour(tour, self)  #function returns optimal tour and length of optimal tour
                     #end of edit Chris 07.06.20
-
                     self.r[t][n][k] = tour
 
     def compute_cost(self):
