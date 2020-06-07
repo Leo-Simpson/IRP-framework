@@ -57,7 +57,6 @@ class Solution :
             for n in range(self.N):
                 for k in range(self.K):
                     s = np.nonzero(self.Y[t,n,k,:])
-                    print([t,n,k])
                     tour = [n]+ np.ndarray.tolist(np.array(s[0])+self.N) #  the tour starts at the warehouse then add the school in the wrong order
                           
                     # then do something for solving the associated TSP. 
