@@ -2,7 +2,7 @@ import numpy as np
 import numpy.random as rd
 from copy import deepcopy
 #edit Chris 07.06.20:
-from chris_version_solve_tsp import tsp_tour
+from OR_tools_solve_tsp import tsp_tour
 #end of edit Chris 07.06.20
 
 class Problem :
