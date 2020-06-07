@@ -52,13 +52,13 @@ class Solution :
 
     def compute_r(self):
         # here are the TSP to be computed
-        self.r = [[[[ ]*self.T]*self.N]*self.K] # for each time t, for each vehicle k, a list of ordered integer of [0, M+N] corresponding to a tour
+        self.r = [[[[]]*self.K]*self.N]*self.T # for each time t, for each vehicle k, a list of ordered integer of [0, M+N] corresponding to a tour
         for t in range(self.T):
             for n in range(self.N):
                 for k in range(self.K):
                     s = np.nonzero(self.Y[t,n,k,:])
-                    print([n],list(np.array(s)+self.N))
-                    tour = [n]+ list(np.array(s)+self.N) #  the tour starts at the warehouse then add the school in the wrong order
+                    print([t,n,k])
+                    tour = [n]+ np.ndarray.tolist(np.array(s[0])+self.N) #  the tour starts at the warehouse then add the school in the wrong order
                           
                     # then do something for solving the associated TSP. 
 
