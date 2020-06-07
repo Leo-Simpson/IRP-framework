@@ -3,7 +3,7 @@ import numpy.random as rd
 from copy import deepcopy
 #edit Chris 07.06.20:
 from chris_version_solve_tsp import tsp_tour
-#end of edit Chris 07.06.20:
+#end of edit Chris 07.06.20
 
 class Problem :
     #this is the class that contains the data of the problem
@@ -53,7 +53,7 @@ class Solution :
                 
                 #edit Chris 07.06.20:
                 tour = tsp_tour(tour, self)
-                #end of edit Chris 07.06.20:
+                #end of edit Chris 07.06.20
 
 
                 self.r[t][k] = tour
