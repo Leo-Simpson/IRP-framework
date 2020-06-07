@@ -32,7 +32,7 @@ class Solution :
 
         self.I_s = np.zeros((T,M))  # invetory of the schools
         self.I_w = np.zeros((T,N))  # inventory        
-        self.Y = np.zeros((T,K,M,N), dtype = bool) # variable  equal 1 if vehicle k delivers school m from warehouse n at time t
+        self.Y = np.zeros((T,N,K,M), dtype = bool) # variable  equal 1 if vehicle k delivers school m from warehouse n at time t
         
 
         # other variable to add probably
@@ -40,29 +40,32 @@ class Solution :
 
     def compute_a_and_b(self):
         # to do 
-        self.a = np.zeros((T,K,M,N) # routing cost reduction if customer l is removed from the tour of vehicle k at time t ==> array TxKxMxN
-        self.b = np.zeros((T,K,M,N) # routing cost addition if customer l is added to the tour of vehicle k at time t ==> array TxKxMxN
+        self.a = np.zeros((T,N,K,M) # routing cost reduction if school m is removed from the tour of vehicle k from WH n at time t ==> array TxKxMxN
+        self.b = np.zeros((T,N,K,M) # routing cost addition if school m is added to the tour of vehicle k from WH n at time t ==> array TxKxMxN
         
         for t in range(self.T):
-            for k in range(self.K):
+            for n in range(self.N):
+                for k in range(self.K):
+                    for counter,i in enumerate(self.r[t][n][k]):
+                          if counter
+                          
 
     def compute_r(self):
         # here are the TSP to be computed
-        self.r = [[[ ]*K]*T] # for each time t, for each vehicle k, a list of ordered integer of [0, M+N] corresponding to a tour
+        self.r = [[[[ ]*T]*N]*K] # for each time t, for each vehicle k, a list of ordered integer of [0, M+N] corresponding to a tour
         for t in range(self.T):
-            for k in range(self.K):
-                w,s = np.nonzero(self.Y[t,k,:,:])
-                tour = [w[0]]+ list(s+N) #  the tour starts at the warehouse then add the school in the wrong order
-                
+            for n in range(self.N):
+                for k in range(self.K):
+                    s = np.nonzero(self.Y[t,n,k,:])
+                    tour = [n]+ list(s+N) #  the tour starts at the warehouse then add the school in the wrong order
+                          
+                    # then do something for solving the associated TSP. 
 
-                # then do something for solving the associated TSP. 
-                
-                #edit Chris 07.06.20:
-                tour = tsp_tour(tour, self)
-                #end of edit Chris 07.06.20
+                    #edit Chris 07.06.20:
+                    tour, _ = tsp_tour(tour, self)  #function returns optimal tour and length of optimal tour
+                    #end of edit Chris 07.06.20
 
-
-                self.r[t][k] = tour
+                    self.r[t][n][k].append(tour)
 
     def compute_cost(self):
         self.cost = 0. # to do 
