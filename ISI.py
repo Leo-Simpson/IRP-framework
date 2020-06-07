@@ -47,7 +47,7 @@ class Solution :
         # to do 
         self.a = np.zeros((self.T,self.N,self.K,self.M)) # routing cost reduction if school m is removed from the tour of vehicle k from WH n at time t ==> array TxKxMxN
         self.b = np.zeros((self.T,self.N,self.K,self.M)) # routing cost addition if school m is added to the tour of vehicle k from WH n at time t ==> array TxKxMxN
-        self.b_tours = [[[[[] for i in range(self.M)] for i in range(self.K)] for i in range(self.N)] for i in range(self.T)]
+        self.b_tours = [[[[[] for i in range(self.M)] for i in range(self.K)] for i in range(self.N)] for i in range(self.T)] #save tsp_routes. Optional. Don't know if it makes sense, because when 2 schools get added to a route, we can't use it anyway and have to recompute.
         for t in range(self.T): #compute a
             for n in range(self.N):
                 for k in range(self.K):
@@ -56,7 +56,7 @@ class Solution :
                         small_tour = [s for s in tour[:i]] + [s for s in tour[i+1:]]
                         self.a[t,n,k,tour[i]-self.N] = length - self.compute_route_costs(small_tour)
         
-        for t in range(self.T): #compute a
+        for t in range(self.T): #compute b
             for n in range(self.N):
                 for k in range(self.K):
                     tour, length = self.r[t][n][k]
