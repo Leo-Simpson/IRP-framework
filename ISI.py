@@ -7,7 +7,7 @@ from OR_tools_solve_tsp import tsp_tour
 
 class Problem :
     #this is the class that contains the data of the problem
-    def __init__(self,D,Warehouses,Schools,T,K, Q):
+    def __init__(self,D,Warehouses,Schools,T,K, Q, v, t_load, c_per_km):
         self.D = D # distance matrix. Could be a pandas data frame with the names of Warehouses/Schools as index of rows and colomns 
                     # to get the distance between a warehouse and a school for example : D.loc[warehouse_name, school_name]
         self.Warehouses = Warehouses # list of tuple (capacity,fixed_cost, name)
@@ -15,6 +15,9 @@ class Problem :
         self.T = T # time horizon
         self.K = K # number of vehicles
         self.Q = Q # capacity of the trucks 
+        self.v = v # average speed of trucks in km/h
+        self.t_load = t_load # average loading/unloading time at schools in hours
+        self.c_per_km = c_per_km # average routing cost per kilometer
 
 
 class Solution : 
@@ -37,8 +40,11 @@ class Solution :
 
     def compute_a_and_b(self):
         # to do 
-        self.a = None # routing cost reduction if customer l is removed from the tour of vehicle k at time t ==> array TxKxM
-        self.b = None # routing cost addition if customer l is added to the tour of vehicle k at time t ==> array TxKxM
+        self.a = np.zeros((T,K,M,N) # routing cost reduction if customer l is removed from the tour of vehicle k at time t ==> array TxKxMxN
+        self.b = np.zeros((T,K,M,N) # routing cost addition if customer l is added to the tour of vehicle k at time t ==> array TxKxMxN
+        
+        for t in range(self.T):
+            for k in range(self.K):
 
     def compute_r(self):
         # here are the TSP to be computed
