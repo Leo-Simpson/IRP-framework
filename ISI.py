@@ -40,14 +40,14 @@ class Solution :
 
     def compute_a_and_b(self):
         # to do 
-        self.a = np.zeros((T,N,K,M) # routing cost reduction if school m is removed from the tour of vehicle k from WH n at time t ==> array TxKxMxN
-        self.b = np.zeros((T,N,K,M) # routing cost addition if school m is added to the tour of vehicle k from WH n at time t ==> array TxKxMxN
+        self.a = np.zeros((T,N,K,M)) # routing cost reduction if school m is removed from the tour of vehicle k from WH n at time t ==> array TxKxMxN
+        self.b = np.zeros((T,N,K,M)) # routing cost addition if school m is added to the tour of vehicle k from WH n at time t ==> array TxKxMxN
         
         for t in range(self.T):
             for n in range(self.N):
                 for k in range(self.K):
                     for counter,i in enumerate(self.r[t][n][k]):
-                          if counter
+                          pass
                           
 
     def compute_r(self):
