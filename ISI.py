@@ -66,7 +66,7 @@ class Solution :
                         lowest_cost = 100000000
                         if len(s) > 0:
                             for i in range(len(s)):
-                                big_tour = w + [sc for sc in s[:i]] + [m] + [sc for sc in s[i:]] + w
+                                big_tour = w + [sc for sc in s[:i]] + [m+4] + [sc for sc in s[i:]] + w
                                 big_tour_length = self.compute_route_costs(big_tour)
                                 if big_tour_length < lowest_cost:
                                     lowest_cost = big_tour_length
@@ -74,7 +74,7 @@ class Solution :
                             if self.b[t,n,k,m] > 10000:
                                 print([t,n,k,m])
                         else:
-                            big_tour = w + [m]  + w
+                            big_tour = w + [m+4]  + w
                             big_tour_length = self.compute_route_costs(big_tour)
                             self.b[t,n,k,m] = round(big_tour_length - length)
                         
