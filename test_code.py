@@ -28,4 +28,3 @@ D = pd.DataFrame(distance_matrix, columns = names, index=names)
 
 
 problem = Problem(D = D, Schools = Schools, Warehouses = Warehouses,T = 6,K = 3, Q = 1000, v = 40, t_load = 0.5, c_per_km = 1)
-solution = Solution(problem)
