@@ -36,7 +36,12 @@ class Solution :
         
 
         # other variable to add probably
-
+    def compute_route_costs(self, route):
+        costs = 0
+        dist = self.problem.D.values
+        for i in range(len(route)-1):
+            costs += dist[route[i],route[i+1]]
+        return costs
 
     def compute_a_and_b(self):
         # to do 
