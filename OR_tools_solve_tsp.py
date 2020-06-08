@@ -58,7 +58,7 @@ def tsp_tour_comp(distance_matrix):
     
     return tsp_route, route_distance
     
-def tsp_tour(tour, warehouse, N, dist):
+def tsp_tour(tour, warehouse, dist):
     tour_temp = np.zeros(len(tour)+2,dtype=int)
     tour_temp[1:-1] = np.array(tour)
     tour_temp[0],tour_temp[-1]  = warehouse, warehouse
