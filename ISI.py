@@ -38,9 +38,11 @@ class Solution :
         
 
         # other variable to add probably
-    def compute_route_cost(self, route, warehouse):
+    def compute_route_cost(self, tour, warehouse):
         dist = self.problem.D.values
-        return sum( [ dist[route[i],route[i+1]] for i in range(len(route)-1)]) + dist[route[0],warehouse] + dist[route[-1],warehouse]
+        tour2   = [warehouse]+tour+[warehouse]
+        return sum( [ dist[tour2[i],tour2[i+1]] for i in range(len(tour2)-1)])
+    
 
 
     def compute_a_and_b(self):
@@ -52,17 +54,16 @@ class Solution :
         for t in range(self.T): 
             for n in range(self.N):
                 for k in range(self.K):
-                    tour, _ = self.r[t][n][k]
+                    tour = self.r[t][n][k]
                     tour2   = [n]+tour+[n]
 
                     #compute a
                     # to do : make it with vector operations
-
                     for i in range(1,len(tour2)-1) : 
                         self.a[t,n,k, tour2[i]-self.N] = dist[tour2[i],tour2[i+1]]+dist[tour2[i],tour2[i-1]] - dist[tour2[i-1],tour2[i+1]]
                         
                     # compute b 
-                    edges_cost = np.array( [dist(tour2[i],tour2[i+1]) for i in range(len(tour2)-1)] )
+                    edges_cost = np.array([dist[tour2[i],tour2[i+1]] for i in range(len(tour2)-1)])
                     for m in np.nonzero(1 - self.Y[t,n,k,:])[0]:
                         add_edges_cost =  np.array( [ dist[m+self.N,tour2[i]]+dist[m+self.N,tour2[i+1]]  for i in range(len(tour2)-1) ] )
                         self.b[t,n,k,m] = np.amin(add_edges_cost-edges_cost)
@@ -78,16 +79,16 @@ class Solution :
                     tour = np.nonzero(self.Y[t,n,k,:])[0] + self.N 
                     #tour = [n] + np.ndarray.tolist(np.array(s[0])+self.N) + [n] #  the tour starts at the warehouse then add the school in the wrong order
                     #edit Chris 07.06.20:
-                    tour, length = tsp_tour(tour, n, dist)  #function returns optimal tour and length of optimal tour
+                    tour = tsp_tour(tour, n, dist)  #function returns optimal tour and length of optimal tour
                     #end of edit Chris 07.06.20
-                    self.r[t][n][k] = [tour, length]
+                    self.r[t][n][k] = tour
 
     def compute_transport_costs(self):
         return np.array([[[[
                         self.compute_route_cost(self.r[t][n][k],n)
-                        ] for k in range(K)
-                        ] for n in range(N)
-                        ] for t in range(T)
+                        ] for k in range(self.K)
+                        ] for n in range(self.N)
+                        ] for t in range(self.T)
                     ])
 
 
