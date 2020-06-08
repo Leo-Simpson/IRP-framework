@@ -10,8 +10,8 @@ class Problem :
     def __init__(self,D,Warehouses,Schools,T,K, Q, v, t_load, c_per_km):
         self.D = D # distance matrix. Could be a pandas data frame with the names of Warehouses/Schools as index of rows and colomns 
                     # to get the distance between a warehouse and a school for example : D.loc[warehouse_name, school_name]
-        self.Warehouses = Warehouses # list of tuple (capacity,fixed_cost, name)
-        self.Schools = Schools  # list of tuple (capactiy, consumption, name)
+        self.Warehouses = Warehouses # list of tuple (capacity,fixed_cost, initial value,  name)
+        self.Schools = Schools  # list of tuple (capactiy, consumption, initial value, name)
         self.T = T # time horizon
         self.K = K # number of vehicles
         self.Q = Q # capacity of the trucks 
@@ -20,19 +20,21 @@ class Problem :
         self.c_per_km = c_per_km # average routing cost per kilometer
 
 
+
 class Solution : 
     def __init__(self,problem):
         M,N,K,T = len(problem.Schools), len(problem.Warehouses),problem.K, problem.T
         self.M, self.N, self.K, self.T = M,N,K,T
 
-        self.name_schools    = [s[2] for s in problem.Schools ]
-        self.name_warehouses = [w[2] for w in problem.Warehouses ]
+        self.name_schools    = [s[3] for s in problem.Schools ]
+        self.name_warehouses = [w[3] for w in problem.Warehouses ]
         
         self.problem = problem
 
         self.I_s = np.zeros((T,M))  # invetory of the schools
         self.I_w = np.zeros((T,N))  # inventory        
         self.Y = np.zeros((T,N,K,M), dtype = bool) # variable  equal 1 if vehicle k delivers school m from warehouse n at time t
+        self.X = np.zeros((T,N), dtype = bool )   # variable equal 1 if warehouse n get more food at time t
         
 
         # other variable to add probably
@@ -47,50 +49,24 @@ class Solution :
         self.b = np.zeros((self.T,self.N,self.K,self.M)) # routing cost addition if school m is added to the tour of vehicle k from WH n at time t ==> array TxKxMxN
         dist = self.problem.D.values
 
-        for t in range(self.T): #compute a
+        for t in range(self.T): 
             for n in range(self.N):
                 for k in range(self.K):
-                    tour, length = self.r[t][n][k]
-                    if len(tour)==0 : continue
+                    tour, _ = self.r[t][n][k]
+                    tour2   = [n]+tour+[n]
 
-                    edges_cost = [dist[n, tour[0]-self.N]]+[ dist[tour[i+1]-self.N, tour[i]-self.N] for i in range(len(tour)-1)]+ dist[n, tour[-1]-self.N]
-        
                     #compute a
                     # to do : make it with vector operations
 
-
-                    for i in range(len(tour)-1):  # for the schools that are not the first neither the last
-                        self.a[t,n,k, tour[i]-self.N]   += edges_cost[i+1]
-                        self.a[t,n,k, tour[i+1]-self.N] += edges_cost[i+1]
-                    
-                    self.a[t,n,k, tour[-1]-self.N] += edges_cost[-1]  # for the last school of the tour
-                    self.a[t,n,k, tour[0]-self.N]  += edges_cost[0]  # for the fisrt school of the tour
+                    for i in range(1,len(tour2)-1) : 
+                        self.a[t,n,k, tour2[i]-self.N] = dist[tour2[i],tour2[i+1]]+dist[tour2[i],tour2[i-1]] - dist[tour2[i-1],tour2[i+1]]
                         
-                        
-
                     # compute b 
-                    
-                    
-
+                    edges_cost = np.array( [dist(tour2[i],tour2[i+1]) for i in range(len(tour2)-1)] )
                     for m in np.nonzero(1 - self.Y[t,n,k,:])[0]:
-                        
+                        add_edges_cost =  np.array( [ dist[m+self.N,tour2[i]]+dist[m+self.N,tour2[i+1]]  for i in range(len(tour2)-1) ] )
+                        self.b[t,n,k,m] = np.amin(add_edges_cost-edges_cost)
 
-
-                    for m in np.nonzero(1 - self.Y[t,n,k,:])[0]:
-                        lowest_cost = 100000000
-                        if len(tour) > 0:
-                            for i in range(len(tour)):
-                                big_tour = w + [sc for sc in s[:i]] + [m+self.N] + [sc for sc in s[i:]] + w
-                                big_tour_length = self.compute_route_costs(big_tour)
-                                if big_tour_length < lowest_cost:
-                                    lowest_cost = big_tour_length
-                            self.b[t,n,k,m] = round(lowest_cost - length)
-                            if self.b[t,n,k,m] > 10000:
-                                print([t,n,k,m])
-                        else:
-                            big_tour = w + [m+self.N]  + w
-                            big_tour_length = self.compute_route_costs(big_tour)
-                            self.b[t,n,k,m] = round(big_tour_length - length)
                         
     def compute_r(self):
         # here are the TSP to be computed
@@ -99,37 +75,64 @@ class Solution :
         for t in range(self.T):
             for n in range(self.N):
                 for k in range(self.K):
-                    tour = np.nonzero(self.Y[t,n,k,:])[0]
+                    tour = np.nonzero(self.Y[t,n,k,:])[0] + self.N 
                     #tour = [n] + np.ndarray.tolist(np.array(s[0])+self.N) + [n] #  the tour starts at the warehouse then add the school in the wrong order
                     #edit Chris 07.06.20:
-                    tour, length = tsp_tour(tour, n, self.N, dist)  #function returns optimal tour and length of optimal tour
+                    tour, length = tsp_tour(tour, n, dist)  #function returns optimal tour and length of optimal tour
                     #end of edit Chris 07.06.20
                     self.r[t][n][k] = [tour, length]
 
-    def compute_costs(self):
-        self.costs = np.array([[[[
-                                self.compute_cost(self.r[t][n][k],n)
-                                ] for k in range(K)
-                                ] for n in range(N)
-                                ] for t in range(T)
-                            ])
+    def compute_transport_costs(self):
+        return np.array([[[[
+                        self.compute_route_cost(self.r[t][n][k],n)
+                        ] for k in range(K)
+                        ] for n in range(N)
+                        ] for t in range(T)
+                    ])
 
+
+    def compute_costs(self): 
+        self.cost = self.compute_transport_costs() 
+        
+        # to do : add some other costs
 
 
     def ISI(self, G = 1):
         # change the solution itself to the ISI solution
         self.compute_a_and_b()
 
+        lenghts = np.array( [[[ len(self.r[t,n,k]) for k in range(self.K) ] for n in range(self.N) ] for  t in range(self.T) ]   )
+
+        time_route = self.cost /self.problem.v + self.problem.t_load*lenghts
+
+        time_adding = np.array( [ self.b[:,:,:,m] / self.problem.v + time_route + self.problem.t_load  for m in range(self.M) ]  )
+
+        
+
+
 
         # TO DO HERE !!!
-        self.q = None
-        self.delta = None
-        self.omega = None
+        q = None         # variable of size TxNxKxM, type=float representing how much food to deliver at each stop of a truck
+        delta = None     # variable of size TxNxKxM, type=bool representing wether or not l is removed from the tour
+        omega = None     # variable of size TxNxKxM, type=bool representing wether or not l is added to the tour
+
+        # omega[t,n,k,m] ( average_speed b[t,n,k,m] + Tload*(1+len(r[t,n,k])) ) < Tmax
+
+
+
         # To do here, with a solver ... 
 
 
+
+        self.update_after_ISI(delta,omega,q)
         self.compute_r()
-        self.compute_cost()
+        self.compute_costs()
+
+
+    def update_after_ISI(self,delta,omega,q): 
+
+        self.Y = self.Y + omega - delta
+        # probably some other stuff to do 
 
 
 
@@ -242,14 +245,19 @@ class Matheuristic :
 
 
     def choose_operator(operators):
-        i = 0 # to do
-        
-        return i
+        weights = [operator['weight'] for operator in operators]
+        s = 0.
+        v = rd.random()*sum(weights)
+        for i in range(len(weights)):
+            s+=weights[i]
+            if s>=v : return i
+
 
     def update_weights(self, r):        # r is the reaction factor
         for op in self.operators : 
             if (op['number_used']>0): op['weight'] = (1-r)*op['weight'] + r* op['score']/op['number_used']
             op['score']  = 0
+            op['number_used'] = 0
 
 
 
