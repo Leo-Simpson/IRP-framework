@@ -24,9 +24,9 @@ def test_problem(M, N, T, K):
     locations = [w[3] for w in Warehouses] + [s[3] for s in Schools]
     names = [w[2] for w in Warehouses] + [s[2] for s in Schools]
 
-    distance_matrix = np.round(distance_matrix(locations,locations))
+    distance_mat = np.round(distance_matrix(locations,locations))
 
-    D = pd.DataFrame(distance_matrix, columns = names, index=names)
+    D = pd.DataFrame(distance_mat, columns = names, index=names)
 
 
     problem = Problem(D = D, Schools = Schools, Warehouses = Warehouses,T = T,K = K, Q = 1000, v = 40, t_load = 0.5, c_per_km = 1)
