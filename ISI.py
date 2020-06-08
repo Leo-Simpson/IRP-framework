@@ -78,6 +78,10 @@ class Solution :
 
                     for m in np.nonzero(1 - self.Y[t,n,k,:])[0]:
                         lowest_cost = 100000000
+<<<<<<< Updated upstream
+=======
+                        nk = len
+>>>>>>> Stashed changes
                         if len(tour) > 0:
                             for i in range(len(tour)):
                                 big_tour = w + [sc for sc in s[:i]] + [m+self.N] + [sc for sc in s[i:]] + w
