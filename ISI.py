@@ -36,36 +36,50 @@ class Solution :
         
 
         # other variable to add probably
-    def compute_route_costs(self, route):
-        costs = 0
+    def compute_route_cost(self, route, warehouse):
         dist = self.problem.D.values
-        for i in range(len(route)-1):
-            costs += dist[route[i],route[i+1]]
-        return costs
+        return sum( [ dist[route[i],route[i+1]] for i in range(len(route)-1)]) + dist[route[0],warehouse] + dist[route[-1],warehouse]
+
 
     def compute_a_and_b(self):
         # to do 
         self.a = np.zeros((self.T,self.N,self.K,self.M)) # routing cost reduction if school m is removed from the tour of vehicle k from WH n at time t ==> array TxKxMxN
         self.b = np.zeros((self.T,self.N,self.K,self.M)) # routing cost addition if school m is added to the tour of vehicle k from WH n at time t ==> array TxKxMxN
-        
+        dist = self.problem.D.values
+
         for t in range(self.T): #compute a
             for n in range(self.N):
                 for k in range(self.K):
                     tour, length = self.r[t][n][k]
-                    for i in range(1,len(tour)-1):
-                        small_tour = [s for s in tour[:i]] + [s for s in tour[i+1:]]
-                        self.a[t,n,k,tour[i]-self.N] = length - self.compute_route_costs(small_tour)
+                    if len(tour)==0 : continue
+
+                    edges_cost = [dist[n, tour[0]-self.N]]+[ dist[tour[i+1]-self.N, tour[i]-self.N] for i in range(len(tour)-1)]+ dist[n, tour[-1]-self.N]
         
-        for t in range(self.T): #compute b
-            for n in range(self.N):
-                for k in range(self.K):
-                    tour, length = self.r[t][n][k]
-                    w = [tour[0]]
-                    s = np.ndarray.tolist(tour[1:-1])
+                    #compute a
+                    # to do : make it with vector operations
+
+
+                    for i in range(len(tour)-1):  # for the schools that are not the first neither the last
+                        self.a[t,n,k, tour[i]-self.N]   += edges_cost[i+1]
+                        self.a[t,n,k, tour[i+1]-self.N] += edges_cost[i+1]
+                    
+                    self.a[t,n,k, tour[-1]-self.N] += edges_cost[-1]  # for the last school of the tour
+                    self.a[t,n,k, tour[0]-self.N]  += edges_cost[0]  # for the fisrt school of the tour
+                        
+                        
+
+                    # compute b 
+                    
+                    
+
+                    for m in np.nonzero(1 - self.Y[t,n,k,:])[0]:
+                        
+
+
                     for m in np.nonzero(1 - self.Y[t,n,k,:])[0]:
                         lowest_cost = 100000000
-                        if len(s) > 0:
-                            for i in range(len(s)):
+                        if len(tour) > 0:
+                            for i in range(len(tour)):
                                 big_tour = w + [sc for sc in s[:i]] + [m+self.N] + [sc for sc in s[i:]] + w
                                 big_tour_length = self.compute_route_costs(big_tour)
                                 if big_tour_length < lowest_cost:
@@ -81,21 +95,26 @@ class Solution :
     def compute_r(self):
         # here are the TSP to be computed
         self.r = [[[[] for i in range(self.K)] for i in range(self.N)] for i in range(self.T)] # for each time t, for each vehicle k, a list of ordered integer of [0, M+N] corresponding to a tour
+        dist = self.problem.D.values
         for t in range(self.T):
             for n in range(self.N):
                 for k in range(self.K):
-                    s = np.nonzero(self.Y[t,n,k,:])
-                    tour = [n] + np.ndarray.tolist(np.array(s[0])+self.N) + [n] #  the tour starts at the warehouse then add the school in the wrong order
-                          
-                    # then do something for solving the associated TSP. 
-
+                    tour = np.nonzero(self.Y[t,n,k,:])[0]
+                    #tour = [n] + np.ndarray.tolist(np.array(s[0])+self.N) + [n] #  the tour starts at the warehouse then add the school in the wrong order
                     #edit Chris 07.06.20:
-                    tour, length = tsp_tour(tour, self)  #function returns optimal tour and length of optimal tour
+                    tour, length = tsp_tour(tour, n, self.N, dist)  #function returns optimal tour and length of optimal tour
                     #end of edit Chris 07.06.20
                     self.r[t][n][k] = [tour, length]
 
-    def compute_cost(self):
-        self.cost = 0. # to do 
+    def compute_costs(self):
+        self.costs = np.array([[[[
+                                self.compute_cost(self.r[t][n][k],n)
+                                ] for k in range(K)
+                                ] for n in range(N)
+                                ] for t in range(T)
+                            ])
+
+
 
     def ISI(self, G = 1):
         # change the solution itself to the ISI solution
