@@ -21,17 +21,17 @@ class Problem :
         self.c_per_km = c_per_km # average routing cost per kilometer
 
     def define_arrays(self):
-        self.I_s_init  =  np.array([s["initial"] for s in Schools])           # initial inventory of school
-        self.U_s       =  np.array([s["capacity"] for s in Schools])          # capactiy upper bound school
-        self.L_s       =  np.array([s["lower"] for s in Schools])             # capacity lower bound school     
-        self.h_s       =  np.array([s["storage_cost"] for s in Schools])      # storage cost school
-        self.d         =  np.array([s["consumption"] for s in Schools])       # consumption of schools
+        self.I_s_init  =  np.array([s["initial"] for s in self.Schools])           # initial inventory of school
+        self.U_s       =  np.array([s["capacity"] for s in self.Schools])          # capactiy upper bound school
+        self.L_s       =  np.array([s["lower"] for s in self.Schools])             # capacity lower bound school     
+        self.h_s       =  np.array([s["storage_cost"] for s in self.Schools])      # storage cost school
+        self.d         =  np.array([s["consumption"] for s in self.Schools])       # consumption of schools
 
-        self.I_w_init  =  np.array([w["initial"] for w in Warehouses])        # initial inventory of warehouses
-        self.U_w       =  np.array([w["capacity"] for w in Warehouses])       # capactiy upper bound warehouse
-        self.L_w       =  np.array([w["lower"] for w in Warehouses])          # capacity lower bound warehouse
-        self.F_w       =  np.array([w["fixed_cost"] for w in Warehouses])     # capacity lower bound warehouse
-        self.to_central=  np.array([w["dist_central"] for w in Warehouses])   # distance between the warehouses and the central
+        self.I_w_init  =  np.array([w["initial"] for w in self.Warehouses])        # initial inventory of warehouses
+        self.U_w       =  np.array([w["capacity"] for w in self.Warehouses])       # capactiy upper bound warehouse
+        self.L_w       =  np.array([w["lower"] for w in self.Warehouses])          # capacity lower bound warehouse
+        self.F_w       =  np.array([w["fixed_cost"] for w in self.Warehouses])     # capacity lower bound warehouse
+        self.to_central=  np.array([w["dist_central"] for w in self.Warehouses])   # distance between the warehouses and the central
 
 
 
@@ -69,7 +69,7 @@ class Solution :
         for t in range(self.T): 
             for n in range(self.N):
                 for k in range(self.K):
-                    tour, _ = self.r[t][n][k]
+                    tour = self.r[t][n][k]
                     tour2   = [n]+tour+[n]
 
                     #compute a
@@ -79,7 +79,7 @@ class Solution :
                         self.a[t,n,k, tour2[i]-self.N] = dist[tour2[i],tour2[i+1]]+dist[tour2[i],tour2[i-1]] - dist[tour2[i-1],tour2[i+1]]
                         
                     # compute b 
-                    edges_cost = np.array( [dist(tour2[i],tour2[i+1]) for i in range(len(tour2)-1)] )
+                    edges_cost = np.array( [dist[tour2[i],tour2[i+1]] for i in range(len(tour2)-1)] )
                     for m in np.nonzero(1 - self.Y[t,n,k,:])[0]:
                         add_edges_cost =  np.array( [ dist[m+self.N,tour2[i]]+dist[m+self.N,tour2[i+1]]  for i in range(len(tour2)-1) ] )
                         self.b[t,n,k,m] = np.amin(add_edges_cost-edges_cost)
