@@ -47,25 +47,25 @@ def tsp_tour_comp(distance_matrix):
     
     tsp_route=[]
     index = routing.Start(0)
-    route_distance = 0
+    previous_index = index
+    index = solution.Value(routing.NextVar(index))
     while not routing.IsEnd(index):
         tsp_route.append(manager.IndexToNode(index))
         previous_index = index
         index = solution.Value(routing.NextVar(index))
-        route_distance += routing.GetArcCostForVehicle(previous_index, index, 0)
-    index = routing.Start(0)
-    tsp_route.append(manager.IndexToNode(index))
+        #route_distance += routing.GetArcCostForVehicle(previous_index, index, 0)
+    #index = routing.Start(0)
+    #tsp_route.append(manager.IndexToNode(index))
     
-    return tsp_route, route_distance
+    return tsp_route#, route_distance
     
-def tsp_tour(tour, warehouse, N, dist):
-    tour_temp = np.zeros(len(tour)+2,dtype=int)
-    tour_temp[1:-1] = np.array(tour)
-    tour_temp[0],tour_temp[-1]  = warehouse, warehouse
-
-    distance_matrix = dist[tour_temp,tour_temp]
+def tsp_tour(tour, warehouse, dist):
+    tour_temp = np.zeros(len(tour)+1,dtype=int)
+    tour_temp[1:] = np.array(tour)
+    tour_temp[0]  = warehouse
     
-    tsp_sol, route_distance = tsp_tour_comp(distance_matrix)
+    distance_matrix = dist[np.ix_(tour_temp,tour_temp)]
+    tsp_sol = tsp_tour_comp(distance_matrix)
     
-    tsp_tour = tour_temp[tsp_sol]  #converting indices back from range(len(tour)) to range(M+N)
-    return tsp_tour, route_distance
+    tsp_tour = np.ndarray.tolist(tour_temp[tsp_sol])  #converting indices back from range(len(tour)) to range(M+N)
+    return tsp_tour
