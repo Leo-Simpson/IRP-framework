@@ -7,7 +7,7 @@ from OR_tools_solve_tsp import tsp_tour
 
 class Problem :
     #this is the class that contains the data of the problem
-    def __init__(self,D,Warehouses,Schools,T,K, Q, v, t_load, c_per_km):
+    def __init__(self,D,Warehouses,Schools,T,K, Q1, Q2, v, t_load, c_per_km):
         self.D = D # distance matrix. Could be a pandas data frame with the names of Warehouses/Schools as index of rows and colomns 
                     # to get the distance between a warehouse and a school for example : D.loc[warehouse_name, school_name]
         self.Warehouses = Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'dist_central': ... , 'fixed_cost': ... , 'initial': ...,  'name' : ...}
