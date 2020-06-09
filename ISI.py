@@ -54,13 +54,12 @@ class Solution :
         self.X = np.zeros((T,N), dtype = bool )   # variable equal 1 if warehouse n get more food at time t
         
         
-
         # other variable to add probably
-    
-    def compute_route_cost(self, route, warehouse):
+    def compute_route_cost(self, tour, warehouse):
         dist = self.problem.D.values
-        return sum( [ dist[route[i],route[i+1]] for i in range(len(route)-1)]) + dist[route[0],warehouse] + dist[route[-1],warehouse]
-
+        tour2   = [warehouse]+tour+[warehouse]
+        return sum( [ dist[tour2[i],tour2[i+1]] for i in range(len(tour2)-1)])
+    
     def compute_a_and_b(self):
         # to do 
         self.a = np.zeros((self.T,self.N,self.K,self.M)) # routing cost reduction if school m is removed from the tour of vehicle k from WH n at time t ==> array TxKxMxN
