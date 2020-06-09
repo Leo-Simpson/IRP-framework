@@ -51,7 +51,7 @@ class Solution :
         self.Y = np.zeros((T,N,K,M), dtype = bool)      # variable  equal 1 if vehicle k delivers school m from warehouse n at time t
         self.q = np.zeros((T,N,K,M), dtype = float)     # quantity of food delivered by vehicle k delivers school m from warehouse n at time t
         
-        self.r = np.zeros((T,N), dtype = bool )   # variable equal 1 if warehouse n get more food at time t
+        self.X = np.zeros((T,N), dtype = bool )   # variable equal 1 if warehouse n get more food at time t
         
         
 
@@ -140,7 +140,7 @@ class Solution :
         '''
         Decision variables : 
         q          variable of size TxNxKxM, type= positive float representing how much food to deliver at each stop of a truck
-        r          variable of size TxN type = bool representing the pick ups  
+        X          variable of size TxN type = bool representing the pick ups  
         delta      variable of size TxNxKxM, type=bool representing wether or not l is removed from the tour
         omega      variable of size TxNxKxM, type=bool representing wether or not l is added to the tour
         '''
@@ -156,7 +156,7 @@ class Solution :
         # variable of size TxM type = float representing the inventories of the warehouses        
         I_w[0,:] = problem.I_w_init[:]    
         for t in range(self.T):    
-            I_w[t,:] = I_w[t-1,:] + problem.Q2 * r[t,:] - problem.Q1* sum( q[t,:,k,l] axis = 1,2 )
+            I_w[t,:] = I_w[t-1,:] + problem.Q2 * X[t,:] - problem.Q1* sum( q[t,:,k,l] axis = 1,2 )
 
         '''
 
@@ -182,7 +182,7 @@ class Solution :
         Objective function : 
         minimize : 
                 sum( problem.h_s * sum(I_s,axis=0) ) 
-            +   problem.c_per_km * sum( problem.to_central * sum(r,axis=0)  ) * 2
+            +   problem.c_per_km * sum( problem.to_central * sum(X,axis=0)  ) * 2
             +   problem.c_per_km * sum(self.b*omega, axis=all)
             -   problem.c_per_km * sum(self.a*delta, axis=all)
 
@@ -195,16 +195,16 @@ class Solution :
         '''
 
 
-        self.update_after_ISI(delta,omega,q, r)
+        self.update_after_ISI(delta,omega,q, X)
         self.compute_r()
         self.compute_costs(add=add_cost)
 
 
-    def update_after_ISI(self,delta,omega,q, r): 
+    def update_after_ISI(self,delta,omega,q, X): 
 
         self.Y = self.Y + omega - delta
 
-        self.r = r[:,:]
+        self.X = X[:,:]
         self.q = self.problem.Q1*q
         
         # probably se
