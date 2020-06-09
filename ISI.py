@@ -222,12 +222,13 @@ class Meta_param :
         self.sigmas = (10,5,2)
         self.ksi = rd.uniform(low=0.1,high=0.2)
         self.seed = None
+        self.rho = 10
 
 
 class Matheuristic : 
     def __init__(self, initial_solution):
         self.operators = [
-                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.operator1, 'name': 'operator1' },
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.rand_remove_rho, 'name': 'rand_remove_rho' },
                 {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.operator2, 'name': 'operator2' },
                 {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.operator3, 'name': 'operator3' },
                 {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.operator4, 'name': 'operator4'}
@@ -257,7 +258,7 @@ class Matheuristic :
             i = Matheuristic.choose_operator(self.operators)
             operator = self.operators[i]['function']
             self.solution_prime = deepcopy(self.solution)
-            operator(self.solution_prime)
+            operator(self.solution_prime, param.rho)
             G = N+M
             self.solution_prime.ISI(G=G)
 
@@ -305,8 +306,11 @@ class Matheuristic :
 
 
 
-    def operator1(solution):
-        pass
+    def rand_remove_rho(solution, rho):
+        Y_flat = solution.Y.reshape(-1)
+        num_served = len(Y_flat)
+        rho_samples = np.random.choice(num_served, rho, replace = False)
+        Y_flat[rho_samples] = 0
 
     def operator2(solution):
         pass
