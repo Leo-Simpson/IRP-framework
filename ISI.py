@@ -99,11 +99,10 @@ class Solution :
                     self.r[t][n][k] = tour
 
     def compute_transport_costs(self):
-        return np.array([[[[
-                        self.compute_route_cost(self.r[t][n][k],n)
-                        ] for k in range(K)
-                        ] for n in range(N)
-                        ] for t in range(T)
+        return np.array([[[
+                        self.compute_route_cost(self.r[t][n][k],n) for k in range(self.K)
+                        ] for n in range(self.N)
+                        ] for t in range(self.T)
                     ])
 
     def compute_costs(self, add = 0): 
@@ -112,7 +111,7 @@ class Solution :
     def compute_time_adding(self):
         problem  = self.problem
 
-        lenghts = np.array( [[[ len(self.r[t,n,k]) for k in range(self.K) ] for n in range(self.N) ] for  t in range(self.T) ]   )
+        lenghts = np.array( [[[ len(self.r[t][n][k]) for k in range(self.K) ] for n in range(self.N) ] for  t in range(self.T) ]   )
         time_route = self.cost / problem.v + problem.t_load*lenghts
         time_adding = np.array( [ self.b[:,:,:,m] / problem.v + time_route + problem.t_load  for m in range(self.M) ]  )
         np.swapaxes(time_adding,0,1)
