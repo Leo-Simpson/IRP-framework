@@ -20,7 +20,7 @@ class Problem :
         self.t_load = t_load # average loading/unloading time at schools in hours
         self.c_per_km = c_per_km # average routing cost per kilometer
 
-    def define_arrays(self)
+    def define_arrays(self):
         self.I_s_init  =  np.array([s["initial"] for s in Schools])           # initial inventory of school
         self.U_s       =  np.array([s["capacity"] for s in Schools])          # capactiy upper bound school
         self.L_s       =  np.array([s["lower"] for s in Schools])             # capacity lower bound school     
