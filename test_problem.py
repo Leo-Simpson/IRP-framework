@@ -14,15 +14,15 @@ def test_problem(M, N, T, K):
     np.random.seed(10)
 
     for i in range(M):
-        Schools.append((np.random.randint(low = 10, high = 100)*10, np.random.randint(low = 1, high = 10)*10, 'School {}'.format(i+1), np.array([np.random.randint(low = -100, high = 100),np.random.randint(low = -100, high = 100)])))
+        Schools.append({'capacity': np.random.randint(low = 10, high = 100)*10, 'lower': np.random.randint(low = 1, high = 5)*100, 'consumption': np.random.randint(low = 1, high = 10)*10 ,'storage_cost': np.random.randint(low = 1, high = 5)*10 , 'initial':  np.random.randint(low = 1, high = 10)*100,  'name' : 'School {}'.format(i+1), 'location': np.array([np.random.randint(low = -100, high = 100),np.random.randint(low = -100, high = 100)])})
 
 
     for i in range(N):
-        Warehouses.append((np.random.randint(low = 1, high = 100)*1000, np.random.randint(low = 1, high = 10)*100, 'Warehouse {}'.format(i+1), np.array([np.random.randint(low = -100, high = 100),np.random.randint(low = -100, high = 100)])))
+        Warehouses.append({'capacity': np.random.randint(low = 1, high = 100)*1000, 'lower': np.random.randint(low = 10, high = 20)*1000 , 'dist_central': np.random.randint(low = 1, high = 100) , 'fixed_cost': np.random.randint(low = 1, high = 10)*100 , 'initial': np.random.randint(low = 1, high = 20)*1000,  'name' : 'Warehouse {}'.format(i+1), 'location': np.array([np.random.randint(low = -100, high = 100),np.random.randint(low = -100, high = 100)])})
 
 
-    locations = [w[3] for w in Warehouses] + [s[3] for s in Schools]
-    names = [w[2] for w in Warehouses] + [s[2] for s in Schools]
+    locations = [w['location'] for w in Warehouses] + [s['location'] for s in Schools]
+    names = [w['name'] for w in Warehouses] + [s['name'] for s in Schools]
 
     distance_mat = np.round(distance_matrix(locations,locations))
 
