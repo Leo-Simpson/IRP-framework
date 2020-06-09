@@ -229,7 +229,7 @@ class Matheuristic :
     def __init__(self, initial_solution):
         self.operators = [
                 {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.rand_remove_rho, 'name': 'rand_remove_rho' },
-                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.operator2, 'name': 'operator2' },
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.remove_worst_rho, 'name': 'remove_worst_rho' },
                 {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.operator3, 'name': 'operator3' },
                 {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.operator4, 'name': 'operator4'}
         ]
@@ -312,8 +312,10 @@ class Matheuristic :
         rho_samples = np.random.choice(num_served, rho, replace = False)
         Y_flat[rho_samples] = 0
 
-    def operator2(solution):
-        pass
+    def remove_worst_rho(solution, rho):
+        a_flat = solution.a.reshape(-1)
+        Y_flat = solution.Y.reshape(-1)
+        Y_flat[np.argpartition(-a_flat, rho)[0:rho]] = 0
 
     def operator3(solution):
         pass
