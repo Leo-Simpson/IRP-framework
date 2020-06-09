@@ -149,12 +149,14 @@ class Solution :
         Other variables : 
 
         # variable of size TxM type = float representing the inventories of the schools
-        I_s[0,:] = problem.I_s_init[:]        
-        I_s[t,:] = I_s[t-1,:] + problem.Q1 * sum(q[t,:,:,:], axis = 0,1 ) - d
+        I_s[0,:] = problem.I_s_init[:] 
+        for t in range(self.T):       
+            I_s[t,:] = I_s[t-1,:] + problem.Q1 * sum(q[t,:,:,:], axis = 0,1 ) - d
 
         # variable of size TxM type = float representing the inventories of the warehouses        
-        I_w[0,:] = problem.I_w_init[:]        
-        I_w[t,:] = I_w[t-1,:] + problem.Q2 * r[t,:] - problem.Q1* sum( q[t,:,k,l] axis = 1,2 )
+        I_w[0,:] = problem.I_w_init[:]    
+        for t in range(self.T):    
+            I_w[t,:] = I_w[t-1,:] + problem.Q2 * r[t,:] - problem.Q1* sum( q[t,:,k,l] axis = 1,2 )
 
         '''
 
@@ -180,9 +182,9 @@ class Solution :
         Objective function : 
         minimize : 
                 sum( problem.h_s * sum(I_s,axis=0) ) 
-            +   2* sum( problem.to_central * sum(r,axis=0)  )
-            +   sum(self.b*omega, axis=all)
-            -   sum(self.a*delta, axis=all)
+            +   problem.c_per_km * sum( problem.to_central * sum(r,axis=0)  ) * 2
+            +   problem.c_per_km * sum(self.b*omega, axis=all)
+            -   problem.c_per_km * sum(self.a*delta, axis=all)
 
         '''
 
