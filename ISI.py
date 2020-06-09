@@ -10,14 +10,30 @@ class Problem :
     def __init__(self,D,Warehouses,Schools,T,K, Q, v, t_load, c_per_km):
         self.D = D # distance matrix. Could be a pandas data frame with the names of Warehouses/Schools as index of rows and colomns 
                     # to get the distance between a warehouse and a school for example : D.loc[warehouse_name, school_name]
-        self.Warehouses = Warehouses # list of tuple (capacity,fixed_cost, initial value,  name)
-        self.Schools = Schools  # list of tuple (capactiy, consumption, initial value, name)
+        self.Warehouses = Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'dist_central': ... , 'fixed_cost': ... , 'initial': ...,  'name' : ...}
+        self.Schools = Schools  # list of dictionary {'capacity': ..., 'lower':..., 'consumption': ...,'storage_cost': ... , 'initial': ...,  'name' : ...}
         self.T = T # time horizon
         self.K = K # number of vehicles
-        self.Q = Q # capacity of the trucks 
+        self.Q1 = Q1 # capacity of the trucks for school deliveries
+        self.Q2 = Q2 # capacity of the trucks for warehouses deliveries
         self.v = v # average speed of trucks in km/h
         self.t_load = t_load # average loading/unloading time at schools in hours
         self.c_per_km = c_per_km # average routing cost per kilometer
+
+    def define_arrays(self)
+        self.I_s_init  =  np.array([s["initial"] for s in Schools])           # initial inventory of school
+        self.U_s       =  np.array([s["capacity"] for s in Schools])          # capactiy upper bound school
+        self.L_s       =  np.array([s["lower"] for s in Schools])             # capacity lower bound school     
+        self.h_s       =  np.array([s["storage_cost"] for s in Schools])      # storage cost school
+        self.d         =  np.array([s["consumption"] for s in Schools])       # consumption of schools
+
+        self.I_w_init  =  np.array([w["initial"] for w in Warehouses])        # initial inventory of warehouses
+        self.U_w       =  np.array([w["capacity"] for w in Warehouses])       # capactiy upper bound warehouse
+        self.L_w       =  np.array([w["lower"] for w in Warehouses])          # capacity lower bound warehouse
+        self.F_w       =  np.array([w["fixed_cost"] for w in Warehouses])     # capacity lower bound warehouse
+        self.to_central=  np.array([w["dist_central"] for w in Warehouses])   # distance between the warehouses and the central
+
+
 
 
 
@@ -26,15 +42,17 @@ class Solution :
         M,N,K,T = len(problem.Schools), len(problem.Warehouses),problem.K, problem.T
         self.M, self.N, self.K, self.T = M,N,K,T
 
-        self.name_schools    = [s[3] for s in problem.Schools ]
-        self.name_warehouses = [w[3] for w in problem.Warehouses ]
+        self.name_schools    = [s["name"] for s in problem.Schools ]
+        self.name_warehouses = [w["name"] for w in problem.Warehouses ]
         
+        problem.define_arrays()
         self.problem = problem
-
-        self.I_s = np.zeros((T,M))  # invetory of the schools
-        self.I_w = np.zeros((T,N))  # inventory        
-        self.Y = np.zeros((T,N,K,M), dtype = bool) # variable  equal 1 if vehicle k delivers school m from warehouse n at time t
-        self.X = np.zeros((T,N), dtype = bool )   # variable equal 1 if warehouse n get more food at time t
+           
+        self.Y = np.zeros((T,N,K,M), dtype = bool)      # variable  equal 1 if vehicle k delivers school m from warehouse n at time t
+        self.q = np.zeros((T,N,K,M), dtype = float)     # quantity of food delivered by vehicle k delivers school m from warehouse n at time t
+        
+        self.r = np.zeros((T,N), dtype = bool )   # variable equal 1 if warehouse n get more food at time t
+        
         
 
         # other variable to add probably
@@ -89,54 +107,105 @@ class Solution :
                         ] for t in range(T)
                     ])
 
-    def compute_costs(self): 
-        self.cost = self.compute_transport_costs() 
+    def compute_costs(self, add = 0): 
+        self.cost = self.compute_transport_costs() + add
         
-        # to do : add some other costs
-
-
-    def ISI(self, G = 1):
-        # change the solution itself to the ISI solution
-        self.compute_a_and_b()
+    def compute_time_adding(self):
+        problem  = self.problem
 
         lenghts = np.array( [[[ len(self.r[t,n,k]) for k in range(self.K) ] for n in range(self.N) ] for  t in range(self.T) ]   )
-
-        time_route = self.cost /self.problem.v + self.problem.t_load*lenghts
-
-        time_adding = np.array( [ self.b[:,:,:,m] / self.problem.v + time_route + self.problem.t_load  for m in range(self.M) ]  )
-
+        time_route = self.cost / problem.v + problem.t_load*lenghts
+        time_adding = np.array( [ self.b[:,:,:,m] / problem.v + time_route + problem.t_load  for m in range(self.M) ]  )
         np.swapaxes(time_adding,0,1)
         np.swapaxes(time_adding,1,2)
         np.swapaxes(time_adding,2,3)
         # now time_adding is a matrixe of size TxNxKxM
+        self.time_adding = time_adding
+
+
+    def ISI(self, G = 1):
+        # change the solution itself to the ISI solution
+        problem = self.problem
+
+        self.compute_a_and_b()
+
+        self.compute_time_adding()
+        
+        # just to remember : the psi of the paper is the same thing as our Y
+
+        
 
 
 
-        # TO DO HERE !!!
-        q = None         # variable of size TxNxKxM, type=float representing how much food to deliver at each stop of a truck
-        delta = None     # variable of size TxNxKxM, type=bool representing wether or not l is removed from the tour
-        omega = None     # variable of size TxNxKxM, type=bool representing wether or not l is added to the tour
+        '''
+        Decision variables : 
+        q          variable of size TxNxKxM, type= positive float representing how much food to deliver at each stop of a truck
+        r          variable of size TxN type = bool representing the pick ups  
+        delta      variable of size TxNxKxM, type=bool representing wether or not l is removed from the tour
+        omega      variable of size TxNxKxM, type=bool representing wether or not l is added to the tour
+        '''
+
+        '''
+        Other variables : 
+
+        # variable of size TxM type = float representing the inventories of the schools
+        I_s[0,:] = problem.I_s_init[:]        
+        I_s[t,:] = I_s[t-1,:] + problem.Q1 * sum(q[t,:,:,:], axis = 0,1 ) - d
+
+        # variable of size TxM type = float representing the inventories of the warehouses        
+        I_w[0,:] = problem.I_w_init[:]        
+        I_w[t,:] = I_w[t-1,:] + problem.Q2 * r[t,:] - problem.Q1* sum( q[t,:,k,l] axis = 1,2 )
+
+        '''
+
 
         '''
         Constraints : 
-        omega[t,n,k,m]*time_adding[t,n,k,m]  < Tmax
-        
+        # constraints 14 to 17 are omitted here (according to Milena's script)
+
+        omega[t,n,k,m]*self.time_adding[t,n,k,m]  < Tmax
+        I_s < problem.U_s
+        I_s > problem.L_s
+        I_w < problem.U_w      # can maybe be omitted 
+        I_w > problem.L_w
+        sum(q, axis = 3) < 1
+        # constraint 10 omitted for now : let's consider that at time t, delivering is after lunch, and L[l] > d[l] for every school l 
+        q < (self.Y - delta + omega)   # no need to multiply by U because the componant of q is already smaller than 1 because it is normalized by Q1
+        omega < 1 - self.Y
+        delta < self.Y
+        sum(delta+omega, axis = 3) < G
+        '''
+
+        '''
+        Objective function : 
+        minimize : 
+                sum( problem.h_s * sum(I_s,axis=0) ) 
+            +   2* sum( problem.to_central * sum(r,axis=0)  )
+            +   sum(self.b*omega, axis=all)
+            -   sum(self.a*delta, axis=all)
+
+        '''
+
+        '''
+        Cost except for omega and delta, so some part of the objective function :
+        add_cost = sum( problem.h_s * sum(I_s,axis=0) ) 
+            +   2* sum( problem.to_central * sum(r,axis=0)  )
         '''
 
 
-        # To do here, with a solver ... 
-
-
-
-        self.update_after_ISI(delta,omega,q)
+        self.update_after_ISI(delta,omega,q, r)
         self.compute_r()
-        self.compute_costs()
+        self.compute_costs(add=add_cost)
 
 
-    def update_after_ISI(self,delta,omega,q): 
+    def update_after_ISI(self,delta,omega,q, r): 
 
         self.Y = self.Y + omega - delta
-        # probably some other stuff to do 
+
+        self.r = r[:,:]
+        self.q = self.problem.Q1*q
+        
+        # probably se
 
 
 
