@@ -29,5 +29,5 @@ def test_problem(M, N, T, K):
     D = pd.DataFrame(distance_mat, columns = names, index=names)
 
 
-    problem = Problem(D = D, Schools = Schools, Warehouses = Warehouses,T = T,K = K, Q = 1000, v = 40, t_load = 0.5, c_per_km = 1)
+    problem = Problem(D = D, Schools = Schools, Warehouses = Warehouses,T = T,K = K, Q1 = 1000, Q2 = 5000, v = 40, t_load = 0.5, c_per_km = 1)
     return problem
