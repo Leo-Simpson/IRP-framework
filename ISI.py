@@ -38,10 +38,10 @@ class Solution :
         
 
         # other variable to add probably
+    
     def compute_route_cost(self, route, warehouse):
         dist = self.problem.D.values
         return sum( [ dist[route[i],route[i+1]] for i in range(len(route)-1)]) + dist[route[0],warehouse] + dist[route[-1],warehouse]
-
 
     def compute_a_and_b(self):
         # to do 
@@ -66,8 +66,7 @@ class Solution :
                     for m in np.nonzero(1 - self.Y[t,n,k,:])[0]:
                         add_edges_cost =  np.array( [ dist[m+self.N,tour2[i]]+dist[m+self.N,tour2[i+1]]  for i in range(len(tour2)-1) ] )
                         self.b[t,n,k,m] = np.amin(add_edges_cost-edges_cost)
-
-                        
+                   
     def compute_r(self):
         # here are the TSP to be computed
         self.r = [[[[] for i in range(self.K)] for i in range(self.N)] for i in range(self.T)] # for each time t, for each vehicle k, a list of ordered integer of [0, M+N] corresponding to a tour
@@ -90,7 +89,6 @@ class Solution :
                         ] for t in range(T)
                     ])
 
-
     def compute_costs(self): 
         self.cost = self.compute_transport_costs() 
         
@@ -107,7 +105,10 @@ class Solution :
 
         time_adding = np.array( [ self.b[:,:,:,m] / self.problem.v + time_route + self.problem.t_load  for m in range(self.M) ]  )
 
-        
+        np.swapaxes(time_adding,0,1)
+        np.swapaxes(time_adding,1,2)
+        np.swapaxes(time_adding,2,3)
+        # now time_adding is a matrixe of size TxNxKxM
 
 
 
@@ -116,8 +117,11 @@ class Solution :
         delta = None     # variable of size TxNxKxM, type=bool representing wether or not l is removed from the tour
         omega = None     # variable of size TxNxKxM, type=bool representing wether or not l is added to the tour
 
-        # omega[t,n,k,m] ( average_speed b[t,n,k,m] + Tload*(1+len(r[t,n,k])) ) < Tmax
-
+        '''
+        Constraints : 
+        omega[t,n,k,m]*time_adding[t,n,k,m]  < Tmax
+        
+        '''
 
 
         # To do here, with a solver ... 
