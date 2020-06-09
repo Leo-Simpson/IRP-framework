@@ -94,9 +94,9 @@ class Solution :
                     tour = np.nonzero(self.Y[t,n,k,:])[0] + self.N 
                     #tour = [n] + np.ndarray.tolist(np.array(s[0])+self.N) + [n] #  the tour starts at the warehouse then add the school in the wrong order
                     #edit Chris 07.06.20:
-                    tour, length = tsp_tour(tour, n, dist)  #function returns optimal tour and length of optimal tour
+                    tour = tsp_tour(tour, n, dist)  #function returns optimal tour and length of optimal tour
                     #end of edit Chris 07.06.20
-                    self.r[t][n][k] = [tour, length]
+                    self.r[t][n][k] = tour
 
     def compute_transport_costs(self):
         return np.array([[[[
