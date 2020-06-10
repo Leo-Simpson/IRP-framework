@@ -38,6 +38,7 @@ class Problem :
 
 
 class Solution : 
+    
     def __init__(self,problem):
         M,N,K,T = len(problem.Schools), len(problem.Warehouses),problem.K, problem.T
         self.M, self.N, self.K, self.T = M,N,K,T
@@ -49,12 +50,13 @@ class Solution :
         self.problem = problem
            
         self.Y = np.zeros((T,N,K,M), dtype = bool)      # variable  equal 1 if vehicle k delivers school m from warehouse n at time t
-        self.q = np.zeros((T,N,K,M), dtype = float)     # quantity of food delivered by vehicle k delivers school m from warehouse n at time t
+        self.q = np.zeros((T,N,K,M), dtype = float)     # quantity of food delivered from each warehouse n by vehicle k delivers school m at time t
         
         self.X = np.zeros((T,N), dtype = bool )   # variable equal 1 if warehouse n get more food at time t
         
         
         # other variable to add probably
+    
     def compute_route_cost(self, tour, warehouse):
         dist = self.problem.D.values
         tour2   = [warehouse]+tour+[warehouse]
@@ -141,9 +143,7 @@ class Solution :
         X          variable of size TxN type = bool representing the pick ups  
         delta      variable of size TxNxKxM, type=bool representing wether or not l is removed from the tour
         omega      variable of size TxNxKxM, type=bool representing wether or not l is added to the tour
-        '''
 
-        '''
         Other variables : 
 
         # variable of size TxM type = float representing the inventories of the schools
@@ -156,12 +156,9 @@ class Solution :
         for t in range(self.T):    
             I_w[t,:] = I_w[t-1,:] + problem.Q2 * X[t,:] - problem.Q1* sum( q[t,:,k,l] axis = 1,2 )
 
-        '''
 
-
-        '''
         Constraints : 
-        # constraints 14 to 17 are omitted here (according to Milena's script)
+        # constraints 14 to 17 are omitted here (according to ShareLatex script)
 
         omega[t,n,k,m]*self.time_adding[t,n,k,m]  < Tmax
         I_s < problem.U_s
@@ -174,9 +171,8 @@ class Solution :
         omega < 1 - self.Y
         delta < self.Y
         sum(delta+omega, axis = 3) < G
-        '''
 
-        '''
+
         Objective function : 
         minimize : 
                 sum( problem.h_s * sum(I_s,axis=0) ) 
@@ -189,7 +185,7 @@ class Solution :
         '''
         Cost except for omega and delta, so some part of the objective function :
         add_cost = sum( problem.h_s * sum(I_s,axis=0) ) 
-            +   2* sum( problem.to_central * sum(r,axis=0)  )
+            +   2*problem.c_per_km* sum( problem.to_central * sum(r,axis=0)  )
         '''
 
 
@@ -265,8 +261,9 @@ class Matheuristic :
                 self.solution = deepcopy(self.solution_prime) # line 8
                 G = max(G-1,1)                                  # line 9
 
-                keep_going = True
-                while keep_going :                               #line 10
+                keep_going, i  = True, 0
+                while keep_going and i < 1000: 
+                    i+=1                              #line 10
                     self.solution_prime.ISI(G=G)  
                     if self.solution_prime.cost < (1+epsilon)*self.solution.cost: 
                         if self.solution_prime.cost < self.solution.cost :              # line 11
@@ -342,16 +339,7 @@ class Matheuristic :
 
 
 
-'''
-TO DO LIST : 
 
-- Do a fake ISI function to test our Matheuristic
-- Find how to do the TSPs, and compute_r
-- Write the ISI function
-- Write the operators
-- choose_operator
-- compute_a_and_b
-'''
 
 # test !
 
