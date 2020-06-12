@@ -59,13 +59,13 @@ def tsp_tour_comp(distance_matrix):
     
     return tsp_route#, route_distance
     
-def tsp_tour(tour, warehouse, dist):
-    tour_temp = np.zeros(len(tour)+1,dtype=int)
-    tour_temp[1:] = np.array(tour)
-    tour_temp[0]  = warehouse
+def tsp_tour(tour_school, warehouse, dist):
+    tour_complete = np.zeros(len(tour_school)+1,dtype=int)
+    tour_complete[1:] = np.array(tour)
+    tour_complete[0]  = warehouse
     
-    distance_matrix = dist[np.ix_(tour_temp,tour_temp)]
+    distance_matrix = dist[np.ix_(tour_complete,tour_complete)]
     tsp_sol = tsp_tour_comp(distance_matrix)
     
-    tsp_tour = np.ndarray.tolist(tour_temp[tsp_sol])  #converting indices back from range(len(tour)) to range(M+N)
+    tsp_tour = np.ndarray.tolist(tour_complete[tsp_sol])  #converting indices back from range(len(tour)) to range(M+N)
     return tsp_tour

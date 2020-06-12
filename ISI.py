@@ -30,7 +30,7 @@ class Problem :
         self.I_w_init  =  np.array([w["initial"] for w in self.Warehouses])        # initial inventory of warehouses
         self.U_w       =  np.array([w["capacity"] for w in self.Warehouses])       # capactiy upper bound warehouse
         self.L_w       =  np.array([w["lower"] for w in self.Warehouses])          # capacity lower bound warehouse
-        self.F_w       =  np.array([w["fixed_cost"] for w in self.Warehouses])     # capacity lower bound warehouse
+        self.F_w       =  np.array([w["fixed_cost"] for w in self.Warehouses])     # fixed costs for each warehouse
         self.to_central=  np.array([w["dist_central"] for w in self.Warehouses])   # distance between the warehouses and the central
 
 
@@ -53,88 +53,115 @@ class Solution :
         self.q = np.zeros((T,N,K,M), dtype = float)     # quantity of food delivered from each warehouse n by vehicle k delivers school m at time t
         
         self.X = np.zeros((T,N), dtype = bool )   # variable equal 1 if warehouse n get more food at time t
-        
-        
+
+        self.Cl = np.ones((N,M),dtype=bool)    # equal one when we consider that it is possible that the school m could be served by m
+
+
         # other variable to add probably
     
-    def compute_route_cost(self, tour, warehouse):
-        dist = self.problem.D.values
-        tour2   = [warehouse]+tour+[warehouse]
-        return sum( [ dist[tour2[i],tour2[i+1]] for i in range(len(tour2)-1)])
+    
     
     def compute_a_and_b(self):
-        # to do 
+       
         self.a = np.zeros((self.T,self.N,self.K,self.M)) # routing cost reduction if school m is removed from the tour of vehicle k from WH n at time t ==> array TxKxMxN
         self.b = np.zeros((self.T,self.N,self.K,self.M)) # routing cost addition if school m is added to the tour of vehicle k from WH n at time t ==> array TxKxMxN
-        dist = self.problem.D.values
+        dist_mat = self.problem.D.values
 
         for t in range(self.T): 
             for n in range(self.N):
                 for k in range(self.K):
-                    tour = self.r[t][n][k]
-                    tour2   = [n]+tour+[n]
+                    tour_school = self.r[t][n][k]
+                    tour_complete   = [n]+tour_school+[n] 
 
-                    #compute a
-                    # to do : make it with vector operations
-
-                    for i in range(1,len(tour2)-1) : 
-                        self.a[t,n,k, tour2[i]-self.N] = dist[tour2[i],tour2[i+1]]+dist[tour2[i],tour2[i-1]] - dist[tour2[i-1],tour2[i+1]]
+                    #compute a : removing cost 
+                    for i in range(1,len(tour_complete)-1) : 
+                        self.a[t,n,k, tour_complete[i]-self.N] = dist_mat[tour_complete[i],tour_complete[i+1]]+dist_mat[tour_complete[i],tour_complete[i-1]] - dist_mat[tour_complete[i-1],tour_complete[i+1]]
                         
-                    # compute b 
-                    edges_cost = np.array( [dist[tour2[i],tour2[i+1]] for i in range(len(tour2)-1)] )
+                    # compute b : cheapest insertion
+                    edges_cost = np.array( [dist_mat[tour_complete[i],tour_complete[i+1]] for i in range(len(tour_complete)-1)] )
                     for m in np.nonzero(1 - self.Y[t,n,k,:])[0]:
-                        add_edges_cost =  np.array( [ dist[m+self.N,tour2[i]]+dist[m+self.N,tour2[i+1]]  for i in range(len(tour2)-1) ] )
+                        add_edges_cost =  np.array( [ dist_mat[m+self.N,tour_complete[i]]+dist_mat[m+self.N,tour_complete[i+1]]  for i in range(len(tour_complete)-1) ] )
                         self.b[t,n,k,m] = np.amin(add_edges_cost-edges_cost)
                    
     def compute_r(self):
         # here are the TSP to be computed
-        self.r = [[[[] for i in range(self.K)] for i in range(self.N)] for i in range(self.T)] # for each time t, for each vehicle k, a list of ordered integer of [0, M+N] corresponding to a tour
-        dist = self.problem.D.values
+        self.r = [[[[] for k in range(self.K)] for n in range(self.N)] for t in range(self.T)] # for each time t, for each vehicle k, for each warehouse n, a list of ordered integer of [0, M+N] corresponding to a tour
+        dist_mat = self.problem.D.values
         for t in range(self.T):
             for n in range(self.N):
                 for k in range(self.K):
-                    tour = np.nonzero(self.Y[t,n,k,:])[0] + self.N 
+                    tour_school = np.nonzero(self.Y[t,n,k,:])[0] + self.N 
                     #tour = [n] + np.ndarray.tolist(np.array(s[0])+self.N) + [n] #  the tour starts at the warehouse then add the school in the wrong order
                     #edit Chris 07.06.20:
-                    tour = tsp_tour(tour, n, dist)  #function returns optimal tour and length of optimal tour
+                    tour = tsp_tour(tour_school, n, dist_mat)  #function returns optimal tour and length of optimal tour
                     #end of edit Chris 07.06.20
-                    self.r[t][n][k] = tour
+                    self.r[t][n][k] = tour    # is this tour with or without the warehouse ?? It should be without
 
-    def compute_transport_costs(self):
-        return np.array([[[
-                        self.compute_route_cost(self.r[t][n][k],n) for k in range(self.K)
+    def compute_dist(self):
+        self.dist = np.array([[[
+                        self.compute_route_dist(self.r[t][n][k],n) for k in range(self.K)
                         ] for n in range(self.N)
                         ] for t in range(self.T)
                     ])
 
-    def compute_costs(self, add = 0): 
-        self.cost = self.compute_transport_costs() + add
-        
+    def compute_cost(self, add = 0): 
+        self.compute_dist()
+        self.cost = self.problem.c_per_km * self.dist + add
+
+    def compute_route_dist(self, tour_schools, warehouse : int):
+        dist_mat = self.problem.D.values
+        tour_complete   = [warehouse]+tour_schools+[warehouse]
+        return sum( [ dist_mat[tour_complete[i],tour_complete[i+1]] for i in range(len(tour_complete)-1)])
+
     def compute_time_adding(self):
         problem  = self.problem
 
         lenghts = np.array( [[[ len(self.r[t][n][k]) for k in range(self.K) ] for n in range(self.N) ] for  t in range(self.T) ]   )
-        time_route = self.cost / problem.v + problem.t_load*lenghts
-        time_adding = np.array( [ self.b[:,:,:,m] / problem.v + time_route + problem.t_load  for m in range(self.M) ]  )
+        time_route = self.dist / problem.v + problem.t_load*lenghts
+        time_adding = np.array( [ self.b[:,:,:,m] / problem.v + problem.t_load  for m in range(self.M) ]  )
         np.swapaxes(time_adding,0,1)
         np.swapaxes(time_adding,1,2)
         np.swapaxes(time_adding,2,3)
         # now time_adding is a matrixe of size TxNxKxM
         self.time_adding = time_adding
+        self.time_route = time_route
 
 
     def ISI(self, G = 1):
         # change the solution itself to the ISI solution
         problem = self.problem
+        T,N,K,M = self.T, self.N, self.K, self.M
 
         self.compute_a_and_b()
 
         self.compute_time_adding()
+
+        set_q     = [ (t,n,k,m) for t in range(T) for n in range(N) for k in range(K) for m in range(M) if self.Cl[n,m]  ]
+        set_delta = [ (t,n,k,m) in set_q if self.Y[t,n,k,m]  ]
+        set_omega = [ (t,n,k,m) in set_q if not self.Y[t,n,k,m]  ]
         
         # just to remember : the psi of the paper is the same thing as our Y
 
+        q_vars = {(t, n, k, m):
+                    plp.LpVariable(cat=plp.LpContinuous, lowBound=0., upBound=1., name="q_{0}_{1}".format(i,j)) 
+                    for (t,n,k,m) in set_q}
+
+        X_vars  = {(t,n):
+                    plp.LpVariable(cat=plp.LpBinary, name="X_{0}_{1}".format(t,n)) 
+                    for t in range(T) for n in range(N)}
+
+        delta_vars  = {(t,n,k,m):
+                    plp.LpVariable(cat=plp.LpBinary, name="delta_{0}_{1}".format(t,n,k,m)) 
+                    for (t,n,k,m) in set_delta}
+
+        omega_vars  = {(t,n,k,m):
+                    plp.LpVariable(cat=plp.LpBinary, name="omega_{0}_{1}".format(t,n,k,m)) 
+                    for (t,n,k,m) in set_omega}
+
         
 
+        
+        
 
 
         '''
@@ -149,7 +176,7 @@ class Solution :
         # variable of size TxM type = float representing the inventories of the schools
         I_s[0,:] = problem.I_s_init[:] 
         for t in range(self.T):       
-            I_s[t,:] = I_s[t-1,:] + problem.Q1 * sum(q[t,:,:,:], axis = 0,1 ) - d
+            I_s[t,:] = I_s[t-1,:] + problem.Q1 * sum(q[t,:,:,:], axis = 0,1 ) - problem.d
 
         # variable of size TxM type = float representing the inventories of the warehouses        
         I_w[0,:] = problem.I_w_init[:]    
@@ -160,7 +187,7 @@ class Solution :
         Constraints : 
         # constraints 14 to 17 are omitted here (according to ShareLatex script)
 
-        omega[t,n,k,m]*self.time_adding[t,n,k,m]  < Tmax
+        sum( omega*self.time_adding, axis  = 3 ) + self.time_route  < Tmax
         I_s < problem.U_s
         I_s > problem.L_s
         I_w < problem.U_w      # can maybe be omitted 
