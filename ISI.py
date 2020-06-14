@@ -54,7 +54,7 @@ class Solution :
         
         self.X = np.zeros((T,N), dtype = bool )   # variable equal 1 if warehouse n get more food at time t
 
-        self.Cl = np.ones((N,M),dtype=bool)    # equal one when we consider that it is possible that the school m could be served by m
+        self.Cl = np.ones((N,M),dtype=bool)    # equal one when we consider that it is possible that the school m could be served by n
 
 
         # other variable to add probably
@@ -137,8 +137,8 @@ class Solution :
         self.compute_time_adding()
 
         set_q     = [ (t,n,k,m) for t in range(T) for n in range(N) for k in range(K) for m in range(M) if self.Cl[n,m]  ]
-        set_delta = [ (t,n,k,m) in set_q if self.Y[t,n,k,m]  ]
-        set_omega = [ (t,n,k,m) in set_q if not self.Y[t,n,k,m]  ]
+        set_delta = [ (t,n,k,m) for (t,n,k,m) in set_q if self.Y[t,n,k,m]  ]
+        set_omega = [ (t,n,k,m) for (t,n,k,m) in set_q if not self.Y[t,n,k,m]  ]
         
         # just to remember : the psi of the paper is the same thing as our Y
 
@@ -252,8 +252,17 @@ class Matheuristic :
         self.operators = [
                 {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.rand_remove_rho, 'name': 'rand_remove_rho' },
                 {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.remove_worst_rho, 'name': 'remove_worst_rho' },
-                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.operator3, 'name': 'operator3' },
-                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.operator4, 'name': 'operator4'}
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.shaw_removal_route_based, 'name': 'shaw_removal_route_based' },
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.shaw_removal_greedy, 'name': 'shaw_removal_greedy'},
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.avoid_consecutive_visits, 'name': 'avoid_consecutive_visits'},
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.empty_one_period, 'name': 'empty_one_period'},
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.empty_one_vehicle, 'name': 'empty_one_vehicle'},
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.empty_one_plant, 'name': 'empty_one_plant'},
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.rand_insert_rho, 'name': 'rand_insert_rho'},
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.assign_to_nearest_plant, 'name': 'assign_to_nearest_plant'},
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.operator8, 'name': 'operator8'},
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.operator8, 'name': 'operator8'},
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.operator8, 'name': 'operator8'}
         ]
 
         self.solution = initial_solution
@@ -331,19 +340,107 @@ class Matheuristic :
 
     def rand_remove_rho(solution, rho):
         Y_flat = solution.Y.reshape(-1)
-        num_served = len(Y_flat)
+        served = np.nonzero(Y_flat)[0]
+        num_served = len(served)
+        assert rho <= num_served
         rho_samples = np.random.choice(num_served, rho, replace = False)
-        Y_flat[rho_samples] = 0
+        Y_flat[served[rho_samples]] = 0
 
     def remove_worst_rho(solution, rho):
         a_flat = solution.a.reshape(-1)
         Y_flat = solution.Y.reshape(-1)
+        assert rho <= len(np.nonzero(Y_flat)[0])
         Y_flat[np.argpartition(-a_flat, rho)[0:rho]] = 0
 
-    def operator3(solution):
-        pass
+    def shaw_removal_route_based(solution, rho):
+        served = np.transpose(np.nonzero(solution.Y))
+        num_served = len(served)
+        candidate = np.random.choice(num_served, 1)[0]
+        [t,n,k,m] = served[candidate]
+        route = np.array(solution.r[t][n][k])
+        if len(route) > 2:
+            schools = route[np.where(route != m + solution.N)[0]]
+            dist_from_m = solution.problem.D.values[np.ix_([m + solution.N],route)][0]
+            min_dist_from_m = np.min(solution.problem.D.values[np.ix_([m + solution.N],schools)][0])
+            to_remove = route[np.where(dist_from_m <= 2*min_dist_from_m)[0]] - solution.N 
+            solution.Y[t,n,k,to_remove] = 0
+        else:
+            solution.Y[t,n,k,:] = 0
 
-    def operator4(solution):
+
+    def shaw_removal_greedy(solution, rho):
+        served = np.transpose(np.nonzero(solution.Y))
+        num_served = len(served)
+        candidate = np.random.choice(num_served, 1)[0]
+        [t,n,k,m] = served[candidate]
+        route = np.array(solution.r[t][n][k])
+        if len(route) > 2:
+            schools = route[np.where(route != m + solution.N)[0]]
+            dist_from_m = solution.problem.D.values[np.ix_([m + solution.N],route)][0]
+            dist = solution.problem.D.values[np.ix_(route,route)]
+            min_dist = np.min(dist[dist>0])
+            to_remove = route[np.where(dist_from_m <= 2*min_dist)[0]] - solution.N 
+            solution.Y[t,n,k,to_remove] = 0
+        else:
+            solution.Y[t,n,k,:] = 0
+    
+    def avoid_consecutive_visits(solution, rho):
+        for t in range(solution.T-1):
+            time_schools = np.sum(solution.Y[:,:,:,:], axis = (0,1))
+            index = np.where(time_schools[t+1,:] + time_schools[t,:] > 1)
+            solution.Y[t+1,:,:,index] = 0
+    
+    def empty_one_period(solution, rho):
+        period = np.random.randint(solution.T)
+        solution.Y[period,:,:,:] = 0
+    
+    def empty_one_vehicle(solution, rho):
+        warehouse = np.random.randint(solution.N)
+        vehicle = np.random.randint(solution.K)
+        solution.Y[:,warehouse,vehicle,:] = 0
+    
+    def empty_one_plant(solution, rho):
+        warehouse = np.random.randint(solution.N)
+        solution.Y[:,warehouse,:,:] = 0
+        
+    def furthest_customer(solution, rho):
+        for i in range(rho):
+            t,n,k = np.random.randint(solution.T), np.random.randint(solution.N), np.random.randint(solution.K)
+            route = solution.r[t][n][k]
+            furthest_customer = route[np.argmax(solution.problem.D.values[np.ix_([n],route)][0])] - solution.N
+            solution.Y[t,n,k,furthest_customer] = 0
+        
+    def rand_insert_rho(solution, rho):
+        for i in range(rho):
+            t,n,k = np.random.randint(solution.T), np.random.randint(solution.N), np.random.randint(solution.K)
+            m = np.random.choice(np.nonzero((1-solution.Y[t,n,k,:])*solution.Cl[n,:])[0],1)
+            solution.Y[t,n,k,m] = 1
+        
+    def assign_to_nearest_plant(solution, rho):
+        for i in range(rho):
+            t = np.random.randint(solution.T)
+            not_served = np.where(np.sum(solution.Y[t,:,:,:], axis = (0,1)) == 0)[0]
+            if len(not_served) > 0:
+                m = np.random.choice(not_served,1)[0]
+                plants = [i for i in range(solution.N) if solution.Cl[i,m] == 1]
+                nearest_plant = plants[np.argmin(solution.problem.D.values[np.ix_([m + solution.N],plants)][0])]
+                solution.Y[t,nearest_plant,0,m] = 1
+            else:
+                pass
+        
+    def operator4(solution, rho):
+        pass
+        
+    def operator5(solution, rho):
+        pass
+        
+    def operator6(solution, rho):
+        pass
+        
+    def operator7(solution, rho):
+        pass
+        
+    def operator8(solution, rho):
         pass
 
 

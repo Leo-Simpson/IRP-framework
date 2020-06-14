@@ -61,7 +61,7 @@ def tsp_tour_comp(distance_matrix):
     
 def tsp_tour(tour_school, warehouse, dist):
     tour_complete = np.zeros(len(tour_school)+1,dtype=int)
-    tour_complete[1:] = np.array(tour)
+    tour_complete[1:] = np.array(tour_school)
     tour_complete[0]  = warehouse
     
     distance_matrix = dist[np.ix_(tour_complete,tour_complete)]
