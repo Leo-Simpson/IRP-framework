@@ -1,5 +1,6 @@
 import numpy as np
 import numpy.random as rd
+import random
 from copy import deepcopy
 #edit Chris 07.06.20:
 from OR_tools_solve_tsp import tsp_tour
@@ -55,16 +56,22 @@ class Solution :
         self.X = np.zeros((T,N), dtype = bool )   # variable equal 1 if warehouse n get more food at time t
 
         self.Cl = np.ones((N,M),dtype=bool)    # equal one when we consider that it is possible that the school m could be served by n
-
+    
 
         # other variable to add probably
+    
+    def Cl_shaped_like_Y(self):
+        Cl_times_K = np.repeat(self.Cl[np.newaxis,0,:], self.K, 0)[np.newaxis,:,:]
+        for i in np.arange(1,self.N):
+            Cl_times_K = np.concatenate([Cl_times_K, np.repeat(self.Cl[np.newaxis,i,:], self.K, 0)[np.newaxis,:,:]],0)
+        return np.repeat(Cl_times_K[np.newaxis,:,:,:], self.T, 0)
     
     def compute_school_remove(self,t,n,k):
         
         dist_mat = self.problem.D.values
         tour_school = self.r[t][n][k]
         tour_complete = [n]+tour_school+[n] 
-        for i in range(1,len(tour_complete)-1) : 
+        for i in range(1,len(tour_complete)-1): 
             self.a[t,n,k, tour_complete[i] - self.N] = dist_mat[tour_complete[i], tour_complete[i+1]] + dist_mat[tour_complete[i], tour_complete[i-1]] - dist_mat[tour_complete[i-1], tour_complete[i+1]]
             
     def compute_school_insert(self,t,n,k):
@@ -73,7 +80,8 @@ class Solution :
         tour_school = self.r[t][n][k]
         tour_complete   = [n]+tour_school+[n] 
         edges_cost = np.array( [dist_mat[tour_complete[i],tour_complete[i+1]] for i in range(len(tour_complete)-1)] )
-        for m in np.nonzero(1 - self.Y[t,n,k,:])[0]:
+        allowed = [m for m in np.nonzero(1 - self.Y[t,n,k,:])[0] if self.Cl[n,m] == 1]
+        for m in allowed:
             add_edges_cost =  np.array( [ dist_mat[m+self.N,tour_complete[i]]+dist_mat[m+self.N,tour_complete[i+1]]  for i in range(len(tour_complete)-1) ] )
             self.b[t,n,k,m] = np.amin(add_edges_cost-edges_cost)
     
@@ -354,8 +362,7 @@ class Matheuristic :
         Y_flat[served[rho_samples]] = 0
 
     def remove_worst_rho(solution, rho):
-        assert len(np.nonzero(solution.Y)[0]) >= rho
-        for i in range(rho):   
+        for i in range(np.min([rho,len(np.nonzero(solution.Y)[0])])):   
             choice = np.argmax(solution.a)
             solution.Y.reshape(-1)[choice] = 0
             solution.a.reshape(-1)[choice] = 0
@@ -400,8 +407,9 @@ class Matheuristic :
     
     def avoid_consecutive_visits(solution, rho):
         for t in range(solution.T-1):
-            time_schools = np.sum(solution.Y[:,:,:,:], axis = (0,1))
-            index = np.where(time_schools[t+1,:] + time_schools[t,:] > 1)
+            time_schools = np.sum(solution.Y[[t, t+1],:,:,:], axis = (1,2))
+            print(time_schools)
+            index = np.where(time_schools[1,:] + time_schools[0,:] > 1)
             solution.Y[t+1,:,:,index] = 0
     
     def empty_one_period(solution, rho):
@@ -424,30 +432,32 @@ class Matheuristic :
             furthest_customer = route[np.argmax(solution.problem.D.values[np.ix_([n],route)][0])] - solution.N
             solution.Y[t,n,k,furthest_customer] = 0
         
-    def rand_insert_rho(solution, rho):
+    def rand_insert_rho(solution, rho):    
         for i in range(rho):
             t,n,k = np.random.randint(solution.T), np.random.randint(solution.N), np.random.randint(solution.K)
-            m = np.random.choice(np.nonzero((1-solution.Y[t,n,k,:])*solution.Cl[n,:])[0],1)
-            solution.Y[t,n,k,m] = 1
+            not_served_and_allowed = np.where(np.sum(solution.Y[t,:,:,:], axis = (0,1)) + 1 - solution.Cl[n,:] == 0)[0] 
+            if len(not_served_and_allowed) > 0:
+                m = np.random.choice(not_served_and_allowed)
+                solution.Y[t,n,k,m] = 1
         
     def assign_to_nearest_plant(solution, rho):
         for i in range(rho):
             t = np.random.randint(solution.T)
             not_served = np.where(np.sum(solution.Y[t,:,:,:], axis = (0,1)) == 0)[0]
             if len(not_served) > 0:
-                m = np.random.choice(not_served,1)[0]
+                m = np.random.choice(not_served)
                 plants = [i for i in range(solution.N) if solution.Cl[i,m] == 1]
                 nearest_plant = plants[np.argmin(solution.problem.D.values[np.ix_([m + solution.N],plants)][0])]
-                solution.Y[t,nearest_plant,0,m] = 1
+                solution.Y[t,nearest_plant,0,m] = 1    #to do: shouldn't be k == 0. Change to vehicle with least  insertion cost.
             else:
                 pass
         
     def insert_best_rho(solution, rho):
-        assert len(np.nonzero(1-solution.Y)[0]) >= rho
-        for i in range(rho):   
+        for i in range(np.min([rho, len(np.where(solution.Y + 1 - solution.Cl_shaped_like_Y()  == 0)[0])])):   
             b_flat = solution.b.reshape(-1)
             Y_flat = solution.Y.reshape(-1)
-            choice = np.where(Y_flat == 0)[0][np.argmin(b_flat[Y_flat == 0])]
+            allowed = Y_flat + 1 - solution.Cl_shaped_like_Y().reshape(-1)  == 0
+            choice = np.where(allowed)[0][np.argmin(b_flat[allowed])]
             Y_flat[choice] = 1
             b_flat[choice] = 0
             t, rest = np.divmod(choice, solution.N*solution.K*solution.M)
@@ -457,8 +467,18 @@ class Matheuristic :
             solution.r[t][n][k] = tsp_tour(tour_school, n, solution.problem.D.values)
             solution.compute_school_insert(t,n,k)
         
-    def operator6(solution, rho):
-        pass
+    def shaw_insertion(solution, rho):  #to do: what to do if there is no vehicle available? and if not all chosen customers can be served (variable Cl) by the closest warehouse?
+        period = np.random.randint(solution.T)
+        not_served = np.where(np.sum(solution.Y[period,:,:,:], axis = (0,1)) == 0)[0]
+        (index, choice) = random.choice(list(enumerate(not_served)))
+        rest_not_served = np.delete(not_served, index)
+        dist = solution.problem.D.values[np.ix_([choice + solution.N],rest_not_served + solution.N)][0]
+        close = rest_not_served[dist <= 2*np.min(dist)]
+        closest_warehouse = np.argmin(solution.problem.D.values[np.ix_([choice + solution.N],[i for i in range(solution.N)])][0])
+        assert len(solution.Cl[closest_warehouse, close][solution.Cl[closest_warehouse, close] == 0]) == 0
+        free_vehicles = np.where(np.sum(solution.Y[period,closest_warehouse,:,:], axis = 1) == 0)[0]
+        if len(free_vehicles) > 0:
+            solution.Y[period,closest_warehouse,np.min(free_vehicles), close] = 1
         
     def operator7(solution, rho):
         pass
