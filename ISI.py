@@ -222,6 +222,10 @@ class Solution :
         
         # constraint on capacity of trucks
         #sum(q, axis = 3) < 1
+        for t in range(T):
+            for n in range(N):
+                for k in range(K):
+                    ISI_model += plp.lpSum([q[t][n][k][m] for  m in range(M)]) <=1
         
 
         # constraint 10 omitted for now : let's consider that at time t, delivering is after lunch, and L[l] > d[l] for every school l 
