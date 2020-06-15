@@ -59,29 +59,36 @@ class Solution :
 
         # other variable to add probably
     
-    
+    def compute_school_remove(self,t,n,k):
+        
+        dist_mat = self.problem.D.values
+        tour_school = self.r[t][n][k]
+        tour_complete = [n]+tour_school+[n] 
+        for i in range(1,len(tour_complete)-1) : 
+            self.a[t,n,k, tour_complete[i] - self.N] = dist_mat[tour_complete[i], tour_complete[i+1]] + dist_mat[tour_complete[i], tour_complete[i-1]] - dist_mat[tour_complete[i-1], tour_complete[i+1]]
+            
+    def compute_school_insert(self,t,n,k):
+        
+        dist_mat = self.problem.D.values
+        tour_school = self.r[t][n][k]
+        tour_complete   = [n]+tour_school+[n] 
+        edges_cost = np.array( [dist_mat[tour_complete[i],tour_complete[i+1]] for i in range(len(tour_complete)-1)] )
+        for m in np.nonzero(1 - self.Y[t,n,k,:])[0]:
+            add_edges_cost =  np.array( [ dist_mat[m+self.N,tour_complete[i]]+dist_mat[m+self.N,tour_complete[i+1]]  for i in range(len(tour_complete)-1) ] )
+            self.b[t,n,k,m] = np.amin(add_edges_cost-edges_cost)
     
     def compute_a_and_b(self):
        
         self.a = np.zeros((self.T,self.N,self.K,self.M)) # routing cost reduction if school m is removed from the tour of vehicle k from WH n at time t ==> array TxKxMxN
         self.b = np.zeros((self.T,self.N,self.K,self.M)) # routing cost addition if school m is added to the tour of vehicle k from WH n at time t ==> array TxKxMxN
-        dist_mat = self.problem.D.values
 
         for t in range(self.T): 
             for n in range(self.N):
                 for k in range(self.K):
-                    tour_school = self.r[t][n][k]
-                    tour_complete   = [n]+tour_school+[n] 
-
-                    #compute a : removing cost 
-                    for i in range(1,len(tour_complete)-1) : 
-                        self.a[t,n,k, tour_complete[i]-self.N] = dist_mat[tour_complete[i],tour_complete[i+1]]+dist_mat[tour_complete[i],tour_complete[i-1]] - dist_mat[tour_complete[i-1],tour_complete[i+1]]
+                    
+                    self.compute_school_remove(t,n,k)
                         
-                    # compute b : cheapest insertion
-                    edges_cost = np.array( [dist_mat[tour_complete[i],tour_complete[i+1]] for i in range(len(tour_complete)-1)] )
-                    for m in np.nonzero(1 - self.Y[t,n,k,:])[0]:
-                        add_edges_cost =  np.array( [ dist_mat[m+self.N,tour_complete[i]]+dist_mat[m+self.N,tour_complete[i+1]]  for i in range(len(tour_complete)-1) ] )
-                        self.b[t,n,k,m] = np.amin(add_edges_cost-edges_cost)
+                    self.compute_school_insert(t,n,k)
                    
     def compute_r(self):
         # here are the TSP to be computed
@@ -347,15 +354,22 @@ class Matheuristic :
         Y_flat[served[rho_samples]] = 0
 
     def remove_worst_rho(solution, rho):
-        a_flat = solution.a.reshape(-1)
-        Y_flat = solution.Y.reshape(-1)
-        assert rho <= len(np.nonzero(Y_flat)[0])
-        Y_flat[np.argpartition(-a_flat, rho)[0:rho]] = 0
+        assert len(np.nonzero(solution.Y)[0]) >= rho
+        for i in range(rho):   
+            choice = np.argmax(solution.a)
+            solution.Y.reshape(-1)[choice] = 0
+            solution.a.reshape(-1)[choice] = 0
+            t, rest = np.divmod(choice, solution.N*solution.K*solution.M)
+            n, rest = np.divmod(rest, solution.K*solution.M)
+            k = np.floor_divide(rest, solution.M)
+            tour_school = np.nonzero(solution.Y[t,n,k,:])[0] + solution.N 
+            solution.r[t][n][k] = tsp_tour(tour_school, n, solution.problem.D.values)
+            solution.compute_school_remove(t,n,k)
 
     def shaw_removal_route_based(solution, rho):
         served = np.transpose(np.nonzero(solution.Y))
         num_served = len(served)
-        candidate = np.random.choice(num_served, 1)[0]
+        candidate = np.random.choice(num_served)
         [t,n,k,m] = served[candidate]
         route = np.array(solution.r[t][n][k])
         if len(route) > 2:
@@ -428,11 +442,20 @@ class Matheuristic :
             else:
                 pass
         
-    def operator4(solution, rho):
-        pass
-        
-    def operator5(solution, rho):
-        pass
+    def insert_best_rho(solution, rho):
+        assert len(np.nonzero(1-solution.Y)[0]) >= rho
+        for i in range(rho):   
+            b_flat = solution.b.reshape(-1)
+            Y_flat = solution.Y.reshape(-1)
+            choice = np.where(Y_flat == 0)[0][np.argmin(b_flat[Y_flat == 0])]
+            Y_flat[choice] = 1
+            b_flat[choice] = 0
+            t, rest = np.divmod(choice, solution.N*solution.K*solution.M)
+            n, rest = np.divmod(rest, solution.K*solution.M)
+            k = np.floor_divide(rest, solution.M)
+            tour_school = np.nonzero(solution.Y[t,n,k,:])[0] + solution.N 
+            solution.r[t][n][k] = tsp_tour(tour_school, n, solution.problem.D.values)
+            solution.compute_school_insert(t,n,k)
         
     def operator6(solution, rho):
         pass

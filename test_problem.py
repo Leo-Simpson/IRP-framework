@@ -6,7 +6,7 @@ from scipy.spatial import distance_matrix
 from ISI import Problem, Solution
 
 
-def test_problem(M, N, T, K):
+def test_problem(T,N,K,M):
     
     Schools = []
     Warehouses = []
