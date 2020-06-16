@@ -159,6 +159,10 @@ class Solution :
 
         ISI_model=plp.LpProblem(name="ISI_Model",plp.LpMinimize)
 
+        q_vars = plp.LpVariable.dicts("q",set_q, cat='Continuous', lowBound=0., upBound=1.)
+        X_vars = plp.LpVariable.dicts("X",[(t,n) for t in range(T) for n in ragne(N)], cat='Binary')
+        delta_vars = plp.LpVariable.dicts("delta",set_delta, cat='Binary')
+        omega_vars = plp.LpVariable.dicts("omega",set_omega, cat='Binary')
         
         
         # just to remember : the psi of the paper is the same thing as our Y

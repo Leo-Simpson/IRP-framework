@@ -17,19 +17,23 @@ a = {(i,j): random.normalvariate(0,5) for i in set_I for j in set_J}
 l = {(i,j): random.randint(0,10) for i in set_I for j in set_J}
 u = {(i,j): random.randint(10,20) for i in set_I for j in set_J}
 b = {j: random.randint(0,30) for j in set_J}
+
  """
 
 np.random.seed(12)
 c = np.random.randn(n)
 a = 10*np.random.randn(n,m)
 b = np.random.randint(10, size = m)
+""" 
+Problem : min sum_i (2*sum_j(Xij)-1) * Ci s.t. sum_i(Xij Aij) > b: 
+ """
 
 
 opt_model = plp.LpProblem("MIP_Model",plp.LpMinimize)
 
-x_vars  = {(i,j):
-plp.LpVariable(cat=plp.LpBinary, name="x_{0}_{1}".format(i,j)) 
-for i in set_I for j in set_J}
+
+x_vars = plp.LpVariable.dicts("x",[(i,j) for i in set_I for j in set_J], cat='Binary')
+
 
 y_vars = { i :
 plp.LpVariable(cat=plp.LpInteger, name="y_{0}".format(i)) 
@@ -44,19 +48,13 @@ opt_model += plp.lpSum(z_vars[i] * c[i]
                     for i in set_I ), 'Z'
 
 for j in set_J :
-    opt_model += plp.lpSum(a[i,j] * x_vars[i,j] for i in set_I) <= b[j]
-
-constraints = {j : opt_model.addConstraint(
-plp.LpConstraint(
-             e=plp.lpSum(a[i,j] * x_vars[i,j] for i in set_I),
-             sense=plp.LpConstraintGE,
-             rhs=b[j],
-             name="constraint{0}".format(j)))
-       for j in set_J}
+    opt_model += plp.lpSum(a[i,j] * x_vars[i,j] for i in set_I) >= b[j]
 
 
 
-opt_model.solve()
+
+
+opt_model.solve(solver = plp.GLPK_CMD())
 
 x = np.zeros((n,m))
 z = np.zeros(n)
