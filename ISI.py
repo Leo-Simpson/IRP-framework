@@ -179,7 +179,7 @@ class Solution :
                          - problem.d[m]
                          for m in range(M) }  
                         )
-            
+        #I_w update?
             I_s.update(  {(t,n):
                          I_s[t-1,m]  
                          - problem.Q1 * plp.lpSum(q_vars[t,n,k,m] for k in range(K) for m in range(m) if self.Cl[n,m] ) 
@@ -227,16 +227,20 @@ class Solution :
 
         Constraints : 
         # constraints 14 to 17 are omitted here (according to ShareLatex script)
-
-        sum( omega*self.time_adding, axis  = 3 ) + self.time_route  < Tmax
         
+        # constraint on length of tour
+        #sum( omega*self.time_adding, axis  = 3 ) + self.time_route  < Tmax
+        for t in range(T):
+            for n in range(N):
+                for k in range(K):
+                    ISI_model += plp.lpSum([omega_vars[t][n][k][m] * self.time_adding[t,n,k,m] +  .... for m in .... ]) <= Tmax
+
         # constraint 9 in Latex script, respect capacities + min. stock of schools and warehouses
         # schools: problem.L_s < I_s < problem.U_s
         for t in range(T):
             for m in range(M):
                 ISI_model += I_s[t,m]<=problem.U_s[m]       #I_s < U_s
                 ISI_model += I_s[t,m]>= problem.L_S[m]      #I_s > L_s
-
         # warehouses: problem.L_w <I_w < problem.U_w
             for n in range(N):
                 ISI_model += I_w[t,n]<=problem.U_w[n]       #I_w < U_w      # can maybe be omitted 
@@ -247,14 +251,33 @@ class Solution :
         for t in range(T):
             for n in range(N):
                 for k in range(K):
-                    ISI_model += plp.lpSum([q[t][n][k][m] for  m in range(M)]) <=1
+                    ISI_model += plp.lpSum([q_vars[t][n][k][m] for  m in range(M)]) <=1
         
 
         # constraint 10 omitted for now : let's consider that at time t, delivering is after lunch, and L[l] > d[l] for every school l 
-        q < (self.Y - delta + omega)   # no need to multiply by U because the component of q is already smaller than 1 because it is normalized by Q1
-        omega < 1 - self.Y
-        delta < self.Y
-        sum(delta+omega, axis = 3) < G
+        
+        # constraint 11: only positive amount to deliver if school is served in that round
+        #q < (self.Y - delta + omega)   # no need to multiply by U because the component of q is already smaller than 1 because it is normalized by Q1
+        for (t,n,k,m) in set_q:     
+            #if t>0:        ADD: t>0?!
+            ISI_model += q_vars[t][n][k][m] <= problem.U_s[m] - I_s[t-1,m]
+        
+        # constraint 12: school insertion only possible if not yet in route
+        #omega < 1 - self.Y
+        # Shouldn't we use Cl instead of Y??
+        for (t,n,k,m) in set_omega:
+            ISI_model += omega_vars[t][n][k][m] <= 1 - solution.Y[t][n][k][m]
+
+        #constraint 13: school removal only if in route
+        #delta < self.Y
+        for (t,n,k,m) in set_delta:
+            ISI_model += delta_vars[t][n][k][m] <= solution.Y[t][n][k][m]
+
+        #constraint 18: bound on the number of changes comitted by the ISI model
+        #sum(delta+omega, axis = 3) < G
+        for t in range(T):
+            for k in range(K):
+                ISI_model += plp.Lpsum([delta_vars[t][n][k][m] + omega_vars[t][n][k][m] for n in range(N) for m in range(M) ])      #not sure whether this works correctly. omega_vars and delta_vars are on disjoint index sets!
 
         '''
 
