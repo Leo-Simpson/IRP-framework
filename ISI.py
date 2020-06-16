@@ -161,7 +161,7 @@ class Solution :
 
         # build dictionaries of decision variables:
         q_vars = plp.LpVariable.dicts("q",set_q, cat='Continuous', lowBound=0., upBound=1.)
-        X_vars = plp.LpVariable.dicts("X",[(t,n) for t in range(T) for n in ragne(N)], cat='Binary')
+        X_vars = plp.LpVariable.dicts("X",[(t,n) for t in range(T) for n in range(N)], cat='Binary')
         delta_vars = plp.LpVariable.dicts("delta",set_delta, cat='Binary')
         omega_vars = plp.LpVariable.dicts("omega",set_omega, cat='Binary')
         
