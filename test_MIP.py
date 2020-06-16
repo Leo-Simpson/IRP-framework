@@ -47,13 +47,16 @@ z_vars = {i :y_vars[i]*2 - 1  for i in set_I}
 opt_model += plp.lpSum(z_vars[i] * c[i] 
                     for i in set_I ), 'Z'
 
+
 for j in set_J :
     opt_model += plp.lpSum(a[i,j] * x_vars[i,j] for i in set_I) >= b[j]
 
 
 
+print(c)
+print(opt_model)
 
-
+""" 
 opt_model.solve(solver = plp.GLPK_CMD())
 
 x = np.zeros((n,m))
@@ -61,10 +64,12 @@ z = np.zeros(n)
 for i in set_I : 
     z[i] = z_vars[i].value()
     for j in set_J : 
-        x[i,j] = x_vars[(i,j)].varValue
+        x[i,j] = x_vars[i,j].varValue
         
+
 
 print("x",x)
 print("z",z)
 
 print(np.sum(a*x,axis=0)-b)
+ """

@@ -159,6 +159,7 @@ class Solution :
 
         ISI_model=plp.LpProblem(name="ISI_Model",plp.LpMinimize)
 
+        # build dictionaries of decision variables:
         q_vars = plp.LpVariable.dicts("q",set_q, cat='Continuous', lowBound=0., upBound=1.)
         X_vars = plp.LpVariable.dicts("X",[(t,n) for t in range(T) for n in ragne(N)], cat='Binary')
         delta_vars = plp.LpVariable.dicts("delta",set_delta, cat='Binary')
@@ -166,40 +167,35 @@ class Solution :
         
         
         # just to remember : the psi of the paper is the same thing as our Y
-        # build dictionaries of decision variables:
-
-        q_vars = {(t, n, k, m):
-                    plp.LpVariable(cat=plp.LpContinuous, lowBound=0., upBound=1., name="q_{0}_{1}".format(i,j)) 
-                    for (t,n,k,m) in set_q}
-
-        X_vars  = {(t,n):
-                    plp.LpVariable(cat=plp.LpBinary, name="X_{0}_{1}".format(t,n)) 
-                    for t in range(T) for n in range(N)}
-
-        delta_vars  = {(t,n,k,m):
-                    plp.LpVariable(cat=plp.LpBinary, name="delta_{0}_{1}".format(t,n,k,m)) 
-                    for (t,n,k,m) in set_delta}
-
-        omega_vars  = {(t,n,k,m):
-                    plp.LpVariable(cat=plp.LpBinary, name="omega_{0}_{1}".format(t,n,k,m)) 
-                    for (t,n,k,m) in set_omega}
-
         
 
-        
-        
+        I_s = {(0,m): problem.I_s_init[n]   for m in range(M) }   # need to see how to change an LpAffineExpression with a constant value
+        I_w = {(0,n): problem.I_w_init[n]   for n in range(N)) }  # need to see how to change an LpAffineExpression with a constant value
+
+        for t in range (1,T): 
+            I_s.update(  {(t,m):
+                         I_s[t-1,m]
+                         + problem.Q1 * plp.lpSum(q_vars[t,n,k,m] for k in range(K) for n in range(N) if self.Cl[n,m] ) 
+                         - problem.d[m]
+                         for m in range(M) }  
+                        )
+            
+            I_s.update(  {(t,n):
+                         I_s[t-1,m]  
+                         - problem.Q1 * plp.lpSum(q_vars[t,n,k,m] for k in range(K) for m in range(m) if self.Cl[n,m] ) 
+                         + problem.Q2 * X_vars[t,n]
+                         for n in range(N) }  
+                        )
+
+
+        ISI_model += plp.lpSum( problem.h_s[m] * I_s[t,n] for t in range(T) for m in range(m) )
+                    + problem.c_per_km * plp.lpSum( problem.to_central[n] * X_vars[t,n] for t in range(T) for n in range(n) ) 
+                    + problem.c_per_km * plp.lpSum( problem.b[t,n,k,m] * omega_vars[t,n,k,m] for (t,n,k,m) in set_omega )
+                    - problem.c_per_km * plp.lpSum( problem.a[t,n,k,m] * delta_vars[t,n,k,m] for (t,n,k,m) in set_delta )
+                    , 'Z'
 
 
         '''
-        Objective function : 
-        minimize : 
-                sum( problem.h_s * sum(I_s,axis=0) ) 
-            +   problem.c_per_km * sum( problem.to_central * sum(X,axis=0)  ) * 2
-            +   problem.c_per_km * sum(self.b*omega, axis=all)
-            -   problem.c_per_km * sum(self.a*delta, axis=all)
-
-
-
 
 
         Decision variables : 
@@ -219,6 +215,14 @@ class Solution :
         I_w[0,:] = problem.I_w_init[:]    
         for t in range(self.T):    
             I_w[t,:] = I_w[t-1,:] + problem.Q2 * X[t,:] - problem.Q1* sum( q[t,:,k,l] axis = 1,2 )
+
+
+        Objective function : 
+        minimize : 
+                sum( problem.h_s * sum(I_s,axis=0) ) 
+            +   problem.c_per_km * sum( problem.to_central * sum(X,axis=0)  ) * 2
+            +   problem.c_per_km * sum(self.b*omega, axis=all)
+            -   problem.c_per_km * sum(self.a*delta, axis=all)
 
 
         Constraints : 
