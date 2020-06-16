@@ -5,6 +5,7 @@ from copy import deepcopy
 #edit Chris 07.06.20:
 from OR_tools_solve_tsp import tsp_tour
 #end of edit Chris 07.06.20
+import pulp as plp 
 
 class Problem :
     #this is the class that contains the data of the problem
@@ -151,11 +152,14 @@ class Solution :
 
         self.compute_time_adding()
 
+        ISI_model=plp.LpProblem(name="ISI_Model")
+
         set_q     = [ (t,n,k,m) for t in range(T) for n in range(N) for k in range(K) for m in range(M) if self.Cl[n,m]  ]
         set_delta = [ (t,n,k,m) for (t,n,k,m) in set_q if self.Y[t,n,k,m]  ]
         set_omega = [ (t,n,k,m) for (t,n,k,m) in set_q if not self.Y[t,n,k,m]  ]
         
         # just to remember : the psi of the paper is the same thing as our Y
+        # build dictionaries of decision variables:
 
         q_vars = {(t, n, k, m):
                     plp.LpVariable(cat=plp.LpContinuous, lowBound=0., upBound=1., name="q_{0}_{1}".format(i,j)) 
@@ -181,7 +185,7 @@ class Solution :
 
         '''
         Decision variables : 
-        q          variable of size TxNxKxM, type= positive float representing how much food to deliver at each stop of a truck
+        q          variable of size TxNxKxM, type= positive float representing how much food (actually: percentage of truck load) to deliver at each stop of a truck
         X          variable of size TxN type = bool representing the pick ups  
         delta      variable of size TxNxKxM, type=bool representing wether or not l is removed from the tour
         omega      variable of size TxNxKxM, type=bool representing wether or not l is added to the tour
@@ -203,13 +207,29 @@ class Solution :
         # constraints 14 to 17 are omitted here (according to ShareLatex script)
 
         sum( omega*self.time_adding, axis  = 3 ) + self.time_route  < Tmax
-        I_s < problem.U_s
-        I_s > problem.L_s
-        I_w < problem.U_w      # can maybe be omitted 
-        I_w > problem.L_w
-        sum(q, axis = 3) < 1
+        
+        # constraint 9 in Latex script, respect capacities + min. stock of schools and warehouses
+        # schools: problem.L_s < I_s < problem.U_s
+        for t in range(T):
+            for m in range(M):
+                ISI_model += I_s[t,m]<=problem.U_s[m]       #I_s < U_s
+                ISI_model += I_s[t,m]>= problem.L_S[m]      #I_s > L_s
+
+        # warehouses: problem.L_w <I_w < problem.U_w
+            for n in range(N):
+                ISI_model += I_w[t,n]<=problem.U_w[n]       #I_w < U_w      # can maybe be omitted 
+                ISI_model += I_s[t,n]>= problem.L_S[n]      #I_w > L_w
+        
+        # constraint on capacity of trucks
+        #sum(q, axis = 3) < 1
+        for t in range(T):
+            for n in range(N):
+                for k in range(K):
+                    ISI_model += plp.lpSum([q[t][n][k][m] for  m in range(M)]) <=1
+        
+
         # constraint 10 omitted for now : let's consider that at time t, delivering is after lunch, and L[l] > d[l] for every school l 
-        q < (self.Y - delta + omega)   # no need to multiply by U because the componant of q is already smaller than 1 because it is normalized by Q1
+        q < (self.Y - delta + omega)   # no need to multiply by U because the component of q is already smaller than 1 because it is normalized by Q1
         omega < 1 - self.Y
         delta < self.Y
         sum(delta+omega, axis = 3) < G
