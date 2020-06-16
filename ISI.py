@@ -256,14 +256,6 @@ class Solution :
         delta < self.Y
         sum(delta+omega, axis = 3) < G
 
-
-        Objective function : 
-        minimize : 
-                sum( problem.h_s * sum(I_s,axis=0) ) 
-            +   problem.c_per_km * sum( problem.to_central * sum(X,axis=0)  ) * 2
-            +   problem.c_per_km * sum(self.b*omega, axis=all)
-            -   problem.c_per_km * sum(self.a*delta, axis=all)
-
         '''
 
         '''
