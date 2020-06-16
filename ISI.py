@@ -194,8 +194,7 @@ class Solution :
         ISI_model += plp.lpSum( problem.h_s[m] * I_s[t,n] for t in range(T) for m in range(m) )
         + problem.c_per_km * plp.lpSum( problem.to_central[n] * X_vars[t,n] for t in range(T) for n in range(n) ) 
         + problem.c_per_km * plp.lpSum( problem.b[t,n,k,m] * omega_vars[t,n,k,m] for (t,n,k,m) in set_omega )
-        - problem.c_per_km * plp.lpSum( problem.a[t,n,k,m] * delta_vars[t,n,k,m] for (t,n,k,m) in set_delta )
-        #, 'Z'
+        - problem.c_per_km * plp.lpSum( problem.a[t,n,k,m] * delta_vars[t,n,k,m] for (t,n,k,m) in set_delta ), 'Z'
 
         # constraint 9 in Latex script, respect capacities + min. stock of schools and warehouses
         
