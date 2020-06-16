@@ -160,7 +160,7 @@ class Solution :
         set_omega = [ (t,n,k,m) for (t,n,k,m) in set_q if not self.Y[t,n,k,m]  ]
 
 
-        ISI_model=plp.LpProblem(name="ISI_Model",plp.LpMinimize)
+        ISI_model=plp.LpProblem(plp.LpMinimize,name="ISI_Model")
 
         # build dictionaries of decision variables:
         q_vars = plp.LpVariable.dicts("q",set_q, cat='Continuous', lowBound=0., upBound=1.)
@@ -173,7 +173,7 @@ class Solution :
         
 
         I_s = {(0,m): problem.I_s_init[n]   for m in range(M) }   # need to see how to change an LpAffineExpression with a constant value
-        I_w = {(0,n): problem.I_w_init[n]   for n in range(N)) }  # need to see how to change an LpAffineExpression with a constant value
+        I_w = {(0,n): problem.I_w_init[n]   for n in range(N) }  # need to see how to change an LpAffineExpression with a constant value
 
         for t in range (1,T): 
             I_s.update(  {(t,m):
@@ -192,10 +192,10 @@ class Solution :
 
 
         ISI_model += plp.lpSum( problem.h_s[m] * I_s[t,n] for t in range(T) for m in range(m) )
-                    + problem.c_per_km * plp.lpSum( problem.to_central[n] * X_vars[t,n] for t in range(T) for n in range(n) ) 
-                    + problem.c_per_km * plp.lpSum( problem.b[t,n,k,m] * omega_vars[t,n,k,m] for (t,n,k,m) in set_omega )
-                    - problem.c_per_km * plp.lpSum( problem.a[t,n,k,m] * delta_vars[t,n,k,m] for (t,n,k,m) in set_delta )
-                    , 'Z'
+        + problem.c_per_km * plp.lpSum( problem.to_central[n] * X_vars[t,n] for t in range(T) for n in range(n) ) 
+        + problem.c_per_km * plp.lpSum( problem.b[t,n,k,m] * omega_vars[t,n,k,m] for (t,n,k,m) in set_omega )
+        - problem.c_per_km * plp.lpSum( problem.a[t,n,k,m] * delta_vars[t,n,k,m] for (t,n,k,m) in set_delta )
+        #, 'Z'
 
         # constraint 9 in Latex script, respect capacities + min. stock of schools and warehouses
         
