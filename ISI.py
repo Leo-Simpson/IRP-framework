@@ -152,11 +152,14 @@ class Solution :
 
         self.compute_time_adding()
 
-        ISI_model=plp.LpProblem(name="ISI_Model")
-
         set_q     = [ (t,n,k,m) for t in range(T) for n in range(N) for k in range(K) for m in range(M) if self.Cl[n,m]  ]
         set_delta = [ (t,n,k,m) for (t,n,k,m) in set_q if self.Y[t,n,k,m]  ]
         set_omega = [ (t,n,k,m) for (t,n,k,m) in set_q if not self.Y[t,n,k,m]  ]
+
+
+        ISI_model=plp.LpProblem(name="ISI_Model",plp.LpMinimize)
+
+        
         
         # just to remember : the psi of the paper is the same thing as our Y
         # build dictionaries of decision variables:
@@ -184,6 +187,17 @@ class Solution :
 
 
         '''
+        Objective function : 
+        minimize : 
+                sum( problem.h_s * sum(I_s,axis=0) ) 
+            +   problem.c_per_km * sum( problem.to_central * sum(X,axis=0)  ) * 2
+            +   problem.c_per_km * sum(self.b*omega, axis=all)
+            -   problem.c_per_km * sum(self.a*delta, axis=all)
+
+
+
+
+
         Decision variables : 
         q          variable of size TxNxKxM, type= positive float representing how much food (actually: percentage of truck load) to deliver at each stop of a truck
         X          variable of size TxN type = bool representing the pick ups  
