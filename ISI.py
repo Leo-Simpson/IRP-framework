@@ -509,7 +509,6 @@ class Matheuristic :
         closest_warehouse = np.argmin(solution.problem.D.values[np.ix_([choice + solution.N],[i for i in range(solution.N)])][0])
         close_reachable = [m for m in close[solution.Cl[closest_warehouse, close] == 1]]
         free_vehicles = np.where(np.sum(solution.Y[period,closest_warehouse,:,:], axis = 1) == 0)[0]
-        print('period, not_served, choice, rest_not_served, dist_to_not_served, np.min(dist_to_all), closest_warehouse, close_reachable, free_vehicles: ', period, not_served, choice, rest_not_served, dist_to_not_served, np.min(dist_to_all), closest_warehouse, close_reachable, free_vehicles)
         if len(free_vehicles) > 0:
             solution.Y[period,closest_warehouse,np.min(free_vehicles), close_reachable] = 1
         
