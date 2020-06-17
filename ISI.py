@@ -2,9 +2,7 @@ import numpy as np
 import numpy.random as rd
 import random
 from copy import deepcopy
-#edit Chris 07.06.20:
 from OR_tools_solve_tsp import tsp_tour
-#end of edit Chris 07.06.20
 import pulp as plp 
 
 class Problem :
@@ -41,7 +39,7 @@ class Problem :
 
 class Solution : 
     
-    def __init__(self,problem):
+    def __init__(self,problem, Y = None, q = None, X = None, Cl=None):
         M,N,K,T = len(problem.Schools), len(problem.Warehouses),problem.K, problem.T
         self.M, self.N, self.K, self.T = M,N,K,T
 
@@ -51,18 +49,35 @@ class Solution :
         problem.define_arrays()
         self.problem = problem
            
-        self.Y = np.zeros((T,N,K,M), dtype = bool)      # variable  equal 1 if vehicle k delivers school m from warehouse n at time t
-        self.q = np.zeros((T,N,K,M), dtype = float)     # quantity of food delivered from each warehouse n by vehicle k delivers school m at time t
-        
-        self.X = np.zeros((T,N), dtype = bool )   # variable equal 1 if warehouse n get more food at time t
+        if Y is None : self.Y = np.zeros((T,N,K,M), dtype = bool)      # variable  equal 1 if vehicle k delivers school m from warehouse n at time t
+        else         : self.Y = Y
+        if q is None : self.q = np.zeros((T,N,K,M), dtype = float)     # quantity of food delivered from each warehouse n by vehicle k delivers school m at time t
+        else         : self.q = q
 
-        self.Cl = np.ones((N,M),dtype=bool)    # equal one when we consider that it is possible that the school m could be served by n
+        if X is None : self.X = np.zeros((T,N), dtype = bool )   # variable equal 1 if warehouse n get more food at time t
+        else         : self.X = X
+
+        if Cl is None : self.Cl = np.ones((N,M),dtype=bool)    # equal one when we consider that it is possible that the school m could be served by n
     
+        self.r = [[[[] for k in range(self.K)] for n in range(self.N)] for t in range(self.T)]
+
+
     def copy(self):
-        solution = Solution(self.problem)
+        solution = Solution(self.problem,
+                             Y = np.copy(self.Y),
+                             q = np.copy(self.q),
+                             Cl= self.Cl      )
+
+        solution.r = deepcopy(self.r)
+        solution.a = np.copy(self.a)
+        solution.b = np.copy(self.b)
+        solution.dist = np.copy(self.dist)
+        solution.cost = self.cost
+
+        return solution
+
         
 
-        # other variable to add probably
     
     def Cl_shaped_like_Y(self):
         Cl_times_K = np.repeat(self.Cl[np.newaxis,0,:], self.K, 0)[np.newaxis,:,:]
@@ -134,16 +149,10 @@ class Solution :
 
     def compute_time_adding(self):
         problem  = self.problem
-
-        lenghts = np.array( [[[ len(self.r[t][n][k]) for k in range(self.K) ] for n in range(self.N) ] for  t in range(self.T) ]   )
-        time_route = self.dist / problem.v + problem.t_load*lenghts
-        time_adding = np.array( [ self.b[:,:,:,m] / problem.v + problem.t_load  for m in range(self.M) ]  )
-        np.swapaxes(time_adding,0,1)
-        np.swapaxes(time_adding,1,2)
-        np.swapaxes(time_adding,2,3)
-        # now time_adding is a matrixe of size TxNxKxM
-        self.time_adding = time_adding
-        self.time_route = time_route
+        self.compute_dist()
+        self.time_route     = self.dist / problem.v + problem.t_load*np.sum(self.Y, axis = 3)
+        self.time_adding    = self.b / problem.v + problem.t_load
+        self.time_substract = self.a / problem.v + problem.t_load
 
 
     def ISI(self, G = 1):
@@ -152,6 +161,7 @@ class Solution :
         T,N,K,M = self.T, self.N, self.K, self.M
 
         self.compute_a_and_b()
+        
 
         self.compute_time_adding()
 
@@ -160,19 +170,25 @@ class Solution :
         set_omega = [ (t,n,k,m) for (t,n,k,m) in set_q if not self.Y[t,n,k,m]  ]
 
 
+<<<<<<< HEAD
+        ISI_model=plp.LpProblem("ISI_Model",plp.LpMinimize)
+=======
         ISI_model=plp.LpProblem(plp.LpMinimize,name="ISI_Model")
+>>>>>>> 52c96ff1d828872a5480c06bb4ab3c8250642334
 
         # build dictionaries of decision variables:
         q_vars = plp.LpVariable.dicts("q",set_q, cat='Continuous', lowBound=0., upBound=1.)
         X_vars = plp.LpVariable.dicts("X",[(t,n) for t in range(T) for n in range(N)], cat='Binary')
         delta_vars = plp.LpVariable.dicts("delta",set_delta, cat='Binary')
         omega_vars = plp.LpVariable.dicts("omega",set_omega, cat='Binary')
-        
-        
         # just to remember : the psi of the paper is the same thing as our Y
         
 
+<<<<<<< HEAD
+        I_s = {(0,m): problem.I_s_init[m]   for m in range(M) }   # need to see how to change an LpAffineExpression with a constant value
+=======
         I_s = {(0,m): problem.I_s_init[n]   for m in range(M) }   # need to see how to change an LpAffineExpression with a constant value
+>>>>>>> 52c96ff1d828872a5480c06bb4ab3c8250642334
         I_w = {(0,n): problem.I_w_init[n]   for n in range(N) }  # need to see how to change an LpAffineExpression with a constant value
 
         for t in range (1,T): 
@@ -183,41 +199,46 @@ class Solution :
                          for m in range(M) }  
                         )
         
-            I_w_init.update(  {(t,n):
-                         I_w[t-1,m]  
-                         - problem.Q1 * plp.lpSum(q_vars[t,n,k,m] for k in range(K) for m in range(m) if self.Cl[n,m] ) 
+            I_w.update(  {(t,n):
+                         I_w[t-1,n]  
+                         - problem.Q1 * plp.lpSum(q_vars[t,n,k,m] for k in range(K) for m in range(M) if self.Cl[n,m] ) 
                          + problem.Q2 * X_vars[t,n]
                          for n in range(N) }  
                         )
 
+        transport_cost = problem.c_per_km * plp.lpSum( self.b[t,n,k,m] * omega_vars[t,n,k,m] for (t,n,k,m) in set_omega ) - problem.c_per_km * plp.lpSum( self.a[t,n,k,m] * delta_vars[t,n,k,m] for (t,n,k,m) in set_delta )
+        add_cost = plp.lpSum([problem.h_s[m] * I_s[t,m] for t in range(T) for m in range(M)]) + problem.c_per_km * plp.lpSum( problem.to_central[n] * X_vars[t,n] for t in range(T) for n in range(N) ) 
 
+<<<<<<< HEAD
+        ISI_model += transport_cost + add_cost, 'Z'
+=======
         ISI_model += plp.lpSum( problem.h_s[m] * I_s[t,n] for t in range(T) for m in range(m) )
         + problem.c_per_km * plp.lpSum( problem.to_central[n] * X_vars[t,n] for t in range(T) for n in range(n) ) 
         + problem.c_per_km * plp.lpSum( problem.b[t,n,k,m] * omega_vars[t,n,k,m] for (t,n,k,m) in set_omega )
         - problem.c_per_km * plp.lpSum( problem.a[t,n,k,m] * delta_vars[t,n,k,m] for (t,n,k,m) in set_delta ), 'Z'
+>>>>>>> 52c96ff1d828872a5480c06bb4ab3c8250642334
 
         # constraint 9 in Latex script, respect capacities + min. stock of schools and warehouses
         
-        for t in range(T):
+        for t in range(1,T):
             # schools: problem.L_s < I_s < problem.U_s
             for m in range(M):
-                ISI_model += I_s[t,m]<=problem.U_s[m]       #I_s < U_s
-                ISI_model += I_s[t,m]>= problem.L_S[m]      #I_s > L_s
+                ISI_model += I_s[t,m] <= problem.U_s[m]       #I_s < U_s
+                ISI_model += I_s[t,m] >= problem.L_s[m]      #I_s > L_s
             # warehouses: problem.L_w <I_w < problem.U_w
             for n in range(N):
-                ISI_model += I_w[t,n]<=problem.U_w[n]       #I_w < U_w      # can maybe be omitted 
-                ISI_model += I_s[t,n]>= problem.L_S[n]      #I_w > L_w
+                ISI_model += I_w[t,n] <= problem.U_w[n]       #I_w < U_w      # can maybe be omitted 
+                ISI_model += I_w[t,n] >= problem.L_w[n]      #I_w > L_w
 
         # constraint on capacity of trucks
-        #sum(q, axis = 3) < 1
         for t in range(T):
             for n in range(N):
                 for k in range(K):
-                    ISI_model += plp.lpSum([q_vars[t][n][k][m] for  m in range(M)]) <=1
+                    ISI_model += plp.lpSum([q_vars[t,n,k,m] for  m in range(M)]) <=1
 
         
         # constraint 11: only positive amount to deliver if school is served in that round
-        #q < (self.Y - delta + omega)   # no need to multiply by U because the component of q is already smaller than 1 because it is normalized by Q1
+        #q < (self.Y - delta + omega)   no need to multiply by U because the component of q is already smaller than 1 because it is normalized by Q1
         for (t,n,k,m) in set_q:     
             if (t,n,k,m) in set_delta :
                 ISI_model += q_vars[t,n,k,m] <= 1 - delta_vars[t,n,k,m]
@@ -228,138 +249,41 @@ class Solution :
         #sum(delta+omega, axis = 3) < G
         for t in range(T):
             for k in range(K):
-                ISI_model += plp.Lpsum([delta_vars[t,n,k,m] for n in range(N) for m in range(M) if (t,n,k,m) in set_delta ]) + plp.Lpsum([omega_vars[t,n,k,m] for n in range(N) for m in range(M) if (t,n,k,m) in set_omega ] )
+                ISI_model += plp.lpSum([delta_vars[t,n,k,m] for n in range(N) for m in range(M) if (t,n,k,m) in set_delta ]) + plp.lpSum([omega_vars[t,n,k,m] for n in range(N) for m in range(M) if (t,n,k,m) in set_omega ] )
 
 
-        # We only need the Tmax thing to write 
-
+        # Constraint on the time spending in one tour
+        #sum( omega*self.time_adding, axis  = 3 ) + self.time_route - sum( delta*self.time_substracting, axis  = 3 )  < Tmax
+        for t in range(T):
+            for n in range(N):
+                for k in range(K):
+                    ISI_model += self.time_route[t,n,k]
+                    +plp.lpSum([ omega_vars[t,n,k,m] * self.time_adding[t,n,k,m] for m in range(M) if (t,n,k,m) in set_omega ])
+                    - plp.lpSum([delta_vars[t,n,k,m] * self.time_substract[t,n,k,m] for m in range(M) if (t,n,k,m) in set_delta]) <= problem.Tmax
 
 
         ISI_model.solve()
 
         # transform the _vars things into numpy array to return it. 
 
-        # evaluate the I_s and I_w to be able to build add_cost
+        for (t,n,k,m) in set_q : 
+            self.q[t,n,k,m] = q_vars[t,n,k,m].varValue
+            if (t,n,k,m) in set_delta : 
+                self.Y[t,n,k,m] -= delta_vars[t,n,k,m].varValue
+            else : 
+                self.Y[t,n,k,m] += omega_vars[t,n,k,m].varValue
 
 
-        '''
-
-
-        Decision variables : 
-        q          variable of size TxNxKxM, type= positive float representing how much food (actually: percentage of truck load) to deliver at each stop of a truck
-        X          variable of size TxN type = bool representing the pick ups  
-        delta      variable of size TxNxKxM, type=bool representing wether or not l is removed from the tour
-        omega      variable of size TxNxKxM, type=bool representing wether or not l is added to the tour
-
-        Other variables : 
-
-        # variable of size TxM type = float representing the inventories of the schools
-        I_s[0,:] = problem.I_s_init[:] 
-        for t in range(self.T):       
-            I_s[t,:] = I_s[t-1,:] + problem.Q1 * sum(q[t,:,:,:], axis = 0,1 ) - problem.d
-
-        # variable of size TxM type = float representing the inventories of the warehouses        
-        I_w[0,:] = problem.I_w_init[:]    
-        for t in range(self.T):    
-            I_w[t,:] = I_w[t-1,:] + problem.Q2 * X[t,:] - problem.Q1* sum( q[t,:,k,l] axis = 1,2 )
-
-
-        Objective function : 
-        minimize : 
-                sum( problem.h_s * sum(I_s,axis=0) ) 
-            +   problem.c_per_km * sum( problem.to_central * sum(X,axis=0)  ) * 2
-            +   problem.c_per_km * sum(self.b*omega, axis=all)
-            -   problem.c_per_km * sum(self.a*delta, axis=all)
-
-
-        Constraints : 
-        # constraints 14 to 17 are omitted here (according to ShareLatex script)
-        
-        # constraint on length of tour
-        #sum( omega*self.time_adding, axis  = 3 ) + self.time_route - sum( delta*self.time_substracting, axis  = 3 )  < Tmax
         for t in range(T):
             for n in range(N):
-                for k in range(K):
-                    ISI_model += plp.lpSum([omega_vars[t][n][k][m] * self.time_adding[t,n,k,m] +  .... for m in .... ]) <= Tmax
+                self.X[t,n]=X_vars[t,n].varValue
 
-        # constraint 9 in Latex script, respect capacities + min. stock of schools and warehouses
-        # schools: problem.L_s < I_s < problem.U_s
-        for t in range(T):
-            for m in range(M):
-                ISI_model += I_s[t,m]<=problem.U_s[m]       #I_s < U_s
-                ISI_model += I_s[t,m]>= problem.L_S[m]      #I_s > L_s
-        # warehouses: problem.L_w <I_w < problem.U_w
-            for n in range(N):
-                ISI_model += I_w[t,n]<=problem.U_w[n]       #I_w < U_w      # can maybe be omitted 
-                ISI_model += I_s[t,n]>= problem.L_S[n]      #I_w > L_w
-        
-        # constraint on capacity of trucks
-        #sum(q, axis = 3) < 1
-        for t in range(T):
-            for n in range(N):
-                for k in range(K):
-                    ISI_model += plp.lpSum([q_vars[t,n,k,m] for  m in range(M)]) <=1
         
 
-        # constraint 10 omitted for now : let's consider that at time t, delivering is after lunch, and L[l] > d[l] for every school l 
-        
-        # constraint 11: only positive amount to deliver if school is served in that round
-        #q < (self.Y - delta + omega)   # no need to multiply by U because the component of q is already smaller than 1 because it is normalized by Q1
-        
-        in set_delta : 
-        q < 1 - delta
-
-        in set_omega : 
-        q < omega
-
-
-
-        UNECESSARY
-        for (t,n,k,m) in set_q:     
-            #if t>0:        ADD: t>0?!
-            ISI_model += q_vars[t][n][k][m] <= problem.U_s[m] - I_s[t-1,m]
-        
-        # constraint 12: school insertion only possible if not yet in route
-        UNECESSARY
-        #omega < 1 - self.Y
-        for (t,n,k,m) in set_omega:
-            ISI_model += omega_vars[t][n][k][m] <= 1 - solution.Y[t][n][k][m]
-
-
-        #constraint 13: school removal only if in route
-        UNECESSARY
-        #delta < self.Y
-        for (t,n,k,m) in set_delta:
-            ISI_model += delta_vars[t][n][k][m] <= solution.Y[t][n][k][m]
-
-        #constraint 18: bound on the number of changes comitted by the ISI model
-        #sum(delta+omega, axis = 3) < G
-        for t in range(T):
-            for k in range(K):
-                ISI_model += plp.Lpsum([delta_vars[t,n,k,m] for n in range(N) for m in range(M) if (t,n,k,m) in set_delta ]) + plp.Lpsum([omega_vars[t,n,k,m] for n in range(N) for m in range(M) if (t,n,k,m) in set_omega ] )
-
-        '''
-
-        '''
-        Cost except for omega and delta, so some part of the objective function :
-        add_cost = sum( problem.h_s * sum(I_s,axis=0) ) 
-            +   2*problem.c_per_km* sum( problem.to_central * sum(r,axis=0)  )
-        '''
-
-
-        self.update_after_ISI(delta,omega,q, X)
+    
         self.compute_r()
-        self.compute_costs(add=add_cost)
+        self.compute_costs(add=add_cost.value())
 
-
-    def update_after_ISI(self,delta,omega,q, X): 
-
-        self.Y = self.Y + omega - delta
-
-        self.X = X[:,:]
-        self.q = self.problem.Q1*q
-        
-        # probably se
 
 
 
@@ -397,8 +321,10 @@ class Matheuristic :
         ]
 
         self.solution = initial_solution
-        self.solution_best = deepcopy(initial_solution)
-        self.solution_prime = deepcopy(initial_solution)
+        self.solution_best = initial_solution.copy()
+        self.solution_prime = initial_solution.copy()
+
+
 
 
     def final_algo(self, param):
@@ -407,7 +333,7 @@ class Matheuristic :
         
         # initialization (step 2 and 3 of the pseudo code)
         self.solution.ISI(G = N+M)
-        self.solution_best = deepcopy(self.solution)
+        self.solution_best = self.solution.copy()
 
         # line 4 of pseudocode
         epsilon = rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1], seed = param.seed  )
@@ -419,13 +345,13 @@ class Matheuristic :
             # line 6 of pseudocode
             i = Matheuristic.choose_operator(self.operators)
             operator = self.operators[i]['function']
-            self.solution_prime = deepcopy(self.solution)
+            self.solution_prime = self.solution.copy()
             operator(self.solution_prime, param.rho)
             G = N+M
             self.solution_prime.ISI(G=G)
 
             if self.solution_prime.cost < self.solution.cost : # line 7
-                self.solution = deepcopy(self.solution_prime) # line 8
+                self.solution = copy(self.solution_prime) # line 8
                 G = max(G-1,1)                                  # line 9
 
                 keep_going, i  = True, 0
@@ -434,13 +360,13 @@ class Matheuristic :
                     self.solution_prime.ISI(G=G)  
                     if self.solution_prime.cost < (1+epsilon)*self.solution.cost: 
                         if self.solution_prime.cost < self.solution.cost :              # line 11
-                            self.solution = deepcopy(self.solution_prime)               # line 12
+                            self.solution = self.solution_prime.copy()              # line 12
                             G = max(G-1,1)                                              # line 13
                         else : G = max(int(param.ksi*(N+M)),1)                          # line 14-15
                                             
 
                     elif self.solution.cost < self.solution_best.cost :   # line 17
-                        self.solution_best = deepcopy(self.solution)    # line 18
+                        self.solution_best = self.solution.copy()    # line 18
                         self.operators[i]['score'] += param.sigmas[0]   # line 19
                         G = max(G-1,1)                                  # line 20
                     else :                                              # line 21
@@ -452,13 +378,13 @@ class Matheuristic :
                         else : keep_going = False
 
             elif self.solution_prime.cost < self.solution.cost - np.log(rd.random())*tau: # line 27
-                self.solution = deepcopy(self.solution_prime)                             # line 28
+                self.solution = self.solution_prime.copy()                         # line 28
                 self.operators[i]['score'] += param.sigmas[2]                             # line 29
             
             if iterations % param.delta == 0 :
                 epsilon = rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1], seed = param.seed  )
                 self.update_weights(param.reaction_factor)
-                self.solution = deepcopy(self.solution_best)
+                self.solution = self.solution_best.copy()
             iterations += 1
 
         
@@ -645,3 +571,106 @@ class Matheuristic :
 
 
 
+        '''
+
+
+        Decision variables : 
+        q          variable of size TxNxKxM, type= positive float representing how much food (actually: percentage of truck load) to deliver at each stop of a truck
+        X          variable of size TxN type = bool representing the pick ups  
+        delta      variable of size TxNxKxM, type=bool representing wether or not l is removed from the tour
+        omega      variable of size TxNxKxM, type=bool representing wether or not l is added to the tour
+
+        Other variables : 
+
+        # variable of size TxM type = float representing the inventories of the schools
+        I_s[0,:] = problem.I_s_init[:] 
+        for t in range(self.T):       
+            I_s[t,:] = I_s[t-1,:] + problem.Q1 * sum(q[t,:,:,:], axis = 0,1 ) - problem.d
+
+        # variable of size TxM type = float representing the inventories of the warehouses        
+        I_w[0,:] = problem.I_w_init[:]    
+        for t in range(self.T):    
+            I_w[t,:] = I_w[t-1,:] + problem.Q2 * X[t,:] - problem.Q1* sum( q[t,:,k,l] axis = 1,2 )
+
+
+        Objective function : 
+        minimize : 
+                sum( problem.h_s * sum(I_s,axis=0) ) 
+            +   problem.c_per_km * sum( problem.to_central * sum(X,axis=0)  ) * 2
+            +   problem.c_per_km * sum(self.b*omega, axis=all)
+            -   problem.c_per_km * sum(self.a*delta, axis=all)
+
+
+        Constraints : 
+        # constraints 14 to 17 are omitted here (according to ShareLatex script)
+        
+        # constraint on length of tour
+        #sum( omega*self.time_adding, axis  = 3 ) + self.time_route - sum( delta*self.time_substracting, axis  = 3 )  < Tmax
+        for t in range(T):
+            for n in range(N):
+                for k in range(K):
+                    ISI_model += plp.lpSum([omega_vars[t][n][k][m] * self.time_adding[t,n,k,m] +  .... for m in .... ]) <= Tmax
+
+        # constraint 9 in Latex script, respect capacities + min. stock of schools and warehouses
+        # schools: problem.L_s < I_s < problem.U_s
+        for t in range(T):
+            for m in range(M):
+                ISI_model += I_s[t,m]<=problem.U_s[m]       #I_s < U_s
+                ISI_model += I_s[t,m]>= problem.L_S[m]      #I_s > L_s
+        # warehouses: problem.L_w <I_w < problem.U_w
+            for n in range(N):
+                ISI_model += I_w[t,n]<=problem.U_w[n]       #I_w < U_w      # can maybe be omitted 
+                ISI_model += I_s[t,n]>= problem.L_S[n]      #I_w > L_w
+        
+        # constraint on capacity of trucks
+        #sum(q, axis = 3) < 1
+        for t in range(T):
+            for n in range(N):
+                for k in range(K):
+                    ISI_model += plp.lpSum([q_vars[t,n,k,m] for  m in range(M)]) <=1
+        
+
+        # constraint 10 omitted for now : let's consider that at time t, delivering is after lunch, and L[l] > d[l] for every school l 
+        
+        # constraint 11: only positive amount to deliver if school is served in that round
+        #q < (self.Y - delta + omega)   # no need to multiply by U because the component of q is already smaller than 1 because it is normalized by Q1
+        
+        in set_delta : 
+        q < 1 - delta
+
+        in set_omega : 
+        q < omega
+
+
+
+        UNECESSARY
+        for (t,n,k,m) in set_q:     
+            #if t>0:        ADD: t>0?!
+            ISI_model += q_vars[t][n][k][m] <= problem.U_s[m] - I_s[t-1,m]
+        
+        # constraint 12: school insertion only possible if not yet in route
+        UNECESSARY
+        #omega < 1 - self.Y
+        for (t,n,k,m) in set_omega:
+            ISI_model += omega_vars[t][n][k][m] <= 1 - solution.Y[t][n][k][m]
+
+
+        #constraint 13: school removal only if in route
+        UNECESSARY
+        #delta < self.Y
+        for (t,n,k,m) in set_delta:
+            ISI_model += delta_vars[t][n][k][m] <= solution.Y[t][n][k][m]
+
+        #constraint 18: bound on the number of changes comitted by the ISI model
+        #sum(delta+omega, axis = 3) < G
+        for t in range(T):
+            for k in range(K):
+                ISI_model += plp.Lpsum([delta_vars[t,n,k,m] for n in range(N) for m in range(M) if (t,n,k,m) in set_delta ]) + plp.Lpsum([omega_vars[t,n,k,m] for n in range(N) for m in range(M) if (t,n,k,m) in set_omega ] )
+
+        '''
+
+        '''
+        Cost except for omega and delta, so some part of the objective function :
+        add_cost = sum( problem.h_s * sum(I_s,axis=0) ) 
+            +   2*problem.c_per_km* sum( problem.to_central * sum(r,axis=0)  )
+        '''

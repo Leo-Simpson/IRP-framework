@@ -52,11 +52,14 @@ for j in set_J :
     opt_model += plp.lpSum(a[i,j] * x_vars[i,j] for i in set_I) >= b[j]
 
 
+for i in set_I : 
+    opt_model += z_vars[i] <= 10.
+
 
 print(c)
 print(opt_model)
 
-""" 
+
 opt_model.solve(solver = plp.GLPK_CMD())
 
 x = np.zeros((n,m))
@@ -72,4 +75,3 @@ print("x",x)
 print("z",z)
 
 print(np.sum(a*x,axis=0)-b)
- """
