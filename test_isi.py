@@ -8,7 +8,7 @@ problem = test_problem(T,N,K,M)
 
 solution = Solution(problem)
 
-solution.ISI(G = N+M)
+solution.ISI(G = N)
 
 
 

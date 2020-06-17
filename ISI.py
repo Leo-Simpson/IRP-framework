@@ -222,7 +222,7 @@ class Solution :
         for t in range(T):
             for n in range(N):
                 for k in range(K):
-                    ISI_model += plp.lpSum([q_vars[t,n,k,m] for  m in range(M)]) <=1
+                    ISI_model += plp.lpSum(q_vars[t,n,k,m] for  m in range(M)) <=1
 
         
         # constraint 11: only positive amount to deliver if school is served in that round
@@ -237,7 +237,7 @@ class Solution :
         #sum(delta+omega, axis = 3) < G
         for t in range(T):
             for k in range(K):
-                ISI_model += plp.lpSum([delta_vars[t,n,k,m] for n in range(N) for m in range(M) if (t,n,k,m) in set_delta ]) + plp.lpSum([omega_vars[t,n,k,m] for n in range(N) for m in range(M) if (t,n,k,m) in set_omega ] )
+                ISI_model += plp.lpSum(delta_vars[t,n,k,m] for n in range(N) for m in range(M) if (t,n,k,m) in set_delta ) + plp.lpSum(omega_vars[t,n,k,m] for n in range(N) for m in range(M) if (t,n,k,m) in set_omega ) <= G
 
 
         # Constraint on the time spending in one tour
@@ -245,12 +245,15 @@ class Solution :
         for t in range(T):
             for n in range(N):
                 for k in range(K):
-                    ISI_model += self.time_route[t,n,k]
-                    +plp.lpSum([ omega_vars[t,n,k,m] * self.time_adding[t,n,k,m] for m in range(M) if (t,n,k,m) in set_omega ])
-                    - plp.lpSum([delta_vars[t,n,k,m] * self.time_substract[t,n,k,m] for m in range(M) if (t,n,k,m) in set_delta]) <= problem.Tmax
+                    expression = self.time_route[t,n,k]
+                    expression = expression + plp.lpSum(omega_vars[t,n,k,m] * self.time_adding[t,n,k,m] for m in range(M) if (t,n,k,m) in set_omega )
+                    expression = expression - plp.lpSum(delta_vars[t,n,k,m] * self.time_substract[t,n,k,m] for m in range(M) if (t,n,k,m) in set_delta)
+
+                    ISI_model += expression <= problem.Tmax
 
 
-        ISI_model.solve()
+        ISI_model.solve(solver = plp.GLPK_CMD())
+
 
         # transform the _vars things into numpy array to return it. 
 
@@ -267,7 +270,8 @@ class Solution :
                 self.X[t,n]=X_vars[t,n].varValue
 
         add = add_cost.value()
-        
+
+        print("Y", self.Y)
 
     
         self.compute_r()
@@ -321,7 +325,7 @@ class Matheuristic :
         M,N,K,T = self.solution.M, self.solution.N, self.solution.K, self.solution.T
         
         # initialization (step 2 and 3 of the pseudo code)
-        self.solution.ISI(G = N+M)
+        self.solution.ISI(G = N)
         self.solution_best = self.solution.copy()
 
         # line 4 of pseudocode
@@ -336,7 +340,7 @@ class Matheuristic :
             operator = self.operators[i]['function']
             self.solution_prime = self.solution.copy()
             operator(self.solution_prime, param.rho)
-            G = N+M
+            G = N
             self.solution_prime.ISI(G=G)
 
             if self.solution_prime.cost < self.solution.cost : # line 7
