@@ -318,8 +318,8 @@ class Matheuristic :
                 {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.rand_insert_rho, 'name': 'rand_insert_rho'},
                 {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.assign_to_nearest_plant, 'name': 'assign_to_nearest_plant'},
                 {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.insert_best_rho, 'name': 'insert_best_rho'},
-                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.swap_roh_cust_intra_routes, 'name': 'swap_roh_cust_intra_routes'},
-                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.swap_roh_cust_intra_plants, 'name': 'swap_roh_cust_intra_plants'}
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.swap_rho_cust_intra_routes, 'name': 'swap_rho_cust_intra_routes'},
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.swap_rho_cust_intra_plants, 'name': 'swap_rho_cust_intra_plants'}
         ]
 
         self.solution = initial_solution
@@ -525,17 +525,17 @@ class Matheuristic :
         if len(free_vehicles) > 0:
             solution.Y[period,closest_warehouse,np.min(free_vehicles), close_reachable] = 1
         
-    def swap_roh_cust_intra_routes(solution, rho):
+    def swap_rho_cust_intra_routes(solution, rho):
         for i in range(rho):
             period = np.random.randint(solution.T)
             warehouse = np.random.randint(solution.N)
-            if len(np.where(np.sum(solution.Y[period,warehouse,:,:], axis = 1) > 0)[0]) >=2:
+            if np.sum(np.sum(solution.Y[period,warehouse,:,:], axis = 1) > 0) >=2:
                 vehicle1, vehicle2 = np.random.choice(np.where(np.sum(solution.Y[period,warehouse,:,:], axis = 1) > 0)[0], 2, replace = False)
                 school1, school2 = np.random.choice(np.where(solution.Y[period,warehouse,vehicle1,:] == 1)[0]), np.random.choice(np.where(solution.Y[period,warehouse,vehicle2,:] == 1)[0])
                 solution.Y[period,warehouse,[vehicle1, vehicle2],school1] = [0, 1]
                 solution.Y[period,warehouse,[vehicle1, vehicle2],school2] = [1, 0]
         
-    def swap_roh_cust_intra_plants(solution, rho):
+    def swap_rho_cust_intra_plants(solution, rho):
         for i in range(rho):
             period = np.random.randint(solution.T)
             warehouse1, warehouse2 = np.random.choice([n for n in range(solution.N) if np.sum(solution.Y[period, n, :, :]) > 0], 2, replace = False)
