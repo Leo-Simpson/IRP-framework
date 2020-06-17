@@ -4,6 +4,8 @@ import random
 from copy import deepcopy
 from OR_tools_solve_tsp import tsp_tour
 import pulp as plp 
+from visu import School , Warehouse, Route, Map
+
 
 class Problem :
     #this is the class that contains the data of the problem
@@ -33,6 +35,29 @@ class Problem :
         self.L_w       =  np.array([w["lower"] for w in self.Warehouses])          # capacity lower bound warehouse
         self.F_w       =  np.array([w["fixed_cost"] for w in self.Warehouses])     # fixed costs for each warehouse
         self.to_central=  np.array([w["dist_central"] for w in self.Warehouses])   # distance between the warehouses and the central
+
+
+    def visu(self, s_positions, w_positions, c_position):
+        self.define_arrays()
+
+
+        schools = []
+        for i in range(len(s_positions)):
+            schools.append(  School(s_positions[i], self.U_s[i], self.d[i] , 's%i'%i )  )
+
+        warhouses = []
+        for i in range(len(w_ositions)):
+            warehouses.append( position= Warehouses(w_positions[i], capacity = self.U_w[i], name= 's%i'%i )  )
+
+
+        
+        self.map = Map(
+            schools=schools,
+            central = c_position,
+            warehouses=warehouses,
+            possible_routes=routes1+routes2,
+            Q = self.Q1, Q2 = self.Q2
+            )
 
 
 
