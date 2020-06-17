@@ -170,7 +170,11 @@ class Solution :
         set_omega = [ (t,n,k,m) for (t,n,k,m) in set_q if not self.Y[t,n,k,m]  ]
 
 
+<<<<<<< HEAD
         ISI_model=plp.LpProblem("ISI_Model",plp.LpMinimize)
+=======
+        ISI_model=plp.LpProblem(plp.LpMinimize,name="ISI_Model")
+>>>>>>> 52c96ff1d828872a5480c06bb4ab3c8250642334
 
         # build dictionaries of decision variables:
         q_vars = plp.LpVariable.dicts("q",set_q, cat='Continuous', lowBound=0., upBound=1.)
@@ -180,7 +184,11 @@ class Solution :
         # just to remember : the psi of the paper is the same thing as our Y
         
 
+<<<<<<< HEAD
         I_s = {(0,m): problem.I_s_init[m]   for m in range(M) }   # need to see how to change an LpAffineExpression with a constant value
+=======
+        I_s = {(0,m): problem.I_s_init[n]   for m in range(M) }   # need to see how to change an LpAffineExpression with a constant value
+>>>>>>> 52c96ff1d828872a5480c06bb4ab3c8250642334
         I_w = {(0,n): problem.I_w_init[n]   for n in range(N) }  # need to see how to change an LpAffineExpression with a constant value
 
         for t in range (1,T): 
@@ -201,7 +209,14 @@ class Solution :
         transport_cost = problem.c_per_km * plp.lpSum( self.b[t,n,k,m] * omega_vars[t,n,k,m] for (t,n,k,m) in set_omega ) - problem.c_per_km * plp.lpSum( self.a[t,n,k,m] * delta_vars[t,n,k,m] for (t,n,k,m) in set_delta )
         add_cost = plp.lpSum([problem.h_s[m] * I_s[t,m] for t in range(T) for m in range(M)]) + problem.c_per_km * plp.lpSum( problem.to_central[n] * X_vars[t,n] for t in range(T) for n in range(N) ) 
 
+<<<<<<< HEAD
         ISI_model += transport_cost + add_cost, 'Z'
+=======
+        ISI_model += plp.lpSum( problem.h_s[m] * I_s[t,n] for t in range(T) for m in range(m) )
+        + problem.c_per_km * plp.lpSum( problem.to_central[n] * X_vars[t,n] for t in range(T) for n in range(n) ) 
+        + problem.c_per_km * plp.lpSum( problem.b[t,n,k,m] * omega_vars[t,n,k,m] for (t,n,k,m) in set_omega )
+        - problem.c_per_km * plp.lpSum( problem.a[t,n,k,m] * delta_vars[t,n,k,m] for (t,n,k,m) in set_delta ), 'Z'
+>>>>>>> 52c96ff1d828872a5480c06bb4ab3c8250642334
 
         # constraint 9 in Latex script, respect capacities + min. stock of schools and warehouses
         
@@ -300,9 +315,9 @@ class Matheuristic :
                 {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.empty_one_plant, 'name': 'empty_one_plant'},
                 {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.rand_insert_rho, 'name': 'rand_insert_rho'},
                 {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.assign_to_nearest_plant, 'name': 'assign_to_nearest_plant'},
-                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.operator8, 'name': 'operator8'},
-                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.operator8, 'name': 'operator8'},
-                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.operator8, 'name': 'operator8'}
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.insert_best_rho, 'name': 'insert_best_rho'},
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.swap_roh_cust_intra_routes, 'name': 'swap_roh_cust_intra_routes'},
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.swap_roh_cust_intra_plants, 'name': 'swap_roh_cust_intra_plants'}
         ]
 
         self.solution = initial_solution
@@ -498,21 +513,38 @@ class Matheuristic :
         period = np.random.randint(solution.T)
         not_served = np.where(np.sum(solution.Y[period,:,:,:], axis = (0,1)) == 0)[0]
         (index, choice) = random.choice(list(enumerate(not_served)))
+        dist_to_all = solution.problem.D.values[np.ix_([choice + solution.N],[m  + solution.N for m in range(solution.M) if m != choice])][0]
         rest_not_served = np.delete(not_served, index)
-        dist = solution.problem.D.values[np.ix_([choice + solution.N],rest_not_served + solution.N)][0]
-        close = rest_not_served[dist <= 2*np.min(dist)]
+        dist_to_not_served = solution.problem.D.values[np.ix_([choice + solution.N],rest_not_served + solution.N)][0]
+        close = rest_not_served[dist_to_not_served <= 2*np.min(dist_to_all)]
         closest_warehouse = np.argmin(solution.problem.D.values[np.ix_([choice + solution.N],[i for i in range(solution.N)])][0])
-        assert len(solution.Cl[closest_warehouse, close][solution.Cl[closest_warehouse, close] == 0]) == 0
+        close_reachable = [m for m in close[solution.Cl[closest_warehouse, close] == 1]]
         free_vehicles = np.where(np.sum(solution.Y[period,closest_warehouse,:,:], axis = 1) == 0)[0]
+        print('period, not_served, choice, rest_not_served, dist_to_not_served, np.min(dist_to_all), closest_warehouse, close_reachable, free_vehicles: ', period, not_served, choice, rest_not_served, dist_to_not_served, np.min(dist_to_all), closest_warehouse, close_reachable, free_vehicles)
         if len(free_vehicles) > 0:
-            solution.Y[period,closest_warehouse,np.min(free_vehicles), close] = 1
+            solution.Y[period,closest_warehouse,np.min(free_vehicles), close_reachable] = 1
         
-    def operator7(solution, rho):
-        pass
+    def swap_roh_cust_intra_routes(solution, rho):
+        for i in range(rho):
+            period = np.random.randint(solution.T)
+            warehouse = np.random.randint(solution.N)
+            if len(np.where(np.sum(solution.Y[period,warehouse,:,:], axis = 1) > 0)[0]) >=2:
+                vehicle1, vehicle2 = np.random.choice(np.where(np.sum(solution.Y[period,warehouse,:,:], axis = 1) > 0)[0], 2, replace = False)
+                school1, school2 = np.random.choice(np.where(solution.Y[period,warehouse,vehicle1,:] == 1)[0]), np.random.choice(np.where(solution.Y[period,warehouse,vehicle2,:] == 1)[0])
+                solution.Y[period,warehouse,[vehicle1, vehicle2],school1] = [0, 1]
+                solution.Y[period,warehouse,[vehicle1, vehicle2],school2] = [1, 0]
         
-    def operator8(solution, rho):
-        pass
-
+    def swap_roh_cust_intra_plants(solution, rho):
+        for i in range(rho):
+            period = np.random.randint(solution.T)
+            warehouse1, warehouse2 = np.random.choice([n for n in range(solution.N) if np.sum(solution.Y[period, n, :, :]) > 0], 2, replace = False)
+            school1, school2 = np.random.choice(np.where(np.sum(solution.Y[period,warehouse1,:,:], axis = 0) > 0)[0]), np.random.choice(np.where(np.sum(solution.Y[period,warehouse2,:,:], axis = 0) > 0)[0])
+            if solution.Cl[warehouse1, school2] == 1 and solution.Cl[warehouse2, school1] == 1:
+                vehicle1, vehicle2 = np.where(solution.Y[period,warehouse1,:,school1] > 0)[0], np.where(solution.Y[period,warehouse2,:,school2] > 0)[0]
+                solution.Y[period,warehouse1,vehicle1,school1] = 0
+                solution.Y[period,warehouse2,vehicle2,school1] = 1
+                solution.Y[period,warehouse1,vehicle1,school2] = 1
+                solution.Y[period,warehouse2,vehicle2,school2] = 0
 
     def choose_operator(operators):
         weights = [operator['weight'] for operator in operators]
