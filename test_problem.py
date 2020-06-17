@@ -10,15 +10,20 @@ def test_problem(T,N,K,M):
     
     Schools = []
     Warehouses = []
-
-    np.random.seed(10)
-
     for i in range(M):
-        Schools.append({'capacity': np.random.randint(low = 10, high = 100)*10, 'lower': np.random.randint(low = 1, high = 5)*100, 'consumption': np.random.randint(low = 1, high = 10)*10 ,'storage_cost': np.random.randint(low = 1, high = 5)*10 , 'initial':  np.random.randint(low = 1, high = 10)*100,  'name' : 'School {}'.format(i+1), 'location': np.array([np.random.randint(low = -100, high = 100),np.random.randint(low = -100, high = 100)])})
+        comsumption =  np.random.randint(low = 1, high = 10)
+        lower = comsumption
+        capacity = 200*lower
+        initial = capacity
+        Schools.append({'capacity': capacity, 'lower': lower, 'consumption':comsumption,'storage_cost': np.random.randint(low = 1, high = 5)*10 , 'initial': initial,  'name' : 'School {}'.format(i+1), 'location': np.array([np.random.randint(low = -100, high = 100),np.random.randint(low = -100, high = 100)])})
 
 
     for i in range(N):
-        Warehouses.append({'capacity': np.random.randint(low = 1, high = 100)*1000, 'lower': np.random.randint(low = 10, high = 20)*1000 , 'dist_central': np.random.randint(low = 1, high = 100) , 'fixed_cost': np.random.randint(low = 1, high = 10)*100 , 'initial': np.random.randint(low = 1, high = 20)*1000,  'name' : 'Warehouse {}'.format(i+1), 'location': np.array([np.random.randint(low = -100, high = 100),np.random.randint(low = -100, high = 100)])})
+        lower = comsumption
+        capacity = 1000*lower
+        initial = 500*lower
+
+        Warehouses.append({'capacity': capacity, 'lower': lower , 'dist_central': np.random.randint(low = 1, high = 100) , 'fixed_cost': np.random.randint(low = 1, high = 10)*100 , 'initial': initial,  'name' : 'Warehouse {}'.format(i+1), 'location': np.array([np.random.randint(low = -100, high = 100),np.random.randint(low = -100, high = 100)])})
 
 
     locations = [w['location'] for w in Warehouses] + [s['location'] for s in Schools]

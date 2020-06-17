@@ -172,6 +172,15 @@ class Solution :
         set_omega = [ (t,n,k,m) for (t,n,k,m) in set_q if not self.Y[t,n,k,m]  ]
 
 
+        print("d",problem.d)
+        print("U_s", problem.U_s)
+        print("L_s", problem.L_s)
+        print("U_w", problem.U_w)
+        print("L_w", problem.L_w)
+        print("Is_init",problem.I_s_init)
+        print("Iw_init", problem.I_w_init)
+
+
         ISI_model=plp.LpProblem("ISI_Model",plp.LpMinimize)
 
         # build dictionaries of decision variables:
