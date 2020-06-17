@@ -7,7 +7,7 @@ import pulp as plp
 
 class Problem :
     #this is the class that contains the data of the problem
-    def __init__(self,D,Warehouses,Schools,T,K, Q1, Q2, v, t_load, c_per_km):
+    def __init__(self,D,Warehouses,Schools,T,K, Q1, Q2, v, t_load, c_per_km, Tmax):
         self.D = D # distance matrix. Could be a pandas data frame with the names of Warehouses/Schools as index of rows and colomns 
                     # to get the distance between a warehouse and a school for example : D.loc[warehouse_name, school_name]
         self.Warehouses = Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'dist_central': ... , 'fixed_cost': ... , 'initial': ...,  'name' : ...}
@@ -19,6 +19,7 @@ class Problem :
         self.v = v # average speed of trucks in km/h
         self.t_load = t_load # average loading/unloading time at schools in hours
         self.c_per_km = c_per_km # average routing cost per kilometer
+        self.Tmax = Tmax
 
     def define_arrays(self):
         self.I_s_init  =  np.array([s["initial"] for s in self.Schools])           # initial inventory of school
@@ -138,9 +139,10 @@ class Solution :
                         ] for t in range(self.T)
                     ])
 
-    def compute_cost(self, add = 0): 
+    def compute_costs(self, add = 0): 
         self.compute_dist()
-        self.cost = self.problem.c_per_km * self.dist + add
+        if not add is None : self.cost = self.problem.c_per_km * self.dist + add
+        else : self.cost = self.problem.c_per_km * self.dist
 
     def compute_route_dist(self, tour_schools, warehouse : int):
         dist_mat = self.problem.D.values
@@ -170,11 +172,7 @@ class Solution :
         set_omega = [ (t,n,k,m) for (t,n,k,m) in set_q if not self.Y[t,n,k,m]  ]
 
 
-<<<<<<< HEAD
         ISI_model=plp.LpProblem("ISI_Model",plp.LpMinimize)
-=======
-        ISI_model=plp.LpProblem(plp.LpMinimize,name="ISI_Model")
->>>>>>> 52c96ff1d828872a5480c06bb4ab3c8250642334
 
         # build dictionaries of decision variables:
         q_vars = plp.LpVariable.dicts("q",set_q, cat='Continuous', lowBound=0., upBound=1.)
@@ -184,11 +182,8 @@ class Solution :
         # just to remember : the psi of the paper is the same thing as our Y
         
 
-<<<<<<< HEAD
         I_s = {(0,m): problem.I_s_init[m]   for m in range(M) }   # need to see how to change an LpAffineExpression with a constant value
-=======
-        I_s = {(0,m): problem.I_s_init[n]   for m in range(M) }   # need to see how to change an LpAffineExpression with a constant value
->>>>>>> 52c96ff1d828872a5480c06bb4ab3c8250642334
+
         I_w = {(0,n): problem.I_w_init[n]   for n in range(N) }  # need to see how to change an LpAffineExpression with a constant value
 
         for t in range (1,T): 
@@ -209,15 +204,8 @@ class Solution :
         transport_cost = problem.c_per_km * plp.lpSum( self.b[t,n,k,m] * omega_vars[t,n,k,m] for (t,n,k,m) in set_omega ) - problem.c_per_km * plp.lpSum( self.a[t,n,k,m] * delta_vars[t,n,k,m] for (t,n,k,m) in set_delta )
         add_cost = plp.lpSum([problem.h_s[m] * I_s[t,m] for t in range(T) for m in range(M)]) + problem.c_per_km * plp.lpSum( problem.to_central[n] * X_vars[t,n] for t in range(T) for n in range(N) ) 
 
-<<<<<<< HEAD
-        ISI_model += transport_cost + add_cost, 'Z'
-=======
-        ISI_model += plp.lpSum( problem.h_s[m] * I_s[t,n] for t in range(T) for m in range(m) )
-        + problem.c_per_km * plp.lpSum( problem.to_central[n] * X_vars[t,n] for t in range(T) for n in range(n) ) 
-        + problem.c_per_km * plp.lpSum( problem.b[t,n,k,m] * omega_vars[t,n,k,m] for (t,n,k,m) in set_omega )
-        - problem.c_per_km * plp.lpSum( problem.a[t,n,k,m] * delta_vars[t,n,k,m] for (t,n,k,m) in set_delta ), 'Z'
->>>>>>> 52c96ff1d828872a5480c06bb4ab3c8250642334
 
+        ISI_model += add_cost + transport_cost, 'Z'
         # constraint 9 in Latex script, respect capacities + min. stock of schools and warehouses
         
         for t in range(1,T):
@@ -278,11 +266,12 @@ class Solution :
             for n in range(N):
                 self.X[t,n]=X_vars[t,n].varValue
 
+        add = add_cost.value()
         
 
     
         self.compute_r()
-        self.compute_costs(add=add_cost.value())
+        self.compute_costs(add=add)
 
 
 
