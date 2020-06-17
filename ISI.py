@@ -391,9 +391,9 @@ class Matheuristic :
                 {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.empty_one_plant, 'name': 'empty_one_plant'},
                 {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.rand_insert_rho, 'name': 'rand_insert_rho'},
                 {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.assign_to_nearest_plant, 'name': 'assign_to_nearest_plant'},
-                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.operator8, 'name': 'operator8'},
-                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.operator8, 'name': 'operator8'},
-                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.operator8, 'name': 'operator8'}
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.insert_best_rho, 'name': 'insert_best_rho'},
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.swap_roh_cust_intra_routes, 'name': 'swap_roh_cust_intra_routes'},
+                {'weight' : 1, 'score': 0 , 'number_used':0, 'function':Matheuristic.swap_roh_cust_intra_plants, 'name': 'swap_roh_cust_intra_plants'}
         ]
 
         self.solution = initial_solution
@@ -587,21 +587,38 @@ class Matheuristic :
         period = np.random.randint(solution.T)
         not_served = np.where(np.sum(solution.Y[period,:,:,:], axis = (0,1)) == 0)[0]
         (index, choice) = random.choice(list(enumerate(not_served)))
+        dist_to_all = solution.problem.D.values[np.ix_([choice + solution.N],[m  + solution.N for m in range(solution.M) if m != choice])][0]
         rest_not_served = np.delete(not_served, index)
-        dist = solution.problem.D.values[np.ix_([choice + solution.N],rest_not_served + solution.N)][0]
-        close = rest_not_served[dist <= 2*np.min(dist)]
+        dist_to_not_served = solution.problem.D.values[np.ix_([choice + solution.N],rest_not_served + solution.N)][0]
+        close = rest_not_served[dist_to_not_served <= 2*np.min(dist_to_all)]
         closest_warehouse = np.argmin(solution.problem.D.values[np.ix_([choice + solution.N],[i for i in range(solution.N)])][0])
-        assert len(solution.Cl[closest_warehouse, close][solution.Cl[closest_warehouse, close] == 0]) == 0
+        close_reachable = [m for m in close[solution.Cl[closest_warehouse, close] == 1]]
         free_vehicles = np.where(np.sum(solution.Y[period,closest_warehouse,:,:], axis = 1) == 0)[0]
+        print('period, not_served, choice, rest_not_served, dist_to_not_served, np.min(dist_to_all), closest_warehouse, close_reachable, free_vehicles: ', period, not_served, choice, rest_not_served, dist_to_not_served, np.min(dist_to_all), closest_warehouse, close_reachable, free_vehicles)
         if len(free_vehicles) > 0:
-            solution.Y[period,closest_warehouse,np.min(free_vehicles), close] = 1
+            solution.Y[period,closest_warehouse,np.min(free_vehicles), close_reachable] = 1
         
-    def operator7(solution, rho):
-        pass
+    def swap_roh_cust_intra_routes(solution, rho):
+        for i in range(rho):
+            period = np.random.randint(solution.T)
+            warehouse = np.random.randint(solution.N)
+            if len(np.where(np.sum(solution.Y[period,warehouse,:,:], axis = 1) > 0)[0]) >=2:
+                vehicle1, vehicle2 = np.random.choice(np.where(np.sum(solution.Y[period,warehouse,:,:], axis = 1) > 0)[0], 2, replace = False)
+                school1, school2 = np.random.choice(np.where(solution.Y[period,warehouse,vehicle1,:] == 1)[0]), np.random.choice(np.where(solution.Y[period,warehouse,vehicle2,:] == 1)[0])
+                solution.Y[period,warehouse,[vehicle1, vehicle2],school1] = [0, 1]
+                solution.Y[period,warehouse,[vehicle1, vehicle2],school2] = [1, 0]
         
-    def operator8(solution, rho):
-        pass
-
+    def swap_roh_cust_intra_plants(solution, rho):
+        for i in range(rho):
+            period = np.random.randint(solution.T)
+            warehouse1, warehouse2 = np.random.choice([n for n in range(solution.N) if np.sum(solution.Y[period, n, :, :]) > 0], 2, replace = False)
+            school1, school2 = np.random.choice(np.where(np.sum(solution.Y[period,warehouse1,:,:], axis = 0) > 0)[0]), np.random.choice(np.where(np.sum(solution.Y[period,warehouse2,:,:], axis = 0) > 0)[0])
+            if solution.Cl[warehouse1, school2] == 1 and solution.Cl[warehouse2, school1] == 1:
+                vehicle1, vehicle2 = np.where(solution.Y[period,warehouse1,:,school1] > 0)[0], np.where(solution.Y[period,warehouse2,:,school2] > 0)[0]
+                solution.Y[period,warehouse1,vehicle1,school1] = 0
+                solution.Y[period,warehouse2,vehicle2,school1] = 1
+                solution.Y[period,warehouse1,vehicle1,school2] = 1
+                solution.Y[period,warehouse2,vehicle2,school2] = 0
 
     def choose_operator(operators):
         weights = [operator['weight'] for operator in operators]
