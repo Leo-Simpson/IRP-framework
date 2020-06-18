@@ -583,7 +583,6 @@ class Matheuristic :
         
         
     def swap_rho_cust_intra_routes(solution, rho):
-        candidates = 
         for i in range(rho):
             period, warehouse = np.random.randint(solution.T), np.random.randint(solution.N)
             if np.sum(np.sum(solution.Y[period,warehouse,:,:], axis = 1) > 0) >=2:
