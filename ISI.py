@@ -338,7 +338,6 @@ class Meta_param :
         self.ksi = rd.uniform(low=0.1,high=0.2)
         self.seed = None
         self.rho = 10
-        self.maxiter_operators = 100
 
 
 class Matheuristic : 
@@ -386,7 +385,7 @@ class Matheuristic :
             i = Matheuristic.choose_operator(self.operators)
             operator = self.operators[i]['function']
             self.solution_prime = self.solution.copy()
-            operator(self.solution_prime, param.rho, param.maxiter_operators)
+            operator(self.solution_prime, param.rho)
             G = N
             self.solution_prime.ISI(G=G)
 
@@ -435,30 +434,31 @@ class Matheuristic :
 
 
 
-    def rand_remove_rho(solution, rho, maxiter):
-        Y_flat = solution.Y.reshape(-1)
-        served = np.nonzero(Y_flat)[0]
-        to_remove = np.min([len(served), rho])
-        rho_samples = random.sample(served, to_remove)
-        Y_flat[served[rho_samples]] = 0
+    def rand_remove_rho(solution, rho):
+        for i in range(np.min([rho,len(np.nonzero(solution.Y)[0])])):  
+            t,n,k,m = random.choice(np.transpose(np.nonzero(solution.Y)))
+            solution.Y[t,n,k,m] = 0
+            tour = np.array(solution.r[t][n][k])
+            solution.r[t][n][k] = np.ndarray.tolist(tour[tour != m + solution.N])
+           
 
-    def remove_worst_rho(solution, rho, maxiter):
+    def remove_worst_rho(solution, rho):
         for i in range(np.min([rho,len(np.nonzero(solution.Y)[0])])):   
-            choice = np.argmax(solution.a)
-            solution.Y.reshape(-1)[choice] = 0
-            solution.a.reshape(-1)[choice] = 0
+            Y_flat = solution.Y.reshape(-1)
+            a_flat = solution.a.reshape(-1)
+            argmax = np.argmax(a_flat[Y_flat == 1])
+            choice = np.where(Y_flat == 1)[0][argmax]
+            Y_flat[choice] = 0
+            a_flat[choice] = 0
             t, rest = np.divmod(choice, solution.N*solution.K*solution.M)
             n, rest = np.divmod(rest, solution.K*solution.M)
-            k = np.floor_divide(rest, solution.M)
-            tour_school = np.nonzero(solution.Y[t,n,k,:])[0] + solution.N 
-            solution.r[t][n][k] = tsp_tour(tour_school, n, solution.problem.D.values)
+            k,m = np.divmod(rest, solution.M)
+            tour = np.array(solution.r[t][n][k])
+            solution.r[t][n][k] = np.ndarray.tolist(tour[tour != m + solution.N])
             solution.compute_school_remove_costs(t,n,k)
 
-    def shaw_removal_route_based(solution, rho, maxiter):
-        served = np.transpose(np.nonzero(solution.Y))
-        num_served = len(served)
-        candidate = np.random.choice(num_served)
-        [t,n,k,m] = served[candidate]
+    def shaw_removal_route_based(solution, rho):
+        t,n,k,m = random.choice(np.transpose(np.nonzero(solution.Y)))
         route = np.array(solution.r[t][n][k])
         if len(route) > 2:
             schools = route[np.where(route != m + solution.N)[0]]
@@ -466,15 +466,14 @@ class Matheuristic :
             min_dist_from_m = np.min(solution.problem.D.values[np.ix_([m + solution.N],schools)][0])
             to_remove = route[np.where(dist_from_m <= 2*min_dist_from_m)[0]] - solution.N 
             solution.Y[t,n,k,to_remove] = 0
+            solution.r[t][n][k] = tsp_tour(np.setdiff1d(route, to_remove + solution.N), n, solution.problem.D.values)
         else:
             solution.Y[t,n,k,:] = 0
+            solution.r[t][n][k] = []
 
 
-    def shaw_removal_greedy(solution, rho, maxiter):
-        served = np.transpose(np.nonzero(solution.Y))
-        num_served = len(served)
-        candidate = np.random.choice(num_served, 1)[0]
-        [t,n,k,m] = served[candidate]
+    def shaw_removal_greedy(solution, rho):
+        t,n,k,m = random.choice(np.transpose(np.nonzero(solution.Y)))
         route = np.array(solution.r[t][n][k])
         if len(route) > 2:
             schools = route[np.where(route != m + solution.N)[0]]
@@ -483,30 +482,31 @@ class Matheuristic :
             min_dist = np.min(dist[dist>0])
             to_remove = route[np.where(dist_from_m <= 2*min_dist)[0]] - solution.N 
             solution.Y[t,n,k,to_remove] = 0
+            solution.r[t][n][k] = tsp_tour(np.setdiff1d(route, to_remove + solution.N), n, solution.problem.D.values)
         else:
             solution.Y[t,n,k,:] = 0
+            solution.r[t][n][k] = []
     
-    def avoid_consecutive_visits(solution, rho, maxiter):
+    def avoid_consecutive_visits(solution, rho):
         for t in range(solution.T-1):
             time_schools = np.sum(solution.Y[[t, t+1],:,:,:], axis = (1,2))
-            print(time_schools)
             index = np.where(time_schools[1,:] + time_schools[0,:] > 1)
             solution.Y[t+1,:,:,index] = 0
     
-    def empty_one_period(solution, rho, maxiter):
+    def empty_one_period(solution, rho):
         period = np.random.randint(solution.T)
         solution.Y[period,:,:,:] = 0
     
-    def empty_one_vehicle(solution, rho, maxiter):
+    def empty_one_vehicle(solution, rho):
         warehouse = np.random.randint(solution.N)
         vehicle = np.random.randint(solution.K)
         solution.Y[:,warehouse,vehicle,:] = 0
     
-    def empty_one_plant(solution, rho, maxiter):
+    def empty_one_plant(solution, rho):
         warehouse = np.random.randint(solution.N)
         solution.Y[:,warehouse,:,:] = 0
         
-    def furthest_customer(solution, rho, maxiter):
+    def furthest_customer(solution, rho):
         candidates = np.sum(solution.Y, axis = 3)
         for i in range(np.min([rho,np.sum(candidates)])):
             t,n,k = random.choice(np.transpose(np.nonzero(candidates)))
@@ -516,7 +516,7 @@ class Matheuristic :
             solution.r[t][n][k] = np.delete(route, furthest_cust_index)
             candidates[t,n,k] -= 1
         
-    def rand_insert_rho(solution, rho, maxiter):    
+    def rand_insert_rho(solution, rho):    
         candidates = 1-np.sum(solution.Y, axis = (1,2))
         for i in range(np.min([rho,np.sum(candidates)])):
             t, m = random.choice(np.transpose(np.nonzero(candidates)))
@@ -525,7 +525,7 @@ class Matheuristic :
             solution.Y[t,n,k,m] = 1
             solution.r[t][n][k],_ = solution.cheapest_school_insert(t,n,k,m)
         
-    def assign_to_nearest_plant(solution, rho, maxiter):
+    def assign_to_nearest_plant(solution, rho):
         candidates = 1-np.sum(solution.Y, axis = (1,2))
         for i in range(np.min([rho,np.sum(candidates)])):
             t, m = random.choice(np.transpose(np.nonzero(candidates)))
@@ -542,7 +542,7 @@ class Matheuristic :
             solution.Y[t,nearest_plant,k,m] = 1
             solution.r[t][nearest_plant][k] = route
         
-    def insert_best_rho(solution, rho, maxiter):
+    def insert_best_rho(solution, rho):
         candidates = 1-np.sum(solution.Y, axis = (1,2))
         for i in range(np.min([rho,np.sum(candidates)])): 
             b_flat = solution.b.reshape(-1)
@@ -558,31 +558,41 @@ class Matheuristic :
             #solution.r[t][n][k] = tsp_tour(tour_school, n, solution.problem.D.values)
             solution.compute_school_insert_costs(t,n,k)
         
-    def shaw_insertion(solution, rho, maxiter):  #to do: what to do if there is no vehicle available? and if not all chosen customers can be served (variable Cl) by the closest warehouse?
+    def shaw_insertion(solution, rho): 
+        dist = solution.problem.D.values
         period = np.random.randint(solution.T)
         not_served = np.where(np.sum(solution.Y[period,:,:,:], axis = (0,1)) == 0)[0]
         (index, choice) = random.choice(list(enumerate(not_served)))
-        dist_to_all = solution.problem.D.values[np.ix_([choice + solution.N],[m  + solution.N for m in range(solution.M) if m != choice])][0]
+        dist_to_all = dist[np.ix_([choice + solution.N],[m  + solution.N for m in range(solution.M) if m != choice])][0]
         rest_not_served = np.delete(not_served, index)
-        dist_to_not_served = solution.problem.D.values[np.ix_([choice + solution.N],rest_not_served + solution.N)][0]
+        dist_to_not_served = dist[np.ix_([choice + solution.N],rest_not_served + solution.N)][0]
         close = rest_not_served[dist_to_not_served <= 2*np.min(dist_to_all)]
-        closest_warehouse = np.argmin(solution.problem.D.values[np.ix_([choice + solution.N],[i for i in range(solution.N)])][0])
+        closest_warehouse = np.argmin(dist[np.ix_([choice + solution.N],[i for i in range(solution.N)])][0])
         close_reachable = [m for m in close[solution.Cl[closest_warehouse, close] == 1]]
-        free_vehicles = np.where(np.sum(solution.Y[period,closest_warehouse,:,:], axis = 1) == 0)[0]
-        if len(free_vehicles) > 0:
-            solution.Y[period,closest_warehouse,np.min(free_vehicles), close_reachable] = 1
+        route = tsp_tour(close_reachable + solution.r[period][closest_warehouse][0],closest_warehouse,dist)
+        costs = solution.compute_route_dist(route, closest_warehouse)
+        index = 0
+        for k in range(1, solution.K):
+            route_temp = tsp_tour(close_reachable + solution.r[period][closest_warehouse][k],closest_warehouse,dist)
+            costs_temp = solution.compute_route_dist(route_temp, closest_warehouse)
+            if costs_temp < costs:
+                route = route_temp
+                index = k
+        solution.Y[period,closest_warehouse,index, close_reachable] = 1
+        solution.r[period][closest_warehouse][index] = route
         
-    def swap_rho_cust_intra_routes(solution, rho, maxiter):
+        
+    def swap_rho_cust_intra_routes(solution, rho):
+        candidates = 
         for i in range(rho):
-            period = np.random.randint(solution.T)
-            warehouse = np.random.randint(solution.N)
+            period, warehouse = np.random.randint(solution.T), np.random.randint(solution.N)
             if np.sum(np.sum(solution.Y[period,warehouse,:,:], axis = 1) > 0) >=2:
                 vehicle1, vehicle2 = np.random.choice(np.where(np.sum(solution.Y[period,warehouse,:,:], axis = 1) > 0)[0], 2, replace = False)
                 school1, school2 = np.random.choice(np.where(solution.Y[period,warehouse,vehicle1,:] == 1)[0]), np.random.choice(np.where(solution.Y[period,warehouse,vehicle2,:] == 1)[0])
                 solution.Y[period,warehouse,[vehicle1, vehicle2],school1] = [0, 1]
                 solution.Y[period,warehouse,[vehicle1, vehicle2],school2] = [1, 0]
         
-    def swap_rho_cust_intra_plants(solution, rho, maxiter):
+    def swap_rho_cust_intra_plants(solution, rho):
         for i in range(rho):
             period = np.random.randint(solution.T)
             warehouse1, warehouse2 = np.random.choice([n for n in range(solution.N) if np.sum(solution.Y[period, n, :, :]) > 0], 2, replace = False)
