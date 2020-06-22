@@ -581,27 +581,41 @@ class Matheuristic :
         solution.Y[period,closest_warehouse,index, close_reachable] = 1
         solution.r[period][closest_warehouse][index] = route
         
-        
     def swap_rho_cust_intra_routes(solution, rho):
-        for i in range(rho):
-            period, warehouse = np.random.randint(solution.T), np.random.randint(solution.N)
-            if np.sum(np.sum(solution.Y[period,warehouse,:,:], axis = 1) > 0) >=2:
-                vehicle1, vehicle2 = np.random.choice(np.where(np.sum(solution.Y[period,warehouse,:,:], axis = 1) > 0)[0], 2, replace = False)
-                school1, school2 = np.random.choice(np.where(solution.Y[period,warehouse,vehicle1,:] == 1)[0]), np.random.choice(np.where(solution.Y[period,warehouse,vehicle2,:] == 1)[0])
-                solution.Y[period,warehouse,[vehicle1, vehicle2],school1] = [0, 1]
-                solution.Y[period,warehouse,[vehicle1, vehicle2],school2] = [1, 0]
-        
+        dist = solution.problem.D.values
+        sum_over_schools = np.sum(solution.Y, axis = 3)
+        candidates = np.transpose(np.where(np.count_nonzero(sum_over_schools, axis = 2) > 1))
+        for i in range(rho): 
+            [t,n] = random.choice(candidates)
+            candid_veh = np.where(sum_over_schools[t,n,:] > 0)[0]
+            number = len(candid_veh)
+            k1, k2 = candid_veh[np.random.choice(number,2,replace= False)]
+            m1, m2 = random.choice(np.nonzero(solution.Y[t,n,k1,:])[0]), random.choice(np.nonzero(solution.Y[t,n,k2,:])[0])
+            solution.Y[t,n,[k1, k2],m1] = [0, 1]
+            solution.Y[t,n,[k1, k2],m2] = [1, 0]
+            solution.r[t][n][k1], solution.r[t][n][k2] = tsp_tour(np.nonzero(solution.Y[t,n,k1,:])[0] + solution.N, n, dist), tsp_tour(np.nonzero(solution.Y[t,n,k2,:])[0] + solution.N, n, dist)
+            
     def swap_rho_cust_intra_plants(solution, rho):
-        for i in range(rho):
-            period = np.random.randint(solution.T)
-            warehouse1, warehouse2 = np.random.choice([n for n in range(solution.N) if np.sum(solution.Y[period, n, :, :]) > 0], 2, replace = False)
-            school1, school2 = np.random.choice(np.where(np.sum(solution.Y[period,warehouse1,:,:], axis = 0) > 0)[0]), np.random.choice(np.where(np.sum(solution.Y[period,warehouse2,:,:], axis = 0) > 0)[0])
-            if solution.Cl[warehouse1, school2] == 1 and solution.Cl[warehouse2, school1] == 1:
-                vehicle1, vehicle2 = np.where(solution.Y[period,warehouse1,:,school1] > 0)[0], np.where(solution.Y[period,warehouse2,:,school2] > 0)[0]
-                solution.Y[period,warehouse1,vehicle1,school1] = 0
-                solution.Y[period,warehouse2,vehicle2,school1] = 1
-                solution.Y[period,warehouse1,vehicle1,school2] = 1
-                solution.Y[period,warehouse2,vehicle2,school2] = 0
+        max_iter = 100
+        iterations = 0
+        changed = 0
+        dist = solution.problem.D.values
+        candidates_warehouses = np.transpose(np.nonzero(np.sum(solution.Y, axis = (2,3))))
+        candidates_time = np.where(np.count_nonzero(np.sum(solution.Y, axis = (2,3)), axis = 1) > 1)[0]
+        while iterations < max_iter and changed < rho :
+            t = random.choice(candidates_time)
+            candidates_warehouses = np.nonzero(np.sum(solution.Y[t,:,:,:], axis = (1,2)))[0]
+            temp1, temp2 = np.random.choice(len(candidates_warehouses), 2, replace = False)
+            n1, n2 = candidates_warehouses[temp1], candidates_warehouses[temp2]
+            candidates_1 = np.transpose(np.nonzero(solution.Y[t,n1,:,:]))
+            candidates_2 = np.transpose(np.nonzero(solution.Y[t,n2,:,:]))
+            [k1,m1], [k2,m2] = random.choice(candidates_1), random.choice(candidates_2)
+            if solution.Cl[n1,m2] == 1 and solution.Cl[n2,m1] == 1:
+                solution.Y[t,[n1, n2],[k1, k2],m1] = [0, 1]
+                solution.Y[t,[n1, n2],[k1, k2],m2] = [1, 0]
+                solution.r[t][n1][k1], solution.r[t][n2][k2] = tsp_tour(np.nonzero(solution.Y[t,n1,k1,:])[0] + solution.N, n1, dist), tsp_tour(np.nonzero(solution.Y[t,n2,k2,:])[0] + solution.N, n2, dist)
+                changed += 1
+            iterations += 1
 
     def choose_operator(operators):
         weights = [operator['weight'] for operator in operators]
@@ -610,7 +624,6 @@ class Matheuristic :
         for i in range(len(weights)):
             s+=weights[i]
             if s>=v : return i
-
 
     def update_weights(self, r):        # r is the reaction factor
         for op in self.operators : 
