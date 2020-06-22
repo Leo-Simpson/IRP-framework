@@ -43,14 +43,14 @@ class Problem :
 
         schools = []
         for i in range(len(s_positions)):
-            schools.append(  School(s_positions[i], self.U_s[i], self.d[i] , 's%i'%i )  )
+            schools.append(School(s_positions[i], self.U_s[i], self.d[i] , 's%i'%i ))
 
-        warhouses = []
-        for i in range(len(w_ositions)):
-            warehouses.append( position= Warehouses(w_positions[i], capacity = self.U_w[i], name= 's%i'%i )  )
+        warehouses = []
+        for i in range(len(w_positions)):
+            warehouses.append(Warehouse( position=w_positions[i], capacity = self.U_w[i], name= 's%i'%i ))
 
 
-        
+        #edit Sabi 22.06.: routes1 and routes2 need to be defined somewhere right?
         self.map = Map(
             schools=schools,
             central = c_position,
@@ -390,7 +390,7 @@ class Matheuristic :
             self.solution_prime.ISI(G=G)
 
             if self.solution_prime.cost < self.solution.cost : # line 7
-                self.solution = copy(self.solution_prime) # line 8
+                self.solution = self.solution_prime.copy() # line 8
                 G = max(G-1,1)                                  # line 9
 
                 keep_going, i  = True, 0
