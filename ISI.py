@@ -4,7 +4,6 @@ import random
 from copy import deepcopy
 from OR_tools_solve_tsp import tsp_tour
 import pulp as plp 
-from visu import School , Warehouse, Route, Map
 
 
 class Problem :
