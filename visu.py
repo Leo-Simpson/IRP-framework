@@ -99,8 +99,6 @@ def plots(schools, warehouses, central):
 
 
 
-
-
 def make_layout(title,central, pos_s, pos_w, I_s, I_w): 
     
     annotations = annotations_inventory(pos_s,pos_w,I_s,I_w)
@@ -129,8 +127,35 @@ def make_layout(title,central, pos_s, pos_w, I_s, I_w):
             )
 
 
-def visu(problem, TITLE, I_s, I_w, cost, total_cost):
-    
+def build_arrow(routes):
+    # routes is a list TxNxKx[s1,s2,..]
+    # arrows is the list of arrows : ([x1,y1],[x2,y2],distance), and indices_step is the list (T,N,K,#edges) of indices of arrows  
+
+    for t in range(len(route)):
+        for n in range(len(routes[0])):
+            for k in range(len(routes[0][0])):
+                route = routes[t][n][k]
+
+    return arrows, indices_step
+
+def plot_arr(arrow):
+    text = "distance = {}".format(arrow[2])
+
+    x1,y1,x2,y2 = arrow[0][0], arrow[0][1], arrow[1][0], arrow[1][1]
+
+    return go.Scatter(x=[(7*x1+x2)/8,(x1+7*x2)/8],
+            y=[(7*y1+y2)/8,(y1+7*y2)/8],
+            line= dict(color=COLORS["road"]),
+            text = [text,text],
+            hoverinfo='text',
+            visible = False
+            )
+
+
+
+def visu(problem, TITLE, I_s, I_w, cost, routes):
+
+
     title = TITLE + "   Truck 1 capacity : {}   Truck 2 capacity : {} ".format(problem.Q1,problem.Q2)
 
     
@@ -142,12 +167,21 @@ def visu(problem, TITLE, I_s, I_w, cost, total_cost):
     data = plots(problem.Schools, problem.Warehouses, problem.central)
     layout = make_layout(title,problem.central,pos_s,pos_w,I_s[0],I_w[0])
 
+
+    arrows, indices_step = build_arrows(routes) # arrows is the list of arrows : ([x1,y1],[x2,y2],distance), and indices_step is the list (T,N,K,#edges) of indices of arrows  
+
+    #for arr in arrows : 
+    #    data.append(plot_arr(arr))
+
+
     L = []
     visible = [True, True, True]
+    total_cost = 0
     for t in range(problem.T):
         visible[-1] = not visible[-1]
+        total_cost+=cost[t]
 
-        title_up = title + "        Cost = {}        Total Cost = {} ".format(cost[t],total_cost[t])
+        title_up = title + "        Cost = {}        Total Cost = {} ".format(cost[t],total_cost)
         
         annotations = annotations_inventory( pos_s, pos_w, I_s[t], I_w[t])
         annotations.append(make_annotation(problem.central,"CENTRAL", 'black'))

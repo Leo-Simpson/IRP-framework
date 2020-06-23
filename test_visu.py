@@ -15,17 +15,15 @@ I_s = [np.array([s["initial"] for s in problem.Schools])]
 I_w = [np.array([w["initial"] for w in problem.Warehouses])]
 
 
-total_cost = [300]
-cost = [10]*T
+costs = [10]*T
 
 for t in range(T-1):
     I_s.append(I_s[t]-1)
     I_w.append(I_w[t]-1)
-    total_cost.append(total_cost[t]+cost[t])
 
 
 
-visual = visu(problem,"WFP Inventory problem", I_s,I_w, cost, total_cost)
+visual = visu(problem,"WFP Inventory problem", I_s,I_w, costs)
 
 fig = go.Figure(visual)
 offline.plot(fig, filename= "visu.html")
