@@ -1,5 +1,5 @@
 #test code
-
+import numpy as np
 from test_problem import test_problem
 from ISI import Problem, Solution
 from visu import visu 
@@ -11,17 +11,22 @@ from plotly import offline
 
 T, N, K,M = 10,2,4,6
 problem = test_problem(T,N,K,M)
-I_s = [s["initial"] for s in problem.Schools]
-I_w = [w["initial"] for w in problem.Warehouses]
-cost = 10
-total_cost = 30
-
-title = TITLE + "        Cost = %s          Total Cost = " %str(cost) + str(total_cost)
-title = title + "   Truck 1 capacity : "+ str(problem.Q1) + "   Truck 2 capacity : "+ str(problem.Q2)
+I_s = [np.array([s["initial"] for s in problem.Schools])]
+I_w = [np.array([w["initial"] for w in problem.Warehouses])]
 
 
+total_cost = [300]
+cost = [10]*T
 
-visual = visu(problem,title, I_s,I_w)
+for t in range(T-1):
+    I_s.append(I_s[t]-1)
+    I_w.append(I_w[t]-1)
+    total_cost.append(total_cost[t]+cost[t])
+
+
+
+visual = visu(problem,"WFP Inventory problem", I_s,I_w, cost, total_cost)
+
 fig = go.Figure(visual)
 offline.plot(fig, filename= "visu.html")
 

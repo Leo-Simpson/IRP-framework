@@ -1,8 +1,8 @@
 #test code
-
 import numpy as np
 import pandas as pd
 from scipy.spatial import distance_matrix
+from ISI import Problem
 
 
 
