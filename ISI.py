@@ -324,7 +324,7 @@ class Solution :
         fig = go.Figure(visual)
         file = "visu.html"
         offline.plot(fig, filename= file)
-        return("Solution in file {}  with a total cost of {} ".format(file,self.cost))
+        return("Solution in file {}  with a total cost of {} ".format(file,round(self.cost)))
 
 
 
@@ -661,7 +661,7 @@ def random_problem(T,N,K,M, seed = None):
         lower = comsumption
         capacity = lower + np.random.randint(low = 1, high = 10)
         initial = capacity
-        storage_cost = np.random.randint(low = 1, high = 5)*10
+        storage_cost = np.random.randint(low = 1, high = 5)
         location = np.array([np.random.randint(low = -100, high = 100),np.random.randint(low = -100, high = 100)])
         Schools.append({'capacity': capacity, 'lower': lower, 'consumption':comsumption,'storage_cost': storage_cost , 'initial': initial,  'name' : 'School {}'.format(i+1), 'location': location})
 
@@ -670,7 +670,7 @@ def random_problem(T,N,K,M, seed = None):
         lower = np.random.randint(low = 5, high = 30)
         capacity = lower + np.random.randint(low = 5, high = 30)
         initial  =  capacity
-        fixed_cost = np.random.randint(low = 100, high = 1000)
+        fixed_cost = np.random.randint(low = 1, high = 10)
         location = np.array([np.random.randint(low = -100, high = 100),np.random.randint(low = -100, high = 100)])
 
         Warehouses.append({'capacity': capacity, 'lower': lower , 'dist_central': np.linalg.norm(location-central) , 'fixed_cost':  fixed_cost, 'initial': initial,  'name' : 'Warehouse {}'.format(i+1), 'location': location })
@@ -686,7 +686,7 @@ def random_problem(T,N,K,M, seed = None):
 
     D = pd.DataFrame(distance_mat, columns = names, index=names)
 
-    problem = Problem(D = D, Schools = Schools, Warehouses = Warehouses,T = T,K = K, Q1 = Q1, Q2 = Q2, v = 40, t_load = 0.5, c_per_km = 1, Tmax = 6)
+    problem = Problem(D = D, Schools = Schools, Warehouses = Warehouses,T = T,K = K, Q1 = Q1, Q2 = Q2, v = 40, t_load = 0.5, c_per_km = 0.1, Tmax = 6)
     problem.central = central
     
     return problem

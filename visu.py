@@ -219,7 +219,7 @@ def visu(problem, TITLE, I_s, I_w, cost, routes):
         visible_arr[indices_step[t]] = True
         
         total_cost+=cost[t]
-        title_up = title + "        Cost = {}        Total Cost = {} ".format(round(cost[t]),round(total_cost))
+        title_up = title + "        Cost = {}        Cumulative Cost = {} ".format(round(cost[t]),round(total_cost))
         
         annotations = annotations_inventory( pos_s, pos_w, I_s[t], I_w[t])
         annotations.append(make_annotation(problem.central,"CENTRAL", 'black'))
