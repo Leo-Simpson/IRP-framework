@@ -5,13 +5,18 @@ Created on Tue Jun 16 14:08:52 2020
 @author: Sabrina
 """
 
+import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
-from DesignDT2 import Ui_MainWindow
 from PyQt5.QtWidgets import *
 import pandas as pd
-from ISI import Problem, Solution
 from scipy.spatial import distance_matrix
 import numpy as np
+
+
+sys.path.append('../')
+
+from Design.DesignDT2 import Ui_MainWindow
+from ISI import Problem, Solution
 
 
 class Window(QtWidgets.QMainWindow):
