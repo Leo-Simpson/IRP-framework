@@ -675,7 +675,7 @@ def random_problem(T,N,K,M, seed = None):
 
         Warehouses.append({'capacity': capacity, 'lower': lower , 'dist_central': np.linalg.norm(location-central) , 'fixed_cost':  fixed_cost, 'initial': initial,  'name' : 'Warehouse {}'.format(i+1), 'location': location })
 
-    Q1 = np.random.randint(low = 5, high = 20)
+    Q1 = np.random.randint(low = 5, high = 20)*2
     Q2 = np.random.randint(low = 10, high = 30)
 
 

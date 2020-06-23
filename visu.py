@@ -5,8 +5,10 @@ import numpy as np
 from copy import copy, deepcopy
 
 
+col_vehicules = ['grey', 'lime', 'darksalmon', 'olive', 'violet', 'slategrey' ,'lightgray'] * 10
 
-COLORS = {"school" : "green", "warehouse": "blue", "central":"red","road":"grey"}
+
+COLORS = {"school" : "green", "warehouse": "blue", "central":"red","road":col_vehicules}
 SIZES = {"school" : 30, "warehouse": 40,"central": 50}
 
 
@@ -134,47 +136,45 @@ def build_arrows(routes):
     indices_step = []
     arrows = []
 
-    def add_indice(start,end, l):
+    def add_indice(start,end,vehicule,l):
         if start != end : 
             try : 
-                l.append(arrows.index((start,end)))
+                l.append(arrows.index((start,end,vehicule)))
             except ValueError:
                 l.append(len(arrows))
-                arrows.append( (start,end) )
+                arrows.append( (start,end,vehicule) )
             
 
     for t in range(len(routes)):
         l = []
+        ind_v = 0
         for n in range(len(routes[0])):
             for k in range(len(routes[0][0])):
                 route = routes[t][n][k]
                 start = -n-1              # index is negative for the indices of warehouse but positive for schools
                 for i_s in route :
                     end = i_s
-                    add_indice(start,end,l)
+                    add_indice(start,end,ind_v,l)
                     start = end
                 end = -n-1
-                add_indice(start,end,l)
+                add_indice(start,end,ind_v,l)
+                if route : ind_v +=1
 
 
         indices_step.append(l)
 
-
     return arrows, indices_step
 
-def plot_arr(arrow):
+def plot_arr(start,end,distance, color):
 
     # arrows is the list of arrows : ([x1,y1],[x2,y2],distance)
+    text = "distance = {}".format(distance)
 
-
-
-    text = "distance = {}".format(arrow[2])
-
-    x1,y1,x2,y2 = arrow[0][0], arrow[0][1], arrow[1][0], arrow[1][1]
+    x1,y1,x2,y2 = start[0], start[1], end[0], end[1]
 
     return go.Scatter(x=[(7*x1+x2)/8,(x1+7*x2)/8],
             y=[(7*y1+y2)/8,(y1+7*y2)/8],
-            line= dict(color=COLORS["road"]),
+            line= dict(color=color),
             text = [text,text],
             hoverinfo='text',
             visible = False
@@ -205,11 +205,11 @@ def visu(problem, TITLE, I_s, I_w, cost, routes):
         else    : return(problem.Warehouses[-i-1])
 
     for arr in arrows : 
-        i1,i2 = arr 
+        i1,i2,vehicule = arr 
         start = i_to_dict(i1)
         end   = i_to_dict(i2) 
-        arrow = ( start["location"],end["location"],problem.D.loc[start["name"],end["name"]]  )
-        data.append(plot_arr(arrow))
+        color = COLORS["road"][vehicule]
+        data.append(plot_arr(start["location"],end["location"],problem.D.loc[start["name"],end["name"]], color))
 
 
     L = []
