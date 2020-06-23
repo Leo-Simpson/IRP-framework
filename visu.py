@@ -25,10 +25,10 @@ def make_annotation(pos,txt,color):
 def annotations_inventory(pos_s, pos_w, I_s, I_w):
     annotations = []
     for i in range(len(I_s)):
-        annotations.append(make_annotation(pos_s[i],"I = {}".format(I_s[i]),'black'))
+        annotations.append(make_annotation(pos_s[i],"I = {}".format(round(I_s[i],1)),'black'))
 
     for j in range(len(I_w)):
-        annotations.append(make_annotation(pos_w[j],"I = {}".format(I_w[j]),'yellow'))
+        annotations.append(make_annotation(pos_w[j],"I = {}".format(round(I_w[j],1)),'yellow'))
 
     return annotations
 
@@ -128,31 +128,36 @@ def make_layout(title,central, pos_s, pos_w, I_s, I_w):
 
 
 
-def build_arrow(routes):
+def build_arrows(routes):
     # routes is a list TxNxKx[s1,s2,..]
     # arrows is the list of arrows : (i1,i2) with i negative if it represents a warehouse, and indices_step is the list (T,#edges) of indices of arrows  
     indices_step = []
     arrows = []
 
-    for t in range(len(route)):
+    def add_indice(start,end, l):
+        if start != end : 
+            try : 
+                l.append(arrows.index((start,end)))
+            except ValueError:
+                l.append(len(arrows))
+                arrows.append( (start,end) )
+            
+
+    for t in range(len(routes)):
         l = []
         for n in range(len(routes[0])):
             for k in range(len(routes[0][0])):
                 route = routes[t][n][k]
-                start = -n              # index is negative for the indices of warehouse but positive for schools
+                start = -n-1              # index is negative for the indices of warehouse but positive for schools
                 for i_s in route :
                     end = i_s
-                    try : 
-                        indice = arrows.index((start,end))
-                    except ValueError:
-                        indice = len(arrows)
-                        arrows.append( (start,end) )
-                    l.append(indice)
+                    add_indice(start,end,l)
                     start = end
-                end = -n
+                end = -n-1
+                add_indice(start,end,l)
 
 
-        indices_step.append(l1)
+        indices_step.append(l)
 
 
     return arrows, indices_step
@@ -184,8 +189,6 @@ def visu(problem, TITLE, I_s, I_w, cost, routes):
 
     title = TITLE + "   Truck 1 capacity : {}   Truck 2 capacity : {} ".format(problem.Q1,problem.Q2)
 
-
-
     pos_s = [s["location"] for s in problem.Schools]
     pos_w = [w["location"] for w in problem.Warehouses]
 
@@ -196,9 +199,10 @@ def visu(problem, TITLE, I_s, I_w, cost, routes):
     arrows, indices_step = build_arrows(routes) #  arrows is the list of arrows : (i1,i2) with i negative if it represents a warehouse, and indices_step is the list (T,#edges) of indices of arrows  
     Narr = len(arrows)
 
+
     def i_to_dict(i):
         if i>=0 : return(problem.Schools[i])
-        else    : return(problem.Warehouses[-i])
+        else    : return(problem.Warehouses[-i-1])
 
     for arr in arrows : 
         i1,i2 = arr 
@@ -215,7 +219,7 @@ def visu(problem, TITLE, I_s, I_w, cost, routes):
         visible_arr[indices_step[t]] = True
         
         total_cost+=cost[t]
-        title_up = title + "        Cost = {}        Total Cost = {} ".format(cost[t],total_cost)
+        title_up = title + "        Cost = {}        Total Cost = {} ".format(round(cost[t]),round(total_cost))
         
         annotations = annotations_inventory( pos_s, pos_w, I_s[t], I_w[t])
         annotations.append(make_annotation(problem.central,"CENTRAL", 'black'))
@@ -239,42 +243,7 @@ def visu(problem, TITLE, I_s, I_w, cost, routes):
 
 
 
-'''
-
-def make_updatemenu(self):
-        tuples = [(school.pos, "I = "+str(round(school.inventory,2)),'black') for school in self.S] + [(warehouse.pos, "I = "+str(round(warehouse.inventory,2)),'yellow') for warehouse in self.W]
-        tuples.append( (self.central,"CENTRAL", 'black') )
-        
-        l = len(self.data)
-        visible = [True]*3 + [False]*(l-3)
-
-        if self.t.is_integer():
-            period = " (before lunch)"
-            for k in self.R : 
-                # decide which arrows are visible, 
-                r = self.R_possible[k]
-                for i in range(r.Mk):
-                    e = r.edges[i]
-                    x = (e[0].pos[0]+e[1].pos[0]) / 2 + 1.
-                    y = (e[0].pos[1]+e[1].pos[1]) / 2 + 1.
-                    tuples.append(([x,y], str(round(r.X[i],2))+ "  ", COLORS["road"]))
-
-                i = self.arrows.index(r.number)
-                a = len(r.arrows)
-                visible[i:i+a]=[True]*a
-                
-                
-            for j in self.warehouse_to_deliver : 
-                visible[l-self.N+j ] = True
-        
-        else : 
-            period = "  (evening)"
-            visible[3:] = [False]*(l-3)
 
 
-        annotations = Map.make_annotations(tuples)
-
-        return dict(label="t = "+str(int(self.t))+ period, method = "update", args=[{"visible" : copy(visible)  },{"annotations": annotations, "title":self.title }])
 
 
-'''

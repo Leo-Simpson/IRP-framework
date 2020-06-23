@@ -2,11 +2,11 @@
 import sys
 
 sys.path.append('../')
-from ISI import test_problem, Solution
+from ISI import random_problem, Solution
 
 
-T, N, K,M = 5,2,4,6
-problem = test_problem(T,N,K,M)
+T, N, K,M = 10,2,4,6
+problem = random_problem(T,N,K,M, seed=6)
 
 solution = Solution(problem)
 

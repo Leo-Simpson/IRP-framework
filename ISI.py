@@ -148,7 +148,7 @@ class Solution :
                     #edit Chris 07.06.20:
                     tour = tsp_tour(tour_school, n, dist_mat)  #function returns optimal tour and length of optimal tour
                     #end of edit Chris 07.06.20
-                    self.r[t][n][k] = tour    # is this tour with or without the warehouse ?? It should be without
+                    self.r[t][n][k] = [i-self.N for i in tour]    # is this tour with or without the warehouse ?? It should be without
 
     def compute_dist(self):
         self.dist = np.array([[[
@@ -159,8 +159,8 @@ class Solution :
 
     def compute_costs(self, add = 0): 
         self.compute_dist()
-        if not add is None : self.cost = self.problem.c_per_km * self.dist + add
-        else : self.cost = self.problem.c_per_km * self.dist
+        if not add is None : self.cost = self.problem.c_per_km * np.sum(self.dist) + add
+        else : self.cost = self.problem.c_per_km * np.sum(self.dist)
 
     def compute_route_dist(self, tour_schools, warehouse : int):
         dist_mat = self.problem.D.values
@@ -178,12 +178,12 @@ class Solution :
         self.I_s = np.zeros((self.T,self.M))
         self.I_w = np.zeros((self.T,self.N))
 
-        self.I_s[0] = self.I_s_init[:]
-        self.I_w[0] = self.I_w_init[:]
+        self.I_s[0] = self.problem.I_s_init[:]
+        self.I_w[0] = self.problem.I_w_init[:]
 
-        for t in range(T-1): 
-            self.I_s[t+1] = self.I_s[t]+ self.problem.Q1 * np.sum( self.q[t,:,:,:], axis = (0,1) ) - self.problem.d[:]
-            self.I_w[t+1] = self.I_w[t]- self.problem.Q1 * np.sum( self.q[t,:,:,:], axis = (1,2) ) + self.problem.Q2 * X[t,:]
+        for t in range(1,self.T): 
+            self.I_s[t] = self.I_s[t-1]+ self.problem.Q1 * np.sum( self.q[t,:,:,:], axis = (0,1) ) - self.problem.d[:]
+            self.I_w[t] = self.I_w[t-1]- self.problem.Q1 * np.sum( self.q[t,:,:,:], axis = (1,2) ) + self.problem.Q2 * self.X[t,:]
 
         
 
@@ -312,8 +312,6 @@ class Solution :
                 self.X[t,n]=X_vars[t,n].varValue
 
         add = add_cost.value()
-
-        print("Y", self.Y)
     
         self.compute_r()
         self.compute_costs(add=add)
@@ -321,9 +319,12 @@ class Solution :
 
     def __repr__(self):
         costs = [10]*self.T
+        self.compute_inventory()
         visual = visu(self.problem,"WFP Inventory problem", self.I_s,self.I_w, costs, self.r)
         fig = go.Figure(visual)
-        offline.plot(fig, filename= "visu.html")
+        file = "visu.html"
+        offline.plot(fig, filename= file)
+        return("Solution in file {}  with a total cost of {} ".format(file,self.cost))
 
 
 
@@ -648,27 +649,34 @@ class Matheuristic :
 
 # test !
 
-def test_problem(T,N,K,M):
+def random_problem(T,N,K,M, seed = None):
     
+
+    np.random.seed(seed)
     Schools = []
     Warehouses = []
     central = np.array([np.random.randint(low = -100, high = 100),np.random.randint(low = -100, high = 100)])
     for i in range(M):
         comsumption =  np.random.randint(low = 1, high = 10)
         lower = comsumption
-        capacity = lower + np.random.randint(low = 1, high = 10)*2
+        capacity = lower + np.random.randint(low = 1, high = 10)
         initial = capacity
+        storage_cost = np.random.randint(low = 1, high = 5)*10
         location = np.array([np.random.randint(low = -100, high = 100),np.random.randint(low = -100, high = 100)])
-        Schools.append({'capacity': capacity, 'lower': lower, 'consumption':comsumption,'storage_cost': np.random.randint(low = 1, high = 5)*10 , 'initial': initial,  'name' : 'School {}'.format(i+1), 'location': location})
+        Schools.append({'capacity': capacity, 'lower': lower, 'consumption':comsumption,'storage_cost': storage_cost , 'initial': initial,  'name' : 'School {}'.format(i+1), 'location': location})
 
 
     for i in range(N):
-        lower = comsumption
-        capacity = 1000*lower
-        initial = 500*lower
+        lower = np.random.randint(low = 5, high = 30)
+        capacity = lower + np.random.randint(low = 5, high = 30)
+        initial  =  capacity
+        fixed_cost = np.random.randint(low = 100, high = 1000)
         location = np.array([np.random.randint(low = -100, high = 100),np.random.randint(low = -100, high = 100)])
 
-        Warehouses.append({'capacity': capacity, 'lower': lower , 'dist_central': np.linalg.norm(location-central) , 'fixed_cost': np.random.randint(low = 1, high = 10)*100 , 'initial': initial,  'name' : 'Warehouse {}'.format(i+1), 'location': location })
+        Warehouses.append({'capacity': capacity, 'lower': lower , 'dist_central': np.linalg.norm(location-central) , 'fixed_cost':  fixed_cost, 'initial': initial,  'name' : 'Warehouse {}'.format(i+1), 'location': location })
+
+    Q1 = np.random.randint(low = 5, high = 20)
+    Q2 = np.random.randint(low = 10, high = 30)
 
 
     locations =  [w['location'] for w in Warehouses] + [s['location'] for s in Schools]
@@ -678,7 +686,7 @@ def test_problem(T,N,K,M):
 
     D = pd.DataFrame(distance_mat, columns = names, index=names)
 
-    problem = Problem(D = D, Schools = Schools, Warehouses = Warehouses,T = T,K = K, Q1 = 1000, Q2 = 5000, v = 40, t_load = 0.5, c_per_km = 1, Tmax = 6)
+    problem = Problem(D = D, Schools = Schools, Warehouses = Warehouses,T = T,K = K, Q1 = Q1, Q2 = Q2, v = 40, t_load = 0.5, c_per_km = 1, Tmax = 6)
     problem.central = central
     
     return problem
@@ -698,109 +706,3 @@ def test_problem(T,N,K,M):
 
 
 
-
-
-
-'''
-
-
-Decision variables : 
-q          variable of size TxNxKxM, type= positive float representing how much food (actually: percentage of truck load) to deliver at each stop of a truck
-X          variable of size TxN type = bool representing the pick ups  
-delta      variable of size TxNxKxM, type=bool representing wether or not l is removed from the tour
-omega      variable of size TxNxKxM, type=bool representing wether or not l is added to the tour
-
-Other variables : 
-
-# variable of size TxM type = float representing the inventories of the schools
-I_s[0,:] = problem.I_s_init[:] 
-for t in range(self.T):       
-    I_s[t,:] = I_s[t-1,:] + problem.Q1 * sum(q[t,:,:,:], axis = 0,1 ) - problem.d
-
-# variable of size TxM type = float representing the inventories of the warehouses        
-I_w[0,:] = problem.I_w_init[:]    
-for t in range(self.T):    
-    I_w[t,:] = I_w[t-1,:] + problem.Q2 * X[t,:] - problem.Q1* sum( q[t,:,k,l] axis = 1,2 )
-
-
-Objective function : 
-minimize : 
-        sum( problem.h_s * sum(I_s,axis=0) ) 
-    +   problem.c_per_km * sum( problem.to_central * sum(X,axis=0)  ) * 2
-    +   problem.c_per_km * sum(self.b*omega, axis=all)
-    -   problem.c_per_km * sum(self.a*delta, axis=all)
-
-
-Constraints : 
-# constraints 14 to 17 are omitted here (according to ShareLatex script)
-
-# constraint on length of tour
-#sum( omega*self.time_adding, axis  = 3 ) + self.time_route - sum( delta*self.time_substracting, axis  = 3 )  < Tmax
-for t in range(T):
-    for n in range(N):
-        for k in range(K):
-            ISI_model += plp.lpSum([omega_vars[t][n][k][m] * self.time_adding[t,n,k,m] +  .... for m in .... ]) <= Tmax
-
-# constraint 9 in Latex script, respect capacities + min. stock of schools and warehouses
-# schools: problem.L_s < I_s < problem.U_s
-for t in range(T):
-    for m in range(M):
-        ISI_model += I_s[t,m]<=problem.U_s[m]       #I_s < U_s
-        ISI_model += I_s[t,m]>= problem.L_S[m]      #I_s > L_s
-# warehouses: problem.L_w <I_w < problem.U_w
-    for n in range(N):
-        ISI_model += I_w[t,n]<=problem.U_w[n]       #I_w < U_w      # can maybe be omitted 
-        ISI_model += I_s[t,n]>= problem.L_S[n]      #I_w > L_w
-
-# constraint on capacity of trucks
-#sum(q, axis = 3) < 1
-for t in range(T):
-    for n in range(N):
-        for k in range(K):
-            ISI_model += plp.lpSum([q_vars[t,n,k,m] for  m in range(M)]) <=1
-
-
-# constraint 10 omitted for now : let's consider that at time t, delivering is after lunch, and L[l] > d[l] for every school l 
-
-# constraint 11: only positive amount to deliver if school is served in that round
-#q < (self.Y - delta + omega)   # no need to multiply by U because the component of q is already smaller than 1 because it is normalized by Q1
-
-in set_delta : 
-q < 1 - delta
-
-in set_omega : 
-q < omega
-
-
-
-UNECESSARY
-for (t,n,k,m) in set_q:     
-    #if t>0:        ADD: t>0?!
-    ISI_model += q_vars[t][n][k][m] <= problem.U_s[m] - I_s[t-1,m]
-
-# constraint 12: school insertion only possible if not yet in route
-UNECESSARY
-#omega < 1 - self.Y
-for (t,n,k,m) in set_omega:
-    ISI_model += omega_vars[t][n][k][m] <= 1 - solution.Y[t][n][k][m]
-
-
-#constraint 13: school removal only if in route
-UNECESSARY
-#delta < self.Y
-for (t,n,k,m) in set_delta:
-    ISI_model += delta_vars[t][n][k][m] <= solution.Y[t][n][k][m]
-
-#constraint 18: bound on the number of changes comitted by the ISI model
-#sum(delta+omega, axis = 3) < G
-for t in range(T):
-    for k in range(K):
-        ISI_model += plp.Lpsum([delta_vars[t,n,k,m] for n in range(N) for m in range(M) if (t,n,k,m) in set_delta ]) + plp.Lpsum([omega_vars[t,n,k,m] for n in range(N) for m in range(M) if (t,n,k,m) in set_omega ] )
-
-'''
-
-'''
-Cost except for omega and delta, so some part of the objective function :
-add_cost = sum( problem.h_s * sum(I_s,axis=0) ) 
-    +   2*problem.c_per_km* sum( problem.to_central * sum(r,axis=0)  )
-'''
