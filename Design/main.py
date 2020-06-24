@@ -105,14 +105,19 @@ class Window(QtWidgets.QMainWindow):
             #first computes the distance matrix 
             locations = [w['location'] for w in self.warehouses] + [s['location'] for s in self.schools]
             distance_mat = distance_matrix(locations,locations)         #should we round here? Probably not, right?
-            print(distance_mat)
+            #print(distance_mat)
             names = [w['name'] for w in self.warehouses] + [s['name'] for s in self.schools]
             D = pd.DataFrame(distance_mat, columns = names, index=names)
             
             #and here we set up our model
-            problem = Problem(D = D, Schools = self.schools, Warehouses = self.warehouses, T = self.time_horizon, K = 5, Q1 = 1000, Q2 = 5000, v = 40, t_load = 0.5, c_per_km = 1, Tmax = 6)
+            problem = Problem(D = D, Schools = self.schools, Warehouses = self.warehouses, T = self.time_horizon, K = 5, Q1 = 10, Q2 = 50, v = 2, t_load = 0.5, c_per_km = 1, Tmax = 6, central = np.array([0.,0.]))
+            
+            problem.central = np.mean(np.array([w["location"] for w in self.warehouses]),axis=0)
+            
             solution = Solution(problem)
             solution.ISI(G = len(self.warehouses))
+
+            print(solution)
         
 
 

@@ -14,7 +14,7 @@ from visu import visu
 
 class Problem :
     #this is the class that contains the data of the problem
-    def __init__(self,D,Warehouses,Schools,T,K, Q1, Q2, v, t_load, c_per_km, Tmax):
+    def __init__(self,D,Warehouses,Schools,T,K, Q1, Q2, v, t_load, c_per_km, Tmax, central = None):
         self.D = D # distance matrix. Could be a pandas data frame with the names of Warehouses/Schools as index of rows and colomns 
                     # to get the distance between a warehouse and a school for example : D.loc[warehouse_name, school_name]
         self.Warehouses = Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'dist_central': ... , 'fixed_cost': ... , 'initial': ...,  'name' : ...}
@@ -27,6 +27,8 @@ class Problem :
         self.t_load = t_load # average loading/unloading time at schools in hours
         self.c_per_km = c_per_km # average routing cost per kilometer
         self.Tmax = Tmax
+
+        if central is None : self.central = np.zeros(2)
 
     def define_arrays(self):
         self.I_s_init  =  np.array([s["initial"] for s in self.Schools])           # initial inventory of school
@@ -463,7 +465,7 @@ def random_problem(T,N,K,M, seed = None):
 
         Warehouses.append({'capacity': capacity, 'lower': lower , 'dist_central': np.linalg.norm(location-central) , 'fixed_cost':  0, 'initial': initial,  'name' : 'Warehouse {}'.format(i+1), 'location': location })
 
-    Q1 = np.random.randint(low = 5, high = 20)*2
+    Q1 = np.random.randint(low = 5, high = 20)*10
     Q2 = np.random.randint(low = 10, high = 30)
 
 
@@ -478,19 +480,5 @@ def random_problem(T,N,K,M, seed = None):
     problem.central = central
     
     return problem
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
