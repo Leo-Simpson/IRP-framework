@@ -1,6 +1,5 @@
 #test code
 import sys
-
 sys.path.append('../')
 from ISI import random_problem, Solution
 
@@ -10,11 +9,15 @@ problem = random_problem(T,N,K,M, seed=142)
 
 solution = Solution(problem)
 
-solution.ISI(G = 2)
+solution.ISI(G = 6)
 
 print(solution)
 
-solution.ISI(G = 1)
+solution.ISI(G = 3)
+
+print(solution)
+
+solution.ISI(G=2)
 
 print(solution)
 

@@ -172,8 +172,8 @@ def plot_arr(start,end,distance, color):
 
     x1,y1,x2,y2 = start[0], start[1], end[0], end[1]
 
-    return go.Scatter(x=[(7*x1+x2)/8,(x1+7*x2)/8],
-            y=[(7*y1+y2)/8,(y1+7*y2)/8],
+    return go.Scatter(x=[(9*x1+x2)/10,(x1+9*x2)/10],
+            y=[(9*y1+y2)/10,(y1+9*y2)/10],
             line= dict(color=color),
             text = [text,text],
             hoverinfo='text',
@@ -184,7 +184,7 @@ def plot_arr(start,end,distance, color):
 
 
 
-def visu(problem, TITLE, I_s, I_w, cost, routes):
+def visu(problem, TITLE, I_s, I_w, km, routes):
 
 
     title = TITLE + "   Truck 1 capacity : {}   Truck 2 capacity : {} ".format(problem.Q1,problem.Q2)
@@ -213,13 +213,13 @@ def visu(problem, TITLE, I_s, I_w, cost, routes):
 
 
     L = []
-    total_cost = 0
+    cumulative_km = 0
     for t in range(problem.T):
         visible_arr = np.zeros(Narr, dtype=bool )
         visible_arr[indices_step[t]] = True
         
-        total_cost+=cost[t]
-        title_up = title + "        Cost = {}        Cumulative Cost = {} ".format(round(cost[t]),round(total_cost))
+        cumulative_km += km[t]
+        title_up = title + "        KM = {}        Cumulative KM = {} ".format(round(km[t]),round(cumulative_km))
         
         annotations = annotations_inventory( pos_s, pos_w, I_s[t], I_w[t])
         annotations.append(make_annotation(problem.central,"CENTRAL", 'black'))
