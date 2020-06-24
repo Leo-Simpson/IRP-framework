@@ -319,13 +319,22 @@ class Solution :
         self.compute_costs(add=add)
 
 
+    def visualization(self,filename):
+        km = np.sum(self.dist, axis = (1,2))
+        self.compute_inventory()
+        visual = visu(self.problem,"WFP Inventory problem", self.I_s,self.I_w, km, self.r)
+        fig = go.Figure(visual)
+        offline.plot(fig, filename= filename, auto_open = False)
+        
+
     def __repr__(self):
         km = np.sum(self.dist, axis = (1,2))
         self.compute_inventory()
         visual = visu(self.problem,"WFP Inventory problem", self.I_s,self.I_w, km, self.r)
         fig = go.Figure(visual)
         file = "visu.html"
-        offline.plot(fig, filename= file)
+        offline.plot(fig, filename= file, auto_open = False)
+        fig.show()
         return("Solution in file {}  with a total cost of {} ".format(file,round(self.cost)))
 
 
