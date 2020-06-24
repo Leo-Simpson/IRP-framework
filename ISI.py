@@ -28,7 +28,10 @@ class Problem :
         self.c_per_km = c_per_km # average routing cost per kilometer
         self.Tmax = Tmax
 
-        if central is None : self.central = np.zeros(2)
+        if central is None : 
+            self.central = np.zeros(2)
+        else: 
+            self.central = central
 
     def define_arrays(self):
         self.I_s_init  =  np.array([s["initial"] for s in self.Schools])           # initial inventory of school
