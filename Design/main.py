@@ -15,7 +15,7 @@ import numpy as np
 
 sys.path.append('../')
 
-from Design.DesignDT2 import Ui_MainWindow
+from Design.DesignDT_testing2 import Ui_MainWindow
 from ISI import Problem, Solution
 
 
@@ -24,31 +24,32 @@ class Window(QtWidgets.QMainWindow):
         QtWidgets.QMainWindow.__init__(self)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        self.ui.browseButton_gps.clicked.connect(self.pushButton_handler_gps)
-        self.ui.browseButton_capac.clicked.connect(self.pushButton_handler_capac)
-        self.ui.browseButton_cons.clicked.connect(self.pushButton_handler_cons)
+        self.ui.browseButton_main.clicked.connect(self.pushButton_handler_main)
+        # self.ui.browseButton_capac.clicked.connect(self.pushButton_handler_capac)
+        # self.ui.browseButton_cons.clicked.connect(self.pushButton_handler_cons)
         self.ui.pushButton_opt.clicked.connect(self.pushButton_handler_opt)
         
-    def pushButton_handler_gps(self):
-        self.write_path_gps()
+    def pushButton_handler_main(self):
+        self.write_path_main()
     
     
-    def pushButton_handler_capac(self):
-        self.write_path_capac()
+    # def pushButton_handler_capac(self):
+    #     self.write_path_capac()
     
     
-    def pushButton_handler_cons(self):
-        self.write_path_cons()
+    # def pushButton_handler_cons(self):
+    #     self.write_path_cons()
     
         
     def pushButton_handler_opt(self):
         self.optimize()
-        self.close()        
+        # put this in if window should be closed after clicking opt button 
+        # self.close()        
         
         
-    def write_path_gps(self):
+    def write_path_main(self):
         p = self.get_path()             
-        self.ui.lineEdit_gps.setText(p)             # writes path into the lineEdit
+        self.ui.lineEdit_main.setText(p)             # writes path into the lineEdit
         df_w = pd.read_excel(io=p, sheet_name='Warehouses')         #reads the excel table Warehouses
         self.warehouses = df_w.to_dict('records')                   #and transforms it into a Panda dataframe
         for w in self.warehouses:                                   #puts longitude and latitude together in a numpy array 'location'
@@ -65,20 +66,20 @@ class Window(QtWidgets.QMainWindow):
 
     
     
-    def write_path_capac(self):
-        p = self.get_path()
-        print(p)
-        self.ui.lineEdit_capac.setText(p)
-        df = pd.read_excel(p)
-        print(df)
+    # def write_path_capac(self):
+    #     p = self.get_path()
+    #     print(p)
+    #     self.ui.lineEdit_capac.setText(p)
+    #     df = pd.read_excel(p)
+    #     print(df)
     
     
-    def write_path_cons(self):
-        p = self.get_path()
-        print(p)
-        self.ui.lineEdit_cons.setText(p)
-        df = pd.read_excel(p)
-        print(df)
+    # def write_path_cons(self):
+    #     p = self.get_path()
+    #     print(p)
+    #     self.ui.lineEdit_cons.setText(p)
+    #     df = pd.read_excel(p)
+    #     print(df)
     
           
     def get_path(self):
@@ -88,18 +89,34 @@ class Window(QtWidgets.QMainWindow):
         return path
 
     
-    def get_time_horizon(self):
+    def get_parameters(self):
         self.time_horizon = self.ui.spinBox_TimeHorizon.value()
+        self.K = self.ui.spinBox_vehicles.value()
+        self.Q1 = self.ui.spinBox_Q1.value()
+        self.Q2 = self.ui.spinBox_Q2.value()
+        self.v = self.ui.doubleSpinBox_avgspeed.value()
+        self.t_load = self.ui.doubleSpinBox_loadingtime.value()
+        self.c_per_km = self.ui.doubleSpinBox_costsperkm.value()
+        self.Tmax = self.ui.doubleSpinBox_maxtime.value()
+        self.central = np.array([self.ui.doubleSpinBox_cw1.value(), self.ui.doubleSpinBox_cw2.value()])
+        # print(self.time_horizon)
+        # print(self.Q1)
+        # print(self.Q2)
+        # print(self.v)
+        # print(self.t_load)
+        # print(self.c_per_km)
+        # print(self.Tmax)
+        # print(self.central)
         
         
     def optimize(self):
-        self.get_time_horizon()
+        self.get_parameters()
         self.solveModel()
         
     
     def solveModel(self):
     # connects the inputs with our ISI model
-        if self.ui.lineEdit_gps.text()=='':
+        if self.ui.lineEdit_main.text()=='':
             print('No file inserted. Could not optimize!')
         else:
             #first computes the distance matrix 
@@ -109,11 +126,16 @@ class Window(QtWidgets.QMainWindow):
             names = [w['name'] for w in self.warehouses] + [s['name'] for s in self.schools]
             D = pd.DataFrame(distance_mat, columns = names, index=names)
             
+                
             #and here we set up our model
-            problem = Problem(D = D, Schools = self.schools, Warehouses = self.warehouses, T = self.time_horizon, K = 5, Q1 = 10, Q2 = 50, v = 2, t_load = 0.5, c_per_km = 1, Tmax = 6, central = np.array([0.,0.]))
+            problem = Problem(D = D, Schools = self.schools, Warehouses = self.warehouses, 
+                              T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v, 
+                              t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, 
+                              central = self.central)
             
-            problem.central = np.mean(np.array([w["location"] for w in self.warehouses]),axis=0)
-            
+            if self.ui.checkBox.isChecked():
+                problem.central = np.mean(np.array([w["location"] for w in self.warehouses]),axis=0)
+                
             solution = Solution(problem)
             solution.ISI(G = len(self.warehouses))
 
@@ -124,8 +146,10 @@ class Window(QtWidgets.QMainWindow):
 if __name__ == '__main__':
 
     import sys
+    QtWidgets.QApplication.setStyle('Fusion')
     app = QtWidgets.QApplication(sys.argv)
     window = Window()
     window.show()
     sys.exit(app.exec_())
+    
 
