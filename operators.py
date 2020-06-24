@@ -1,4 +1,5 @@
 import numpy as np
+from OR_tools_solve_tsp import tsp_tour
 
 def rand_remove_rho(solution, rho):
     for i in range(np.min([rho,len(np.nonzero(solution.Y)[0])])):  
@@ -56,21 +57,31 @@ def shaw_removal_greedy(solution, rho):
 def avoid_consecutive_visits(solution, rho):
     for t in range(solution.T-1):
         time_schools = np.sum(solution.Y[[t, t+1],:,:,:], axis = (1,2))
-        index = np.where(time_schools[1,:] + time_schools[0,:] > 1)
+        index = np.where(time_schools[1,:] + time_schools[0,:] > 1)[0]
+        change = np.transpose(np.where(np.sum(solution.Y[:,:,:,index][t+1], axis = 2) > 0))
         solution.Y[t+1,:,:,index] = 0
+        for n,k in change:
+            schools = np.nonzero(solution.Y[t+1,n,k,:])[0]
+            solution.r[t+1][n][k] = tsp_tour(schools  + solution.N, n, solution.problem.D.values)
 
 def empty_one_period(solution, rho):
     period = np.random.randint(solution.T)
     solution.Y[period,:,:,:] = 0
+    solution.r[period] = [[[]]*solution.K]*solution.N
 
 def empty_one_vehicle(solution, rho):
     warehouse = np.random.randint(solution.N)
     vehicle = np.random.randint(solution.K)
     solution.Y[:,warehouse,vehicle,:] = 0
+    for t in solution.T:
+        solution.r[t][warehouse][vehicle] = []
 
 def empty_one_plant(solution, rho):
     warehouse = np.random.randint(solution.N)
     solution.Y[:,warehouse,:,:] = 0
+    for t in solution.T:
+        for k in solution.K:
+            solution.r[t][warehouse][k] = []
     
 def furthest_customer(solution, rho):
     candidates = np.sum(solution.Y, axis = 3)
