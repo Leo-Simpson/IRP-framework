@@ -137,7 +137,7 @@ class Window(QtWidgets.QMainWindow):
                 problem.central = np.mean(np.array([w["location"] for w in self.warehouses]),axis=0)
                 
             solution = Solution(problem)
-            solution.ISI(G = 3)
+            solution.ISI(G = 4)
 
             print(solution)
         
