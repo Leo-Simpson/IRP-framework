@@ -75,6 +75,8 @@ class Solution :
     
         self.r = [[[[] for k in range(self.K)] for n in range(self.N)] for t in range(self.T)]
 
+        self.build_Cl()
+
 
     def copy(self):
         solution = Solution(self.problem,
@@ -91,6 +93,13 @@ class Solution :
         return solution
 
         
+    def build_Cl(self):
+        for m in range(self.M):
+            dist_vect = np.array( [ self.problem.D.loc[self.name_warehouses[m], self.name_schools[i]] for i in range(self.N) ] )   # very ugly way to write it ....
+            
+            dist_max = 0.            # MILENA ==> choose here between : 1.5*np.min(dist_vect) or thing with Tmax ... 
+            
+            self.Cl[dist_vect > dist_max , m] = False
 
     
 #    def Cl_shaped_like_Y(self):
@@ -306,6 +315,9 @@ class Solution :
 
 
         ISI_model.solve(solver = plp.GLPK_CMD())
+
+    
+        
         #ISI_model.solve()
 
         # transform the _vars things into numpy array to return it. 
