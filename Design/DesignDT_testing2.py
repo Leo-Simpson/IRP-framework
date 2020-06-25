@@ -382,7 +382,7 @@ class Ui_MainWindow(object):
         self.spinBox_TimeHorizon.setAccelerated(True)
         self.spinBox_TimeHorizon.setMinimum(1)
         self.spinBox_TimeHorizon.setMaximum(12)
-        self.spinBox_TimeHorizon.setProperty("value", 3)
+        self.spinBox_TimeHorizon.setProperty("value", 5)
         self.spinBox_TimeHorizon.setObjectName("spinBox_TimeHorizon")
         self.gridLayout_3.addWidget(self.spinBox_TimeHorizon, 0, 1, 1, 1)
         self.label_choose_loadingtime = QtWidgets.QLabel(self.groupBox_details)
