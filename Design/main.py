@@ -140,6 +140,9 @@ class Window(QtWidgets.QMainWindow):
             solution.ISI(G = 4)
 
             print(solution)
+    
+            #solution.ISI(G = 2)
+            #print(solution)
         
 
 
