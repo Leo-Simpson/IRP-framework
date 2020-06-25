@@ -204,6 +204,11 @@ class Solution :
         
 
         self.compute_time_adding()
+        
+        # decision variables:
+        # q(t,n,k,m): fraction of capacity Q1 of truck k from warehouse m that is delivered to school n at time t
+        # delta(t,n,k,m): binary variable, equals 1 if school n is removed from tour performed by truck k from warehouse m at time t, 0 else
+        # omega(t,n,k,m): binary variable, equals 1 if school n is inserted into route by truck k from warehouse m at time t, 0 else
 
         set_q     = [ (t,n,k,m) for t in range(T) for n in range(N) for k in range(K) for m in range(M) if self.Cl[n,m]  ]
         set_delta = [ (t,n,k,m) for (t,n,k,m) in set_q if self.Y[t,n,k,m]  ]
@@ -251,10 +256,10 @@ class Solution :
         transport_cost = problem.c_per_km * plp.lpSum( self.b[t,n,k,m] * omega_vars[t,n,k,m] for (t,n,k,m) in set_omega ) - problem.c_per_km * plp.lpSum( self.a[t,n,k,m] * delta_vars[t,n,k,m] for (t,n,k,m) in set_delta )
         add_cost = plp.lpSum([problem.h_s[m] * I_s[t,m] for t in range(T) for m in range(M)]) + problem.c_per_km * plp.lpSum( problem.to_central[n] * X_vars[t,n] for t in range(T) for n in range(N) ) 
 
-
+        #objective function
         ISI_model += add_cost + transport_cost, 'Z'
-        # constraint 9 in Latex script, respect capacities + min. stock of schools and warehouses
         
+        # constraint 9 in Latex script, respect capacities + min. stock of schools and warehouses
         for t in range(1,T):
             # schools: problem.L_s < I_s < problem.U_s
             for m in range(M):
