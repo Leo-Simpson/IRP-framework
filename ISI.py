@@ -39,6 +39,7 @@ class Problem :
         self.L_s       =  np.array([s["lower"] for s in self.Schools])             # capacity lower bound school     
         self.h_s       =  np.array([s["storage_cost"] for s in self.Schools])      # storage cost school
         self.d         =  np.array([s["consumption"] for s in self.Schools])       # consumption of schools
+        self.dt        =  np.array([self.d]*self.T)
 
         self.I_w_init  =  np.array([w["initial"] for w in self.Warehouses])        # initial inventory of warehouses
         self.U_w       =  np.array([w["capacity"] for w in self.Warehouses])       # capactiy upper bound warehouse
@@ -187,7 +188,7 @@ class Solution :
         self.I_w[0] = self.problem.I_w_init[:]
 
         for t in range(1,self.T): 
-            self.I_s[t] = self.I_s[t-1]+ self.problem.Q1 * np.sum( self.q[t,:,:,:], axis = (0,1) ) - self.problem.d[:]
+            self.I_s[t] = self.I_s[t-1]+ self.problem.Q1 * np.sum( self.q[t,:,:,:], axis = (0,1) ) - self.problem.dt[t,:]
             self.I_w[t] = self.I_w[t-1]- self.problem.Q1 * np.sum( self.q[t,:,:,:], axis = (1,2) ) + self.problem.Q2 * self.X[t,:]
 
         
@@ -242,7 +243,7 @@ class Solution :
             I_s.update(  {(t,m):
                          I_s[t-1,m]
                          + problem.Q1 * plp.lpSum(q_vars[t,n,k,m] for k in range(K) for n in range(N) if self.Cl[n,m] ) 
-                         - problem.d[m]
+                         - problem.dt[t,m]
                          for m in range(M) }  
                         )
         
