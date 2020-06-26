@@ -438,15 +438,17 @@ class Matheuristic :
                             G = max(int(param.ksi*(N+M)),1)                       # line 24
                         else : keep_going = False
 
-            elif self.solution_prime.cost < self.solution.cost - np.log(rd.random())*tau: # line 27
+            elif self.solution_prime.cost < self.solution.cost - np.log(rd.random())*tau: # line 27 # choose theta everytime as a new random value or is it a fixed random value?
                 self.solution = self.solution_prime.copy()                         # line 28
                 self.operators[i]['score'] += param.sigmas[2]                             # line 29
             
             if iterations % param.delta == 0 :
                 epsilon = rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1], seed = param.seed  )
+                # implement update_weights or is this already done?
                 self.update_weights(param.reaction_factor)
                 self.solution = self.solution_best.copy()
             iterations += 1
+            tau = tau*param.cooling
 
         
 
