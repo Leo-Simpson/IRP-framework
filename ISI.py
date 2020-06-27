@@ -97,8 +97,8 @@ class Solution :
         for m in range(self.M):
             dist_vect = np.array( [ self.problem.D.loc[self.name_warehouses[i], self.name_schools[m]] for i in range(self.N) ] )   # very ugly way to write it ....
             
-            dist_max = 0.            # MILENA ==> choose here between : 1.5*np.min(dist_vect) or thing with Tmax ... 
-            
+            # MILENA ==> choose here between : 1.5*np.min(dist_vect) or thing with Tmax ... 
+            dist_max = (self.problem.Tmax/2 - self.problem.t_load) * self.problem.v          #only warehouses allowed to serve schools that are reachable in tour within Tmax (   
             self.Cl[dist_vect > dist_max , m] = False
 
     
