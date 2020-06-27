@@ -99,6 +99,8 @@ class Solution :
             
             # MILENA ==> choose here between : 1.5*np.min(dist_vect) or thing with Tmax ... 
             dist_max = (self.problem.Tmax/2 - self.problem.t_load) * self.problem.v          #only warehouses allowed to serve schools that are reachable in tour within Tmax (   
+            #dist_radius = 2*np.min(dist_vect)                                               #alternatively: only warehouses allowed that are not more than twice (or take another value) far away as the closest warehouses
+            #dist_max = np.min(dist_max,dist_radius)
             self.Cl[dist_vect > dist_max , m] = False
 
     
