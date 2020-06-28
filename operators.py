@@ -161,15 +161,18 @@ def shaw_insertion(solution, rho):
 def swap_rho_cust_intra_routes(solution, rho):
     not_empty_veh = np.any(solution.Y,axis=3)
     candidates = np.transpose(np.where(np.sum(not_empty_veh, axis = 2) > 1))
-    for i in range(rho): 
-        [t,n] = random.choice(candidates)
-        candid_veh = np.where(not_empty_veh[t,n,:])[0]
-        number = len(candid_veh)
-        k1, k2 = candid_veh[np.random.choice(number,2,replace= False)]
-        m1, m2 = random.choice(np.nonzero(solution.Y[t,n,k1,:])[0]), random.choice(np.nonzero(solution.Y[t,n,k2,:])[0])
-        solution.Y[t,n,[k1, k2],m1] = [0, 1]
-        solution.Y[t,n,[k1, k2],m2] = [1, 0]
-        solution.r[t][n][k1], solution.r[t][n][k2] = tsp_tour(np.nonzero(solution.Y[t,n,k1,:])[0] + solution.N, n, solution.problem.D), tsp_tour(np.nonzero(solution.Y[t,n,k2,:])[0] + solution.N, n, solution.problem.D)
+    if len(candidates) > 0:
+        for i in range(rho): 
+            [t,n] = random.choice(candidates)
+            candid_veh = np.where(not_empty_veh[t,n,:])[0]
+            number = len(candid_veh)
+            k1, k2 = candid_veh[np.random.choice(number,2,replace= False)]
+            m1, m2 = random.choice(np.nonzero(solution.Y[t,n,k1,:])[0]), random.choice(np.nonzero(solution.Y[t,n,k2,:])[0])
+            solution.Y[t,n,[k1, k2],m1] = [0, 1]
+            solution.Y[t,n,[k1, k2],m2] = [1, 0]
+            solution.r[t][n][k1], solution.r[t][n][k2] = tsp_tour(np.nonzero(solution.Y[t,n,k1,:])[0] + solution.N, n, solution.problem.D), tsp_tour(np.nonzero(solution.Y[t,n,k2,:])[0] + solution.N, n, solution.problem.D)
+    else:
+        print('Applied swap_rho_cust_intra_routes, but there were no viable candidates (=Warehouses with two departing vehicles in one time step')
         
 def swap_rho_cust_intra_plants(solution, rho):
     max_iter = 100
