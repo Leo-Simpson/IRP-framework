@@ -40,7 +40,7 @@ class Problem :
             self.D = D # distance matrix. Numpy array , NOT pandas dataframe
 
         for i,w in enumerate(self.Warehouses) : 
-            w["dist_central"] = self.D[0,i]*2
+            w["dist_central"] = self.D[0,i]
 
         
 
@@ -83,6 +83,7 @@ class Solution :
         else         : self.X = X
 
         if Cl is None : self.Cl = np.ones((N,M),dtype=bool)    # equal one when we consider that it is possible that the school m could be served by n
+        else          : self.Cl = Cl   
     
         self.r = [[[[] for k in range(self.K)] for n in range(self.N)] for t in range(self.T)]
 
@@ -174,10 +175,16 @@ class Solution :
                         ] for t in range(self.T)
                     ])
 
-    def compute_costs(self, add = 0): 
+    def compute_costs(self): 
         self.compute_dist()
+        self.compute_inventory()
+
+        add = np.sum([self.problem.h_s[m] * self.I_s[t,m] for t in range(1,self.T) for m in range(self.M)]) + self.problem.c_per_km * np.sum( self.problem.to_central[n] * self.X[t,n] for t in range(1,self.T) for n in range(self.N) ) * 2
+
+
+
         self.cost = self.problem.c_per_km * np.sum(self.dist) + add
-        if not add is None : self.cost = self.cost + add
+        self.cost = self.cost
 
     def compute_route_dist(self, tour_schools, warehouse : int):
         tour_complete   = [warehouse]+tour_schools+[warehouse]
@@ -351,13 +358,8 @@ class Solution :
 
 
 
-
-
-
-
-
         transport_cost = problem.c_per_km * plp.lpSum( self.b[t,n,k,m] * omega_vars[t,n,k,m] for (t,n,k,m) in set_omega ) - problem.c_per_km * plp.lpSum( self.a[t,n,k,m] * delta_vars[t,n,k,m] for (t,n,k,m) in set_delta )
-        add_cost = plp.lpSum([problem.h_s[m] * I_s[t,m] for t in range(1,T) for m in range(M)]) + problem.c_per_km * plp.lpSum( problem.to_central[n] * X_vars[t,n] for t in range(1,T) for n in range(N) ) 
+        add_cost = plp.lpSum([problem.h_s[m] * I_s[t,m] for t in range(1,T) for m in range(M)]) + problem.c_per_km * plp.lpSum( problem.to_central[n] * X_vars[t,n] for t in range(1,T) for n in range(N) ) * 2
 
         #objective function
         ISI_model += add_cost + transport_cost, 'Z'
@@ -391,7 +393,7 @@ class Solution :
         t3 = time()
 
         self.compute_r()
-        self.compute_costs(add=add)
+        self.compute_costs()
         t4 = time()
         self.running_time = { "Define problem" : t1-t0 , "Solve problem ":t2-t1 , "Compute TSPs" : t4-t3  }
 
