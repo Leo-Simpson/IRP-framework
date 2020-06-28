@@ -18,11 +18,13 @@ class Problem :
         if central is None : self.central = np.zeros(2)
         else: self.central = central
 
-        central_w = {"capacity": np.inf, "lower":-np.inf, "dist_central":0, "fixed_cost":0, "initial": 0, "name": "CENTRAL" }
-        self.Warehouses = [central_w] + Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'dist_central': ... , 'fixed_cost': ... , 'initial': ...,  'name' : ...}
+        inf = 10000
+
+        central_w = {"capacity": inf, "lower":-inf, "dist_central":0, "fixed_cost":0, "initial": 0, "name": "CENTRAL" , "location": self.central}
+        self.Warehouses = [central_w] + Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'dist_central': ... , 'fixed_cost': ... , 'initial': ...,  'name' : ..., 'location': ...}
         
         
-        self.Schools = Schools  # list of dictionary {'capacity': ..., 'lower':..., 'consumption': ...,'storage_cost': ... , 'initial': ...,  'name' : ...}
+        self.Schools = Schools  # list of dictionary {'capacity': ..., 'lower':..., 'consumption': ...,'storage_cost': ... , 'initial': ...,  'name' : ..., 'location':...}
         self.T = T # time horizon
         self.K = K # number of vehicles
         self.Q1 = Q1 # capacity of the trucks for school deliveries
@@ -34,14 +36,13 @@ class Problem :
 
         if D is None : 
             locations = [w['location'] for w in self.Warehouses] + [s['location'] for s in self.Schools] 
-            names = [w['name'] for w in self.warehouses] + [s['name'] for s in self.schools]
-            self.D = pd.DataFrame(distance_matrix(locations,locations), columns = names, index=names)
+            names = [w['name'] for w in self.Warehouses] + [s['name'] for s in self.Schools]
+            self.D = distance_matrix(locations,locations)
         else : 
-            self.D = D # distance matrix. Could be a pandas data frame with the names of Warehouses/Schools as index of rows and colomns 
-            # to get the distance between a warehouse and a school for example : D.loc[warehouse_name, school_name]
+            self.D = D # distance matrix. Numpy array , NOT pandas dataframe
 
-        for w in self.Warehouses : 
-            if w["dist_central"]<=0. : w["dist_central"] = self.D.loc("CENTRAL",w["name"])*2
+        for i,w in enumerate(self.Warehouses) : 
+                w["dist_central"] = self.D[0,i]*2
 
         
 
@@ -87,7 +88,8 @@ class Solution :
     
         self.r = [[[[] for k in range(self.K)] for n in range(self.N)] for t in range(self.T)]
 
-        self.build_Cl()
+        #self.build_Cl()
+        self.compute_costs()
 
 
     def copy(self):
@@ -107,41 +109,37 @@ class Solution :
         
     def build_Cl(self):
         for m in range(self.M):
-            #dist_vect = np.array( [ self.problem.D.loc[self.name_warehouses[i], self.name_schools[m]] for i in range(self.N) ] )   # very ugly way to write it ....
-            dist_vec = self.problem.D[self.name_schools[m]].values[:self.N]
+            dist_vect = self.problem.D[m+self.N][:self.N]
 
-            dist_max = (self.problem.Tmax - self.problem.t_load) * self.problem.v /2          #only warehouses allowed to serve schools that are reachable in tour within Tmax (   
-            dist_radius = 2*np.min(dist_vect)                                               #alternatively: only warehouses allowed that are not more than twice (or take another value) far away as the closest warehouses
-            dist_max = min(dist_max,dist_radius)
+            dist_time = (self.problem.Tmax - self.problem.t_load) * self.problem.v /2          #only warehouses allowed to serve schools that are reachable in tour within Tmax (   
+            dist_radius = 2*np.min(dist_vect)      
+                                                     #alternatively: only warehouses allowed that are not more than twice (or take another value) far away as the closest warehouses
+            dist_max = dist_radius                                  # or dist_max = min(dist_time,dist_radius)
             self.Cl[dist_vect > dist_max , m] = False
 
     
     def compute_school_remove_costs(self,t,n,k):
-        
-        dist_mat = self.problem.D.values
         tour_complete = [n]+self.r[t][n][k]+[n]
         for i in range(1,len(tour_complete)-1): 
-            self.a[t,n,k, tour_complete[i] - self.N] = dist_mat[tour_complete[i], tour_complete[i+1]] + dist_mat[tour_complete[i], tour_complete[i-1]] - dist_mat[tour_complete[i-1], tour_complete[i+1]]
+            self.a[t,n,k, tour_complete[i] - self.N] = self.problem.D[tour_complete[i], tour_complete[i+1]] + self.problem.D[tour_complete[i], tour_complete[i-1]] - self.problem.D[tour_complete[i-1], tour_complete[i+1]]
             
     def compute_school_insert_costs(self,t,n,k):
         
-        dist_mat = self.problem.D.values
         tour_complete   = [n]+self.r[t][n][k]+[n] 
 
-        edges_cost = np.array( [dist_mat[tour_complete[i],tour_complete[i+1]] for i in range(len(tour_complete)-1)] )
+        edges_cost = np.array( [self.problem.D[tour_complete[i],tour_complete[i+1]] for i in range(len(tour_complete)-1)] )
         allowed  = [m for m in range(self.M) if self.Cl[n,m] and not self.Y[t,n,k,m] ]
         #allowed = [m for m in np.where(np.sum(self.Y[t,:,:,:], axis = (0,1)) == 0)[0] if self.Cl[n,m] == 1]
         for m in allowed:
-            add_edges_cost =  np.array( [ dist_mat[m+self.N,tour_complete[i]]+dist_mat[m+self.N,tour_complete[i+1]]  for i in range(len(tour_complete)-1) ] )
+            add_edges_cost =  np.array( [ self.problem.D[m+self.N,tour_complete[i]]+self.problem.D[m+self.N,tour_complete[i+1]]  for i in range(len(tour_complete)-1) ] )
             self.b[t,n,k,m] = np.amin(add_edges_cost-edges_cost)
             
     def cheapest_school_insert(self,t,n,k,m):
         
-        dist_mat = self.problem.D.values
         tour_school = self.r[t][n][k]
         tour_complete   = [n]+tour_school+[n] 
-        edges_cost = np.array( [dist_mat[tour_complete[i],tour_complete[i+1]] for i in range(len(tour_complete)-1)] )
-        add_edges_cost =  np.array( [ dist_mat[m+self.N,tour_complete[i]]+dist_mat[m+self.N,tour_complete[i+1]]  for i in range(len(tour_complete)-1) ] )
+        edges_cost = np.array( [self.problem.D[tour_complete[i],tour_complete[i+1]] for i in range(len(tour_complete)-1)] )
+        add_edges_cost =  np.array( [ self.problem.D[m+self.N,tour_complete[i]]+self.problem.D[m+self.N,tour_complete[i+1]]  for i in range(len(tour_complete)-1) ] )
         position = np.argmin(add_edges_cost)
         cost = add_edges_cost[position]
         return tour_school[:position] + [m] + tour_school[position:], cost
@@ -162,16 +160,14 @@ class Solution :
     def compute_r(self):
         # here are the TSP to be computed
         self.r = [[[[] for k in range(self.K)] for n in range(self.N)] for t in range(self.T)] # for each time t, for each vehicle k, for each warehouse n, a list of ordered integer of [0, M+N] corresponding to a tour
-        dist_mat = self.problem.D.values
         for t in range(self.T):
             for n in range(self.N):
                 for k in range(self.K):
                     tour_school = np.nonzero(self.Y[t,n,k,:])[0] + self.N 
                     #tour = [n] + np.ndarray.tolist(np.array(s[0])+self.N) + [n] #  the tour starts at the warehouse then add the school in the wrong order
                     #edit Chris 07.06.20:
-                    tour = tsp_tour(tour_school, n, dist_mat)  #function returns optimal tour and length of optimal tour
-                    #end of edit Chris 07.06.20
-                    self.r[t][n][k] = [i-self.N for i in tour]    # is this tour with or without the warehouse ?? It should be without
+                    self.r[t][n][k] = tsp_tour(tour_school, n, self.problem.D)  #function returns optimal tour and length of optimal tour
+                    # tour without the warehouses, but indexed from N to N+M
 
     def compute_dist(self):
         self.dist = np.array([[[
@@ -182,13 +178,12 @@ class Solution :
 
     def compute_costs(self, add = 0): 
         self.compute_dist()
-        if not add is None : self.cost = self.problem.c_per_km * np.sum(self.dist) + add
-        else : self.cost = self.problem.c_per_km * np.sum(self.dist)
+        self.cost = self.problem.c_per_km * np.sum(self.dist) + add
+        if not add is None : self.cost = self.cost + add
 
     def compute_route_dist(self, tour_schools, warehouse : int):
-        dist_mat = self.problem.D.values
         tour_complete   = [warehouse]+tour_schools+[warehouse]
-        return sum( [ dist_mat[tour_complete[i],tour_complete[i+1]] for i in range(len(tour_complete)-1)])
+        return sum( [ self.problem.D[tour_complete[i],tour_complete[i+1]] for i in range(len(tour_complete)-1)])
 
     def compute_time_adding(self):
         problem  = self.problem
@@ -208,20 +203,31 @@ class Solution :
             self.I_s[t] = self.I_s[t-1]+ self.problem.Q1 * np.sum( self.q[t,:,:,:], axis = (0,1) ) - self.problem.dt[t,:]
             self.I_w[t] = self.I_w[t-1]- self.problem.Q1 * np.sum( self.q[t,:,:,:], axis = (1,2) ) + self.problem.Q2 * self.X[t,:]
 
+    def compute_vehicle(self):
+        # build binary matrix Vehicle[t,n,k] that is True when we can add schools to a vehicle
+        self.Vehicle = np.any(self.Y, axis=3)                  # matrix that is equal to False when route is empty
+        for t in range(self.T):
+            for n in range(self.N):
+                for k in range(self.K):
+                    if not self.Vehicle[t,n,k]:      # the first False componant of the column is set to true (one of the empty vehicles), the rest is still false
+                        self.Vehicle[t,n,k] = True
+                        break
         
+        
+        self.Vehicle = np.ones((self.T,self.N,self.K), dtype=bool)
+                    
 
 
 
 
-    def ISI(self, G = 1):
+    def ISI(self, G = 1, accuracy = 0.01):
         # change the solution itself to the ISI solution
         problem = self.problem
         T,N,K,M = self.T, self.N, self.K, self.M
 
         self.compute_a_and_b()
-        
-
         self.compute_time_adding()
+        self.compute_vehicle()
         
         # decision variables:
         # q(t,n,k,m): fraction of capacity Q1 of truck k from warehouse m that is delivered to school n at time t
@@ -230,7 +236,7 @@ class Solution :
 
         set_q     = [ (t,n,k,m) for t in range(T) for n in range(N) for k in range(K) for m in range(M) if self.Cl[n,m]  ]
         set_delta = [ (t,n,k,m) for (t,n,k,m) in set_q if self.Y[t,n,k,m]  ]
-        set_omega = [ (t,n,k,m) for (t,n,k,m) in set_q if not self.Y[t,n,k,m]  ]
+        set_omega = [ (t,n,k,m) for (t,n,k,m) in set_q if (not self.Y[t,n,k,m]) and self.Vehicle[t,n,k] ]
 
 
         #print("d",problem.d)
@@ -292,7 +298,7 @@ class Solution :
         for t in range(T):
             for n in range(N):
                 for k in range(K):
-                    ISI_model += plp.lpSum(q_vars[t,n,k,m] for  m in range(M)) <=1
+                    ISI_model += plp.lpSum(q_vars[t,n,k,m] for  m in range(M) if (t,n,k,m) in set_q ) <=1
 
         
         # constraint 11: only positive amount to deliver if school is served in that round
@@ -300,7 +306,7 @@ class Solution :
         for (t,n,k,m) in set_q:     
             if (t,n,k,m) in set_delta :
                 ISI_model += q_vars[t,n,k,m] <= 1 - delta_vars[t,n,k,m]
-            else : 
+            elif (t,n,k,m) in set_omega : 
                 ISI_model += q_vars[t,n,k,m] <= omega_vars[t,n,k,m]
 
         #constraint 18: bound on the number of changes comitted by the ISI model
@@ -321,11 +327,9 @@ class Solution :
 
                     ISI_model += expression <= problem.Tmax
 
-
-        ISI_model.solve(solver = plp.GLPK_CMD())
-
-    
+        #print(ISI_model)
         
+        ISI_model.solve(solver = plp.GLPK_CMD(options=['--mipgap', str(accuracy)]))
         #ISI_model.solve()
 
         # transform the _vars things into numpy array to return it. 
@@ -334,7 +338,7 @@ class Solution :
             self.q[t,n,k,m] = q_vars[t,n,k,m].varValue
             if (t,n,k,m) in set_delta : 
                 self.Y[t,n,k,m] -= delta_vars[t,n,k,m].varValue
-            else : 
+            elif (t,n,k,m) in set_omega : 
                 self.Y[t,n,k,m] += omega_vars[t,n,k,m].varValue
 
 
@@ -359,7 +363,7 @@ class Solution :
     def __repr__(self):
         km = np.sum(self.dist, axis = (1,2))
         self.compute_inventory()
-        visual = visu(self.problem,"WFP Inventory problem", self.I_s,self.I_w, km, self.r)
+        visual = visu(self.problem,"WFP Inventory problem", self.I_s,self.I_w, km, self.r, self.X)
         fig = go.Figure(visual)
         file = "visu.html"
         offline.plot(fig, filename= file, auto_open = False)

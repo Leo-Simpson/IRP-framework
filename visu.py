@@ -6,7 +6,7 @@ from copy import copy, deepcopy
 
 
 col_vehicules = ['grey', 'lime', 'darksalmon', 'olive', 'violet', 'slategrey' ,'lightgray'] * 10
-
+col_vehicules.append("black") # color for the pickups
 
 COLORS = {"school" : "green", "warehouse": "blue", "central":"red","road":col_vehicules}
 SIZES = {"school" : 30, "warehouse": 40,"central": 50}
@@ -104,7 +104,7 @@ def plots(schools, warehouses, central):
 def make_layout(title,central, pos_s, pos_w, I_s, I_w): 
     
     annotations = annotations_inventory(pos_s,pos_w,I_s,I_w)
-    annotations.append(make_annotation(central,"CENTRAL", 'black'))
+    #annotations.append(make_annotation(central,"CENTRAL", 'black'))
     
 
 
@@ -132,7 +132,7 @@ def make_layout(title,central, pos_s, pos_w, I_s, I_w):
 
 def build_arrows(routes):
     # routes is a list TxNxKx[s1,s2,..]
-    # arrows is the list of arrows : (i1,i2) with i negative if it represents a warehouse, and indices_step is the list (T,#edges) of indices of arrows  
+    # arrows is the list of arrows : (i1,i2, v) with i negative if it represents a warehouse, and indices_step is the list (T,#edges) of indices of arrows  
     indices_step = []
     arrows = []
 
@@ -143,6 +143,8 @@ def build_arrows(routes):
             except ValueError:
                 l.append(len(arrows))
                 arrows.append( (start,end,vehicule) )
+    
+    
             
 
     for t in range(len(routes)):
@@ -160,8 +162,8 @@ def build_arrows(routes):
                 add_indice(start,end,ind_v,l)
                 if route : ind_v +=1
 
-
         indices_step.append(l)
+
 
     return arrows, indices_step
 
@@ -184,7 +186,11 @@ def plot_arr(start,end,distance, color):
 
 
 
-def visu(problem, TITLE, I_s, I_w, km, routes,X):
+def visu(problem, TITLE, I_s, I_w, km, routes1,X):
+
+    N =len(problem.Warehouses)
+    routes = [[[ [routes1[t][n][k][m]-N for m in range(len(routes1[t][n][k]))] for k in range(problem.K)] for n in range(N)] for t in range(problem.T)]
+    
 
 
     title = TITLE + "   Truck 1 capacity : {}   Truck 2 capacity : {} ".format(problem.Q1,problem.Q2)
@@ -198,22 +204,22 @@ def visu(problem, TITLE, I_s, I_w, km, routes,X):
 
     arrows, indices_step = build_arrows(routes) #  arrows is the list of arrows : (i1,i2) with i negative if it represents a warehouse, and indices_step is the list (T,#edges) of indices of arrows  
     Narr = len(arrows)-1
-    arrows.extend( [(-n-1, -1) for n in range(1,len(problem.Warehouses)) ])
+    arrows.extend( [(-n-1, -1,-1) for n in range(1,N) ])
     for t in range(problem.T):
-        for n in range(1,len(problem.Warehouses)):
+        for n in range(1,N):
             if X[t,n]: indices_step[t].append(Narr+n)
 
 
     def i_to_dict(i):
-        if i>=0 : return(problem.Schools[i])
-        else    : return(problem.Warehouses[-i-1])
+        if i>=0 : return(problem.Schools[i], i+N)
+        else    : return(problem.Warehouses[-i-1], -i-1)
 
     for arr in arrows : 
         i1,i2,vehicule = arr 
-        start = i_to_dict(i1)
-        end   = i_to_dict(i2) 
+        start,ind1 = i_to_dict(i1)
+        end,ind2   = i_to_dict(i2) 
         color = COLORS["road"][vehicule]
-        data.append(plot_arr(start["location"],end["location"],problem.D.loc[start["name"],end["name"]], color))
+        data.append(plot_arr(start["location"],end["location"],problem.D[ind1,ind2], color))
 
 
     L = []
@@ -226,7 +232,7 @@ def visu(problem, TITLE, I_s, I_w, km, routes,X):
         title_up = title + "        KM = {}        Cumulative KM = {} ".format(round(km[t]),round(cumulative_km))
         
         annotations = annotations_inventory( pos_s, pos_w, I_s[t], I_w[t])
-        annotations.append(make_annotation(problem.central,"CENTRAL", 'black'))
+        #annotations.append(make_annotation(problem.central,"CENTRAL", 'black'))
 
 
         step = dict(label="t = "+str(t), method = "update", 
