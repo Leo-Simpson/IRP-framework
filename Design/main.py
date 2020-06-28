@@ -118,20 +118,12 @@ class Window(QtWidgets.QMainWindow):
     # connects the inputs with our ISI model
         if self.ui.lineEdit_main.text()=='':
             print('No file inserted. Could not optimize!')
-        else:
-            #first computes the distance matrix 
-            locations = [w['location'] for w in self.warehouses] + [s['location'] for s in self.schools]
-            distance_mat = distance_matrix(locations,locations)         #should we round here? Probably not, right?
-            #print(distance_mat)
-            names = [w['name'] for w in self.warehouses] + [s['name'] for s in self.schools]
-            D = pd.DataFrame(distance_mat, columns = names, index=names)
-            
-                
+        else:               
             #and here we set up our model
-            problem = Problem(D = D, Schools = self.schools, Warehouses = self.warehouses, 
+            problem = Problem(Schools = self.schools, Warehouses = self.warehouses, 
                               T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v, 
                               t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, 
-                              central = self.central)
+                              central = self.central, D = None)
             
             if self.ui.checkBox.isChecked():
                 problem.central = np.mean(np.array([w["location"] for w in self.warehouses]),axis=0)

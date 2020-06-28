@@ -14,10 +14,14 @@ from visu import visu
 
 class Problem :
     #this is the class that contains the data of the problem
-    def __init__(self,D,Warehouses,Schools,T,K, Q1, Q2, v, t_load, c_per_km, Tmax, central = None):
-        self.D = D # distance matrix. Could be a pandas data frame with the names of Warehouses/Schools as index of rows and colomns 
-                    # to get the distance between a warehouse and a school for example : D.loc[warehouse_name, school_name]
-        self.Warehouses = Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'dist_central': ... , 'fixed_cost': ... , 'initial': ...,  'name' : ...}
+    def __init__(self,Warehouses,Schools,T,K, Q1, Q2, v, t_load, c_per_km, Tmax, central = None, D = None):
+        if central is None : self.central = np.zeros(2)
+        else: self.central = central
+
+        central_w = {"capacity": np.inf, "lower":-np.inf, "dist_central":0, "fixed_cost":0, "initial": 0, "name": "CENTRAL" }
+        self.Warehouses = [central_w] + Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'dist_central': ... , 'fixed_cost': ... , 'initial': ...,  'name' : ...}
+        
+        
         self.Schools = Schools  # list of dictionary {'capacity': ..., 'lower':..., 'consumption': ...,'storage_cost': ... , 'initial': ...,  'name' : ...}
         self.T = T # time horizon
         self.K = K # number of vehicles
@@ -28,10 +32,18 @@ class Problem :
         self.c_per_km = c_per_km # average routing cost per kilometer
         self.Tmax = Tmax
 
-        if central is None : 
-            self.central = np.zeros(2)
-        else: 
-            self.central = central
+        if D is None : 
+            locations = [w['location'] for w in self.Warehouses] + [s['location'] for s in self.Schools] 
+            names = [w['name'] for w in self.warehouses] + [s['name'] for s in self.schools]
+            self.D = pd.DataFrame(distance_matrix(locations,locations), columns = names, index=names)
+        else : 
+            self.D = D # distance matrix. Could be a pandas data frame with the names of Warehouses/Schools as index of rows and colomns 
+            # to get the distance between a warehouse and a school for example : D.loc[warehouse_name, school_name]
+
+        for w in self.Warehouses : 
+            if w["dist_central"]<=0. : w["dist_central"] = self.D.loc("CENTRAL",w["name"])*2
+
+        
 
     def define_arrays(self):
         self.I_s_init  =  np.array([s["initial"] for s in self.Schools])           # initial inventory of school
@@ -95,20 +107,14 @@ class Solution :
         
     def build_Cl(self):
         for m in range(self.M):
-            dist_vect = np.array( [ self.problem.D.loc[self.name_warehouses[i], self.name_schools[m]] for i in range(self.N) ] )   # very ugly way to write it ....
-            
-            # MILENA ==> choose here between : 1.5*np.min(dist_vect) or thing with Tmax ... 
-            dist_max = (self.problem.Tmax/2 - self.problem.t_load) * self.problem.v          #only warehouses allowed to serve schools that are reachable in tour within Tmax (   
-            #dist_radius = 2*np.min(dist_vect)                                               #alternatively: only warehouses allowed that are not more than twice (or take another value) far away as the closest warehouses
-            #dist_max = np.min(dist_max,dist_radius)
+            #dist_vect = np.array( [ self.problem.D.loc[self.name_warehouses[i], self.name_schools[m]] for i in range(self.N) ] )   # very ugly way to write it ....
+            dist_vec = self.problem.D[self.name_schools[m]].values[:self.N]
+
+            dist_max = (self.problem.Tmax - self.problem.t_load) * self.problem.v /2          #only warehouses allowed to serve schools that are reachable in tour within Tmax (   
+            dist_radius = 2*np.min(dist_vect)                                               #alternatively: only warehouses allowed that are not more than twice (or take another value) far away as the closest warehouses
+            dist_max = min(dist_max,dist_radius)
             self.Cl[dist_vect > dist_max , m] = False
 
-    
-#    def Cl_shaped_like_Y(self):
-#        Cl_times_K = np.repeat(self.Cl[np.newaxis,0,:], self.K, 0)[np.newaxis,:,:]
-#        for i in np.arange(1,self.N):
-#            Cl_times_K = np.concatenate([Cl_times_K, np.repeat(self.Cl[np.newaxis,i,:], self.K, 0)[np.newaxis,:,:]],0)
-#        return np.repeat(Cl_times_K[np.newaxis,:,:,:], self.T, 0)
     
     def compute_school_remove_costs(self,t,n,k):
         
@@ -345,7 +351,7 @@ class Solution :
     def visualization(self,filename):
         km = np.sum(self.dist, axis = (1,2))
         self.compute_inventory()
-        visual = visu(self.problem,"WFP Inventory problem", self.I_s,self.I_w, km, self.r)
+        visual = visu(self.problem,"WFP Inventory problem", self.I_s,self.I_w, km, self.r, self.X)
         fig = go.Figure(visual)
         offline.plot(fig, filename= filename, auto_open = False)
         
@@ -503,15 +509,7 @@ def random_problem(T,N,K,M, seed = None):
     Q2 = np.random.randint(low = 10, high = 30)
 
 
-    locations =  [w['location'] for w in Warehouses] + [s['location'] for s in Schools]
-    names = [w['name'] for w in Warehouses] + [s['name'] for s in Schools]
-
-    distance_mat = np.round(distance_matrix(locations,locations))
-
-    D = pd.DataFrame(distance_mat, columns = names, index=names)
-
-    problem = Problem(D = D, Schools = Schools, Warehouses = Warehouses,T = T,K = K, Q1 = Q1, Q2 = Q2, v = 40, t_load = 0.5, c_per_km = 0.1, Tmax = 6)
-    problem.central = central
+    problem = Problem(Schools = Schools, Warehouses = Warehouses,T = T,K = K, Q1 = Q1, Q2 = Q2, v = 40, t_load = 0.5, c_per_km = 0.1, Tmax = 6, central = central)
     
     return problem
 

@@ -63,15 +63,15 @@ def plots(schools, warehouses, central):
 
     x, y, text = [],[],[]
     for w in warehouses:
+        if not w["name"] == "CENTRAL" : 
+            x.append(w["location"][0])
+            y.append(w["location"][1])
+            
+            t = ""
+            for param in ["name","capacity","lower", "fixed_cost"] :
+                t += param + " = " + str(w[param]) + "<br>"
 
-        x.append(w["location"][0])
-        y.append(w["location"][1])
-        
-        t = ""
-        for param in ["name","capacity","lower", "fixed_cost"] :
-            t += param + " = " + str(w[param]) + "<br>"
-
-        text.append(t)
+            text.append(t)
     
     
     plot_w = go.Scatter(x=x, y=y, mode='markers',
@@ -184,7 +184,7 @@ def plot_arr(start,end,distance, color):
 
 
 
-def visu(problem, TITLE, I_s, I_w, km, routes):
+def visu(problem, TITLE, I_s, I_w, km, routes,X):
 
 
     title = TITLE + "   Truck 1 capacity : {}   Truck 2 capacity : {} ".format(problem.Q1,problem.Q2)
@@ -197,7 +197,11 @@ def visu(problem, TITLE, I_s, I_w, km, routes):
 
 
     arrows, indices_step = build_arrows(routes) #  arrows is the list of arrows : (i1,i2) with i negative if it represents a warehouse, and indices_step is the list (T,#edges) of indices of arrows  
-    Narr = len(arrows)
+    Narr = len(arrows)-1
+    arrows.extend( [(-n-1, -1) for n in range(1,len(problem.Warehouses)) ])
+    for t in range(problem.T):
+        for n in range(1,len(problem.Warehouses)):
+            if X[t,n]: indices_step[t].append(Narr+n)
 
 
     def i_to_dict(i):
@@ -214,8 +218,8 @@ def visu(problem, TITLE, I_s, I_w, km, routes):
 
     L = []
     cumulative_km = 0
+    visible_arr = np.zeros(len(arrows), dtype=bool )
     for t in range(problem.T):
-        visible_arr = np.zeros(Narr, dtype=bool )
         visible_arr[indices_step[t]] = True
         
         cumulative_km += km[t]
@@ -232,6 +236,7 @@ def visu(problem, TITLE, I_s, I_w, km, routes):
                     )
         
         L.append(step )
+        visible_arr[indices_step[t]] = False
     
     
     layout["updatemenus"]    = [ dict(buttons = L, direction = "up",x=0.,y=0.) ]
