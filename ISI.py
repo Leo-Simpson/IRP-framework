@@ -201,10 +201,21 @@ class Solution :
             self.I_s[t] = self.I_s[t-1]+ self.problem.Q1 * np.sum( self.q[t,:,:,:], axis = (0,1) ) - self.problem.dt[t,:]
             self.I_w[t] = self.I_w[t-1]- self.problem.Q1 * np.sum( self.q[t,:,:,:], axis = (1,2) ) + self.problem.Q2 * self.X[t,:]
 
+    def verify_feasibility(self):
+        t0 = time()
+        self.compute_inventory()
+        self.compute_time_adding()
+        tol = 1e-4
+        self.feasibility = {
+                "Truck constraint" : np.all(np.sum(self.q , axis = 3) <= 1 + tol) and np.all(self.q >=-tol),
+                "Duration constraint" : np.all(self.time_route <=self.problem.Tmax+ tol ),
+                "I_s constraint" : np.all( [ np.all(self.I_s[t]<= self.problem.U_s + tol) and np.all(self.I_s[t]>= self.problem.L_s - tol) for t in range(self.T)]),
+                "I_w constraint" : np.all( [ np.all(self.I_w[t]<= self.problem.U_w + tol) and np.all(self.I_w[t]>= self.problem.L_w - tol) for t in range(self.T)])
+        }
 
+        
+        self.running_time["feasibility"] = time()-t0
                     
-
-
 
 
     def ISI(self, G = 1, accuracy = 0.01, time_lim = 1000, solver = "CBC"):
@@ -403,9 +414,18 @@ class Solution :
         self.visualization(file)
         self.fig.show()
         string_running_time = "Running time : \n  "
+        string_f = "Constraints furfilled : \n  "
         for name, t in self.running_time.items():
             string_running_time += name +"  :  " + str(round(t,4)) + "\n  "
-        return("Solution in file {}  with a total cost of {} ".format(file,round(self.cost),3)+ " \n "+self.solver + "\n "+ string_running_time)
+
+        for name, boole in self.feasibility.items():
+            string_f += name +"  :  " + str(boole) + "\n  "
+
+
+        return("Solution in file {}  with a total cost of {} ".format(file,round(self.cost),3)
+                + " \n Solver : "+self.solver 
+                + " \n "  + string_f
+                + "\n "+ string_running_time)
 
 
 
