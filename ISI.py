@@ -207,8 +207,9 @@ class Solution :
 
 
 
-    def ISI(self, G = 1, accuracy = 0.01, time_lim = 1000):
+    def ISI(self, G = 1, accuracy = 0.01, time_lim = 1000, solver = "CBC"):
         # change the solution itself to the ISI solution
+        self.solver = solver
         t0 = time()
 
         problem = self.problem
@@ -239,12 +240,23 @@ class Solution :
 
         ISI_model=plp.LpProblem("ISI_Model",plp.LpMinimize)
 
+
         # build dictionaries of decision variables:
         q_vars = plp.LpVariable.dicts("q",set_q, cat='Continuous', lowBound=0., upBound=1.)
         X_vars = plp.LpVariable.dicts("X",[(t,n) for t in range(1,T) for n in range(N)], cat='Binary')
         delta_vars = plp.LpVariable.dicts("delta",set_delta, cat='Binary')
         omega_vars = plp.LpVariable.dicts("omega",set_omega, cat='Binary')
         # just to remember : the psi of the paper is the same thing as our Y
+
+        for (t,n,k,m) in set_q : 
+            q_vars[t,n,k,m].setInitialValue(self.q[t,n,k,m])
+            if (t,n,k,m) in set_omega : omega_vars[t,n,k,m].setInitialValue(0.)
+            elif (t,n,k,m) in set_delta : delta_vars[t,n,k,m].setInitialValue(0.)
+
+        for t in range(1,T):
+            for n in range(N):
+                X_vars[t,n].setInitialValue(self.X[t,n])
+
         
 
         # constraint 11: only positive amount to deliver if school is served in that round
@@ -343,7 +355,9 @@ class Solution :
         #print(ISI_model)
         t1 = time()
 
-        ISI_model.solve(solver = plp.GLPK_CMD(options=['--mipgap', str(accuracy),"--tmlim", str(time_lim)],msg=0))
+        if solver == "CBC"    : ISI_model.solve(solver = plp.PULP_CBC_CMD(msg=False, mip_start=True))
+        elif solver == "GLPK" : ISI_model.solve(solver = plp.GLPK_CMD(options=['--mipgap', str(accuracy),"--tmlim", str(time_lim)],msg=0))
+        
 
         t2 = time()
         #ISI_model.solve()
@@ -391,7 +405,7 @@ class Solution :
         string_running_time = "Running time : \n  "
         for name, t in self.running_time.items():
             string_running_time += name +"  :  " + str(round(t,4)) + "\n  "
-        return("Solution in file {}  with a total cost of {} ".format(file,round(self.cost),3) + "\n "+ string_running_time )
+        return("Solution in file {}  with a total cost of {} ".format(file,round(self.cost),3)+ " \n "+self.solver + "\n "+ string_running_time)
 
 
 
