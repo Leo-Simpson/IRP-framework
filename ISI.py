@@ -429,7 +429,7 @@ class Solution :
 
 class Meta_param : 
     def __init__(self):
-        self.Delta = 20
+        self.delta = 20
         self.epsilon_bound = (0.05,0.15)
         self.tau_start = 8000
         self.tau_end = 0.01
@@ -512,7 +512,7 @@ class Matheuristic :
                 self.operators[i]['score'] += param.sigmas[2]                             # line 29
             
             if iterations % param.delta == 0 :
-                epsilon = rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1], seed = param.seed  )
+                epsilon = rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1] )
                 # implement update_weights or is this already done?
                 self.update_weights(param.reaction_factor)
                 self.solution = self.solution_best.copy()

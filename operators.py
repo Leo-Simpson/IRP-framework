@@ -3,7 +3,7 @@ from OR_tools_solve_tsp import tsp_tour
 import random
 
 def rand_remove_rho(solution, rho):
-    for i in range( min(rho,sum(solution.Y)) ):  
+    for i in range( min(rho,np.sum(solution.Y)) ):  
         t,n,k,m = random.choice(np.transpose(np.nonzero(solution.Y)))
         solution.Y[t,n,k,m] = 0
         tour = np.array(solution.r[t][n][k])
@@ -11,7 +11,7 @@ def rand_remove_rho(solution, rho):
         
 
 def remove_worst_rho(solution, rho):
-    for i in range( min(rho,sum(solution.Y)) ):   
+    for i in range( min(rho,np.sum(solution.Y)) ):   
         Y_flat = solution.Y.reshape(-1)
         a_flat = solution.a.reshape(-1)
         argmax = np.argmax(a_flat[Y_flat == 1])
