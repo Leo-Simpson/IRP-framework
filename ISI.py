@@ -402,6 +402,23 @@ class Solution :
 
         if info : print(self.informations())
 
+    def multi_ISI(self,G=1,solver="CBC", info=True):
+        Gprime = G
+        for p in range(20):
+            solution = self.copy()
+            solution.ISI(Gprime,solver = solver, info=info)
+            Gprime+=1
+            if solution.feasible : 
+                self = solution
+                break
+        assert p<20 , "Problem looks infeasible"
+
+
+
+        
+
+    
+    
     def visualization(self,filename):
         t0 = time()
         km = np.sum(self.dist, axis = (1,2))
@@ -445,6 +462,7 @@ class Meta_param :
         self.ksi = rd.uniform(low=0.1,high=0.2)
         self.seed = None
         self.rho = 10
+        self.max_subloop = 20
 
 
 
@@ -463,8 +481,8 @@ class Matheuristic :
 
 
 
-    def final_algo(self, param, MAXiter = 1000, solver= "CBC"):
-        # here one can do the final matheuristic described in the paper
+    def algo1(self, param, MAXiter = 1000, solver= "CBC"):
+        # here one can do the final matheuristic described in the paper : page 18
         rd.seed(param.seed)
 
         M,N,K,T = self.solution.M, self.solution.N, self.solution.K, self.solution.T
@@ -492,11 +510,9 @@ class Matheuristic :
                 self.solution = self.solution_prime.copy() # line 8
                 G = max(G-1,1)                                  # line 9
 
-                keep_going, i  = True, 0
-                while keep_going and i < 10: 
-                    i+=1                              #line 10
+                for j in range(param.max_subloop):
                     self.solution_prime.ISI(G=G, solver=solver)  
-                    
+
                     if self.solution_prime.cost < (1+epsilon)*self.solution.cost and self.solution_prime.feasible: 
                         if self.solution_prime.cost < self.solution.cost :              # line 11
                             self.solution = self.solution_prime.copy()              # line 12
@@ -504,17 +520,18 @@ class Matheuristic :
                         else : G = max(int(param.ksi*(N+M)),1)                          # line 14-15
                                             
 
-                    elif self.solution.cost < self.solution_best.cost and self.solution.feasible:   # line 17
-                        self.solution_best = self.solution.copy()    # line 18
-                        self.operators[i]['score'] += param.sigmas[0]   # line 19
-                        G = max(G-1,1)                                  # line 20
-                    else :                                              # line 21
+                    elif self.solution.cost < (1+epsilon)*self.solution_best.cost and self.solution.feasible:   # line 17 / 23 (deviation from pseudo code : not s'' but s ! )
+                        if self.solution.cost < self.solution_best.cost : #line 17
+                            self.solution_best = self.solution.copy()    # line 18
+                            self.operators[i]['score'] += param.sigmas[0]   # line 19
+                            G = max(G-1,1)                                  # line 20
+                        else :                                              # line 21
+                            self.operators[i]['score'] += param.sigmas[1]   # line 22
+                            G = max(int(param.ksi*(N+M)),1)                 # line 24
+                    
+                    else : 
                         self.operators[i]['score'] += param.sigmas[1]   # line 22
-
-                        # little deviation from the pseudocode... we think it is s and not s''
-                        if self.solution.cost < (1+epsilon)*self.solution_best.cost and self.solution.feasible:  # line 23
-                            G = max(int(param.ksi*(N+M)),1)                       # line 24
-                        else : keep_going = False
+                        break
 
             elif self.solution_prime.cost < self.solution.cost - np.log(rd.random())*tau and self.solution_prime.feasible: # line 27 # choose theta everytime as a new random value or is it a fixed random value?
                 self.solution = self.solution_prime.copy()                         # line 28
@@ -533,6 +550,8 @@ class Matheuristic :
         print(self.solution_best)
 
 
+
+
     def choose_operator(operators):
         weights = [operator['weight'] for operator in operators]
         s = 0.
@@ -549,15 +568,67 @@ class Matheuristic :
             op['number_used'] = 0
         
 
+    def algo2(self, param, MAXiter = 1000, solver= "CBC"):
+        # modified algo :  we don't do line 20, 23, 24
+        rd.seed(param.seed)
+
+        M,N,K,T,p= self.solution.M, self.solution.N, self.solution.K, self.solution.T, 0
+        
+
+        self.solution.multi_ISI(G = N, solver=solver) 
+        
+        self.solution_best = self.solution.copy()
+
+
+        tau, iterations, epsilon = param.tau_start, 0, rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1]  )
+        while tau > param.tau_end and iterations < MAXiter : 
+            
+            i = Matheuristic.choose_operator(self.operators)
+            operator = self.operators[i]['function']
+            self.solution_prime = self.solution.copy()
+            operator(self.solution_prime, param.rho)
+            G = N
+            self.solution_prime.multi_ISI(G=G, solver=solver)
+            
+
+            
+
+            amelioration, finish = False, False
+            while ( self.solution_prime.cost < (1+epsilon)*self.solution.cost ):
+                if self.solution_prime.cost < self.solution.cost :              
+                    self.solution = self.solution_prime.copy()            
+                    G = max(G-1,1) 
+                    amelioration,finish = True, False                                         
+                else : 
+                    G = max(int(param.ksi*N),1)   
+                    if finish : break
+                    finish = True
+
+                self.solution_prime.ISI(G=G, solver=solver)
+
+            if self.solution.cost < self.solution_best.cost : 
+                self.solution_best = self.solution.copy()  
+                self.operators[i]['score'] += param.sigmas[0]   
+
+            if amelioration : self.operators[i]['score'] += param.sigmas[1]   
+            
+            elif self.solution_prime.cost < self.solution.cost - np.log(rd.random())*tau : # choose theta everytime as a new random value or is it a fixed random value?
+                self.solution = self.solution_prime.copy()                        
+                self.operators[i]['score'] += param.sigmas[2]                       
                 
 
+            if iterations % param.Delta == 0 :
+                epsilon = rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1])
+                # implement update_weights or is this already done?
+                self.update_weights(param.reaction_factor)
+                self.solution = self.solution_best.copy()
 
+            iterations += 1
+            tau = tau*param.cooling
 
-
-
-
-
-
+            print("Step %i is finished !!" %iterations)
+            print("Current cost is : ", self.solution_best.cost )
+        print(self.solution_best)
 
 
 

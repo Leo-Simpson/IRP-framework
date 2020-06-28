@@ -9,7 +9,7 @@ problem = random_problem(T,N,K,M, seed=10)
 param = Meta_param()
 heuristic = Matheuristic(problem)
 
-heuristic.final_algo(param, MAXiter = 10, solver = "CBC")
+heuristic.algo2(param, MAXiter = 10, solver = "CBC")
 
 
 
