@@ -86,6 +86,11 @@ class Solution :
         else          : self.Cl = Cl   
     
         self.r = [[[[] for k in range(self.K)] for n in range(self.N)] for t in range(self.T)]
+        self.running_time = dict()
+        self.feasibility = dict()
+        self.feasible = False
+        self.a = np.zeros((self.T,self.N,self.K,self.M)) # routing cost reduction if school m is removed from the tour of vehicle k from WH n at time t ==> array TxKxMxN
+        self.b = np.zeros((self.T,self.N,self.K,self.M)) # routing cost addition if school m is added to the tour of vehicle k from WH n at time t ==> array TxKxMxN
 
         self.build_Cl()
         self.compute_costs()
@@ -102,6 +107,9 @@ class Solution :
         solution.b = np.copy(self.b)
         solution.dist = np.copy(self.dist)
         solution.cost = self.cost
+        solution.running_time = self.running_time.copy()
+        solution.feasibility = self.feasibility.copy()
+        solution.feasible = self.feasible
 
         return solution
 
@@ -207,7 +215,6 @@ class Solution :
             self.I_w[t] = self.I_w[t-1]- self.problem.Q1 * np.sum( self.q[t,:,:,:], axis = (1,2) ) + self.problem.Q2 * self.X[t,:]
 
     def verify_feasibility(self):
-        t0 = time()
         self.compute_inventory()
         self.compute_time_adding()
         tol = 1e-4
@@ -217,13 +224,11 @@ class Solution :
                 "I_s constraint" : np.all( [ np.all(self.I_s[t]<= self.problem.U_s + tol) and np.all(self.I_s[t]>= self.problem.L_s - tol) for t in range(self.T)]),
                 "I_w constraint" : np.all( [ np.all(self.I_w[t]<= self.problem.U_w + tol) and np.all(self.I_w[t]>= self.problem.L_w - tol) for t in range(self.T)])
         }
-
-        
-        self.running_time["feasibility"] = time()-t0
+        self.feasible = self.feasibility["Truck constraint"] and self.feasibility["Duration constraint"] and self.feasibility["I_s constraint"] and self.feasibility["I_w constraint"]
                     
 
 
-    def ISI(self, G = 1, accuracy = 0.01, time_lim = 1000, solver = "CBC"):
+    def ISI(self, G = 1, accuracy = 0.01, time_lim = 1000, solver = "CBC", plot = False, info = True):
         # change the solution itself to the ISI solution
         t0 = time()
 
@@ -351,10 +356,6 @@ class Solution :
 
 
 
-
-
-
-
         transport_cost = problem.c_per_km * plp.lpSum( self.b[t,n,k,m] * omega_vars[t,n,k,m] for (t,n,k,m) in set_omega ) - problem.c_per_km * plp.lpSum( self.a[t,n,k,m] * delta_vars[t,n,k,m] for (t,n,k,m) in set_delta )
         add_cost = plp.lpSum([problem.h_s[m] * I_s[t,m] for t in range(1,T) for m in range(M)]) + problem.c_per_km * plp.lpSum( problem.to_central[n] * X_vars[t,n] for t in range(1,T) for n in range(N) ) * 2
 
@@ -388,30 +389,30 @@ class Solution :
 
         add = add_cost.value()
         t3 = time()
-
         self.compute_r()
         self.compute_costs()
         t4 = time()
-        self.running_time = { "Define problem" : t1-t0 , "Solve problem ":t2-t1 , "Compute TSPs" : t4-t3  }
+        self.verify_feasibility()
+        t5 = time()
+
+        self.running_time = { "Define problem" : t1-t0 , "Solve problem ":t2-t1 , "Compute TSPs" : t4-t3  , "Visualisation" : t5-t4}
 
 
+        if plot : self.visualization('visu.html').show()
+
+        if info : print(self.informations())
 
     def visualization(self,filename):
         t0 = time()
         km = np.sum(self.dist, axis = (1,2))
-        self.compute_inventory()
-        visual = visu(self.problem,"WFP Inventory problem", self.I_s,self.I_w, km, self.r, self.X)
+        visual = visu(self.problem,"WFP Inventory problem", self.I_s,self.I_w, km, self.r, self.X, self.q*self.problem.Q1,self.problem.Q2)
         fig = go.Figure(visual)
         offline.plot(fig, filename= filename, auto_open = False)
-        self.fig = fig
         self.running_time["visualisation"] = time()-t0
+        return fig
         
 
-
-    def __repr__(self):
-        file = "visu.html"
-        self.visualization(file)
-        self.fig.show()
+    def informations(self):
         string_running_time = "Running time : \n  "
         string_f = "Constraints furfilled : \n  "
         for name, t in self.running_time.items():
@@ -420,10 +421,15 @@ class Solution :
         for name, boole in self.feasibility.items():
             string_f += name +"  :  " + str(boole) + "\n  "
 
-
-        return("Solution in file {}  with a total cost of {} ".format(file,round(self.cost),3)
+        return("Solution with a total cost of {} ".format(round(self.cost),3)
                 + " \n "  + string_f
                 + "\n "+ string_running_time)
+
+
+    def __repr__(self):
+        self.visualization('visu.html').show()
+        return self.informations()
+        
 
 
 
@@ -444,25 +450,27 @@ class Meta_param :
 
 from operators import operators
 class Matheuristic : 
-    def __init__(self, initial_solution):
+    def __init__(self, problem):
 
         self.operators = [ {'weight' : 1, 'score': 0 , 'number_used':0, 'function':function, 'name':name } for (name, function) in operators ]
 
-        self.solution = initial_solution
-        self.solution_best = initial_solution.copy()
-        self.solution_prime = initial_solution.copy()
+        self.solution = Solution(problem)
+        #self.solution_best = self.solution.copy()
+        #self.solution_prime = self.solution.copy()
+
+        self.solver = "CBC"
 
 
 
 
-    def final_algo(self, param):
+    def final_algo(self, param, MAXiter = 1000, solver= "CBC"):
         # here one can do the final matheuristic described in the paper
         rd.seed(param.seed)
 
         M,N,K,T = self.solution.M, self.solution.N, self.solution.K, self.solution.T
         
         # initialization (step 2 and 3 of the pseudo code)
-        self.solution.ISI(G = N)
+        self.solution.ISI(G = N, solver=solver)
         self.solution_best = self.solution.copy()
 
         # line 4 of pseudocode
@@ -470,7 +478,7 @@ class Matheuristic :
 
         tau = param.tau_start
         iterations = 0
-        while tau > param.tau_end and iterations < 1000 : 
+        while tau > param.tau_end and iterations < MAXiter : 
             
             # line 6 of pseudocode
             i = Matheuristic.choose_operator(self.operators)
@@ -478,24 +486,24 @@ class Matheuristic :
             self.solution_prime = self.solution.copy()
             operator(self.solution_prime, param.rho)
             G = N
-            self.solution_prime.ISI(G=G)
+            self.solution_prime.ISI(G=G, solver=solver)
 
-            if self.solution_prime.cost < self.solution.cost : # line 7
+            if self.solution_prime.cost < self.solution.cost and self.solution_prime.feasible : # line 7
                 self.solution = self.solution_prime.copy() # line 8
                 G = max(G-1,1)                                  # line 9
 
                 keep_going, i  = True, 0
-                while keep_going and i < 1000: 
+                while keep_going and i < 10: 
                     i+=1                              #line 10
-                    self.solution_prime.ISI(G=G)  
-                    if self.solution_prime.cost < (1+epsilon)*self.solution.cost: 
+                    self.solution_prime.ISI(G=G, solver=solver)  
+                    if self.solution_prime.cost < (1+epsilon)*self.solution.cost and self.solution_prime.feasible: 
                         if self.solution_prime.cost < self.solution.cost :              # line 11
                             self.solution = self.solution_prime.copy()              # line 12
                             G = max(G-1,1)                                              # line 13
                         else : G = max(int(param.ksi*(N+M)),1)                          # line 14-15
                                             
 
-                    elif self.solution.cost < self.solution_best.cost :   # line 17
+                    elif self.solution.cost < self.solution_best.cost and self.solution.feasible:   # line 17
                         self.solution_best = self.solution.copy()    # line 18
                         self.operators[i]['score'] += param.sigmas[0]   # line 19
                         G = max(G-1,1)                                  # line 20
@@ -503,21 +511,25 @@ class Matheuristic :
                         self.operators[i]['score'] += param.sigmas[1]   # line 22
 
                         # little deviation from the pseudocode... we think it is s and not s''
-                        if self.solution.cost < (1+epsilon)*self.solution_best :  # line 23
+                        if self.solution.cost < (1+epsilon)*self.solution_best.cost and self.solution.feasible:  # line 23
                             G = max(int(param.ksi*(N+M)),1)                       # line 24
                         else : keep_going = False
 
-            elif self.solution_prime.cost < self.solution.cost - np.log(rd.random())*tau: # line 27 # choose theta everytime as a new random value or is it a fixed random value?
+            elif self.solution_prime.cost < self.solution.cost - np.log(rd.random())*tau and self.solution_prime.feasible: # line 27 # choose theta everytime as a new random value or is it a fixed random value?
                 self.solution = self.solution_prime.copy()                         # line 28
                 self.operators[i]['score'] += param.sigmas[2]                             # line 29
             
-            if iterations % param.delta == 0 :
-                epsilon = rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1], seed = param.seed  )
+            if iterations % param.Delta == 0 :
+                epsilon = rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1])
                 # implement update_weights or is this already done?
                 self.update_weights(param.reaction_factor)
                 self.solution = self.solution_best.copy()
             iterations += 1
             tau = tau*param.cooling
+
+            print("Step %i is finished !!" %iterations)
+            print("Current cost is : ", self.solution_best.cost )
+        print(self.solution_best)
 
 
     def choose_operator(operators):

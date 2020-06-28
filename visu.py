@@ -130,19 +130,16 @@ def make_layout(title,central, pos_s, pos_w, I_s, I_w):
 
 
 
-def build_arrows(routes):
+def build_arrows(routes, q):
     # routes is a list TxNxKx[s1,s2,..]
     # arrows is the list of arrows : (i1,i2, v) with i negative if it represents a warehouse, and indices_step is the list (T,#edges) of indices of arrows  
     indices_step = []
     arrows = []
 
-    def add_indice(start,end,vehicule,l):
+    def add_indice(start,end,vehicule,l,quant):
         if start != end : 
-            try : 
-                l.append(arrows.index((start,end,vehicule)))
-            except ValueError:
-                l.append(len(arrows))
-                arrows.append( (start,end,vehicule) )
+            l.append(len(arrows))
+            arrows.append( (start,end,vehicule, quant) )
     
     
             
@@ -153,13 +150,14 @@ def build_arrows(routes):
         for n in range(len(routes[0])):
             for k in range(len(routes[0][0])):
                 route = routes[t][n][k]
+                quantity = q[t,n,k]
                 start = -n-1              # index is negative for the indices of warehouse but positive for schools
                 for i_s in route :
                     end = i_s
-                    add_indice(start,end,ind_v,l)
+                    add_indice(start,end,ind_v,l,quantity[i_s])
                     start = end
                 end = -n-1
-                add_indice(start,end,ind_v,l)
+                add_indice(start,end,ind_v,l,0)
                 if route : ind_v +=1
 
         indices_step.append(l)
@@ -167,10 +165,10 @@ def build_arrows(routes):
 
     return arrows, indices_step
 
-def plot_arr(start,end,distance, color):
+def plot_arr(start,end,distance, color, quantity):
 
     # arrows is the list of arrows : ([x1,y1],[x2,y2],distance)
-    text = "distance = {}".format(distance)
+    text = "distance = {}".format(round(distance)) + " <br> " + "quantity for next school = {}".format(round(quantity)) 
 
     x1,y1,x2,y2 = start[0], start[1], end[0], end[1]
 
@@ -186,7 +184,7 @@ def plot_arr(start,end,distance, color):
 
 
 
-def visu(problem, TITLE, I_s, I_w, km, routes1,X):
+def visu(problem, TITLE, I_s, I_w, km, routes1,X, q, Q2):
 
     N =len(problem.Warehouses)
     routes = [[[ [routes1[t][n][k][m]-N for m in range(len(routes1[t][n][k]))] for k in range(problem.K)] for n in range(N)] for t in range(problem.T)]
@@ -202,9 +200,9 @@ def visu(problem, TITLE, I_s, I_w, km, routes1,X):
     layout = make_layout(title,problem.central,pos_s,pos_w,I_s[0],I_w[0])
 
 
-    arrows, indices_step = build_arrows(routes) #  arrows is the list of arrows : (i1,i2) with i negative if it represents a warehouse, and indices_step is the list (T,#edges) of indices of arrows  
+    arrows, indices_step = build_arrows(routes, q) #  arrows is the list of arrows : (i1,i2) with i negative if it represents a warehouse, and indices_step is the list (T,#edges) of indices of arrows  
     Narr = len(arrows)-1
-    arrows.extend( [(-n-1, -1,-1) for n in range(1,N) ])
+    arrows.extend( [(-n-1, -1,-1,Q2) for n in range(1,N) ])
     for t in range(problem.T):
         for n in range(1,N):
             if X[t,n]: indices_step[t].append(Narr+n)
@@ -215,11 +213,11 @@ def visu(problem, TITLE, I_s, I_w, km, routes1,X):
         else    : return(problem.Warehouses[-i-1], -i-1)
 
     for arr in arrows : 
-        i1,i2,vehicule = arr 
+        i1,i2,vehicule, quantity = arr 
         start,ind1 = i_to_dict(i1)
         end,ind2   = i_to_dict(i2) 
         color = COLORS["road"][vehicule]
-        data.append(plot_arr(start["location"],end["location"],problem.D[ind1,ind2], color))
+        data.append(plot_arr(start["location"],end["location"],problem.D[ind1,ind2], color, quantity))
 
 
     L = []
