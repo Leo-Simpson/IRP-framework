@@ -1,5 +1,6 @@
 import numpy as np
 from OR_tools_solve_tsp import tsp_tour
+import random
 
 def rand_remove_rho(solution, rho):
     for i in range( min(rho,sum(solution.Y)) ):  
@@ -73,14 +74,14 @@ def empty_one_vehicle(solution, rho):
     warehouse = np.random.randint(solution.N)
     vehicle = np.random.randint(solution.K)
     solution.Y[:,warehouse,vehicle,:] = 0
-    for t in solution.T:
+    for t in range(solution.T):
         solution.r[t][warehouse][vehicle] = []
 
 def empty_one_plant(solution, rho):
     warehouse = np.random.randint(solution.N)
     solution.Y[:,warehouse,:,:] = 0
-    for t in solution.T:
-        for k in solution.K:
+    for t in range(solution.T):
+        for k in range(solution.K):
             solution.r[t][warehouse][k] = []
     
 def furthest_customer(solution, rho):
@@ -95,7 +96,7 @@ def furthest_customer(solution, rho):
     
 def rand_insert_rho(solution, rho):    
     candidates = ~np.any(solution.Y, axis = (1,2))  # ~ is the negation of a boolean array
-    for i in range( min(rho,sum(candidates)) ):
+    for i in range( min(rho,np.sum(candidates)) ):
         t, m = random.choice(np.transpose(np.nonzero(candidates)))
         candidates[t,m] -= 1
         n, k = random.choice(np.nonzero(solution.Cl[:,m])[0]), np.random.randint(solution.K)
@@ -104,7 +105,7 @@ def rand_insert_rho(solution, rho):
     
 def assign_to_nearest_plant(solution, rho):
     candidates = ~np.any(solution.Y, axis = (1,2))  # ~ is the negation of a boolean array
-    for i in range( min(rho,sum(candidates)) ):
+    for i in range( min(rho,np.sum(candidates)) ):
         t, m = random.choice(np.transpose(np.nonzero(candidates)))
         allowed_plants = [i for i in range(solution.N) if solution.Cl[i,m] == 1]
         nearest_plant = allowed_plants[np.argmin(solution.problem.D[np.ix_([m + solution.N],allowed_plants)][0])]
@@ -121,7 +122,7 @@ def assign_to_nearest_plant(solution, rho):
     
 def insert_best_rho(solution, rho):
     candidates = ~np.any(solution.Y, axis = (1,2))   # ~ is the negation of a boolean array
-    for i in range( min(rho,sum(candidates)) ):
+    for i in range( min(rho,np.sum(candidates)) ):
         b_flat = solution.b.reshape(-1)
         Y_flat = solution.Y.reshape(-1)
         choice = np.where(b_flat>0)[0][np.argmin(b_flat[b_flat>0])]
