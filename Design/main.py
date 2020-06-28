@@ -5,11 +5,12 @@ Created on Tue Jun 16 14:08:52 2020
 @author: Sabrina
 """
 
+
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import *
 import pandas as pd
-from scipy.spatial import distance_matrix
+from scipy.spatial import distance_matrix, distance
 import numpy as np
 
 
@@ -98,7 +99,15 @@ class Window(QtWidgets.QMainWindow):
         self.t_load = self.ui.doubleSpinBox_loadingtime.value()
         self.c_per_km = self.ui.doubleSpinBox_costsperkm.value()
         self.Tmax = self.ui.doubleSpinBox_maxtime.value()
-        self.central = np.array([self.ui.doubleSpinBox_cw1.value(), self.ui.doubleSpinBox_cw2.value()])
+        
+        if self.ui.checkBox.isChecked():
+            self.central = np.mean(np.array([w['location'] for w in self.warehouses]),axis=0)
+        else: 
+            self.central = np.array([self.ui.doubleSpinBox_cw1.value(), self.ui.doubleSpinBox_cw2.value()])
+            
+        for w in self.warehouses:
+            w['dist_central'] = distance.euclidean(self.central, w['location'])
+            
         # print(self.time_horizon)
         # print(self.Q1)
         # print(self.Q2)
@@ -125,16 +134,14 @@ class Window(QtWidgets.QMainWindow):
                               t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, 
                               central = self.central, D = None)
             
-            if self.ui.checkBox.isChecked():
-                problem.central = np.mean(np.array([w["location"] for w in self.warehouses]),axis=0)
                 
             solution = Solution(problem)
             solution.ISI(G = 4)
 
             print(solution)
     
-            solution.ISI(G = 2)
-            print(solution)
+            # solution.ISI(G = 2)
+            # print(solution)
         
 
 
@@ -147,4 +154,5 @@ if __name__ == '__main__':
     window.show()
     sys.exit(app.exec_())
     
+
 
