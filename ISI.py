@@ -496,6 +496,7 @@ class Matheuristic :
                 while keep_going and i < 10: 
                     i+=1                              #line 10
                     self.solution_prime.ISI(G=G, solver=solver)  
+                    
                     if self.solution_prime.cost < (1+epsilon)*self.solution.cost and self.solution_prime.feasible: 
                         if self.solution_prime.cost < self.solution.cost :              # line 11
                             self.solution = self.solution_prime.copy()              # line 12
@@ -573,7 +574,7 @@ def random_problem(T,N,K,M, seed = None):
     np.random.seed(seed)
     Schools = []
     Warehouses = []
-    central = np.array([np.random.randint(low = -100, high = 100),np.random.randint(low = -100, high = 100)])
+    
     for i in range(M):
         comsumption =  np.random.randint(low = 1, high = 5)
         lower = comsumption
@@ -591,12 +592,12 @@ def random_problem(T,N,K,M, seed = None):
         fixed_cost = np.random.randint(low = 1, high = 10)
         location = np.array([np.random.randint(low = -100, high = 100),np.random.randint(low = -100, high = 100)])
 
-        Warehouses.append({'capacity': capacity, 'lower': lower , 'dist_central': np.linalg.norm(location-central) , 'fixed_cost':  0, 'initial': initial,  'name' : 'Warehouse {}'.format(i+1), 'location': location })
+        Warehouses.append({'capacity': capacity, 'lower': lower, 'fixed_cost':  0, 'initial': initial,  'name' : 'Warehouse {}'.format(i+1), 'location': location })
 
     Q1 = np.random.randint(low = 5, high = 20)
     Q2 = np.random.randint(low = 10, high = 30)
 
-
+    central = np.array([np.random.randint(low = -100, high = 100),np.random.randint(low = -100, high = 100)])
     problem = Problem(Schools = Schools, Warehouses = Warehouses,T = T,K = K, Q1 = Q1, Q2 = Q2, v = 50, t_load = 0.5, c_per_km = 0.1, Tmax = 10, central = central)
     
     return problem
