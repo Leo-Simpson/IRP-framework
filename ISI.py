@@ -6,6 +6,7 @@ from OR_tools_solve_tsp import tsp_tour
 import pulp as plp 
 from scipy.spatial import distance_matrix
 import pandas as pd
+from time import time
 
 import plotly.graph_objects as go 
 from plotly import offline
@@ -88,7 +89,7 @@ class Solution :
     
         self.r = [[[[] for k in range(self.K)] for n in range(self.N)] for t in range(self.T)]
 
-        #self.build_Cl()
+        self.build_Cl()
         self.compute_costs()
 
 
@@ -114,7 +115,7 @@ class Solution :
             dist_time = (self.problem.Tmax - self.problem.t_load) * self.problem.v /2          #only warehouses allowed to serve schools that are reachable in tour within Tmax (   
             dist_radius = 2*np.min(dist_vect)      
                                                      #alternatively: only warehouses allowed that are not more than twice (or take another value) far away as the closest warehouses
-            dist_max = dist_radius                                  # or dist_max = min(dist_time,dist_radius)
+            dist_max = min(dist_time,dist_radius)
             self.Cl[dist_vect > dist_max , m] = False
 
     
@@ -203,40 +204,31 @@ class Solution :
             self.I_s[t] = self.I_s[t-1]+ self.problem.Q1 * np.sum( self.q[t,:,:,:], axis = (0,1) ) - self.problem.dt[t,:]
             self.I_w[t] = self.I_w[t-1]- self.problem.Q1 * np.sum( self.q[t,:,:,:], axis = (1,2) ) + self.problem.Q2 * self.X[t,:]
 
-    def compute_vehicle(self):
-        # build binary matrix Vehicle[t,n,k] that is True when we can add schools to a vehicle
-        self.Vehicle = np.any(self.Y, axis=3)                  # matrix that is equal to False when route is empty
-        for t in range(self.T):
-            for n in range(self.N):
-                for k in range(self.K):
-                    if not self.Vehicle[t,n,k]:      # the first False componant of the column is set to true (one of the empty vehicles), the rest is still false
-                        self.Vehicle[t,n,k] = True
-                        break
-        
-        
-        self.Vehicle = np.ones((self.T,self.N,self.K), dtype=bool)
+
                     
 
 
 
 
-    def ISI(self, G = 1, accuracy = 0.01):
+    def ISI(self, G = 1, accuracy = 0.01, time_lim = 1000):
         # change the solution itself to the ISI solution
+        t0 = time()
+
         problem = self.problem
         T,N,K,M = self.T, self.N, self.K, self.M
 
         self.compute_a_and_b()
         self.compute_time_adding()
-        self.compute_vehicle()
+        vehicle_used =  np.any(self.Y, axis=3)
         
         # decision variables:
         # q(t,n,k,m): fraction of capacity Q1 of truck k from warehouse m that is delivered to school n at time t
         # delta(t,n,k,m): binary variable, equals 1 if school n is removed from tour performed by truck k from warehouse m at time t, 0 else
         # omega(t,n,k,m): binary variable, equals 1 if school n is inserted into route by truck k from warehouse m at time t, 0 else
 
-        set_q     = [ (t,n,k,m) for t in range(T) for n in range(N) for k in range(K) for m in range(M) if self.Cl[n,m]  ]
+        set_q     = [ (t,n,k,m) for t in range(1,T) for n in range(N) for k in range(K) for m in range(M) if self.Cl[n,m]  ]
         set_delta = [ (t,n,k,m) for (t,n,k,m) in set_q if self.Y[t,n,k,m]  ]
-        set_omega = [ (t,n,k,m) for (t,n,k,m) in set_q if (not self.Y[t,n,k,m]) and self.Vehicle[t,n,k] ]
+        set_omega = [ (t,n,k,m) for (t,n,k,m) in set_q if not self.Y[t,n,k,m] ]
 
 
         #print("d",problem.d)
@@ -252,11 +244,21 @@ class Solution :
 
         # build dictionaries of decision variables:
         q_vars = plp.LpVariable.dicts("q",set_q, cat='Continuous', lowBound=0., upBound=1.)
-        X_vars = plp.LpVariable.dicts("X",[(t,n) for t in range(T) for n in range(N)], cat='Binary')
+        X_vars = plp.LpVariable.dicts("X",[(t,n) for t in range(1,T) for n in range(N)], cat='Binary')
         delta_vars = plp.LpVariable.dicts("delta",set_delta, cat='Binary')
         omega_vars = plp.LpVariable.dicts("omega",set_omega, cat='Binary')
         # just to remember : the psi of the paper is the same thing as our Y
         
+
+        # constraint 11: only positive amount to deliver if school is served in that round
+        #q < (self.Y - delta + omega)   no need to multiply by U because the component of q is already smaller than 1 because it is normalized by Q1
+        for (t,n,k,m) in set_q:     
+            if (t,n,k,m) in set_delta :
+                ISI_model += q_vars[t,n,k,m] <= 1 - delta_vars[t,n,k,m]
+            elif (t,n,k,m) in set_omega : 
+                ISI_model += q_vars[t,n,k,m] <= omega_vars[t,n,k,m]
+
+
 
         I_s = {(0,m): problem.I_s_init[m]   for m in range(M) }   # need to see how to change an LpAffineExpression with a constant value
 
@@ -269,67 +271,84 @@ class Solution :
                          - problem.dt[t,m]
                          for m in range(M) }  
                         )
-        
             I_w.update(  {(t,n):
                          I_w[t-1,n]  
                          - problem.Q1 * plp.lpSum(q_vars[t,n,k,m] for k in range(K) for m in range(M) if self.Cl[n,m] ) 
                          + problem.Q2 * X_vars[t,n]
                          for n in range(N) }  
                         )
-
-        transport_cost = problem.c_per_km * plp.lpSum( self.b[t,n,k,m] * omega_vars[t,n,k,m] for (t,n,k,m) in set_omega ) - problem.c_per_km * plp.lpSum( self.a[t,n,k,m] * delta_vars[t,n,k,m] for (t,n,k,m) in set_delta )
-        add_cost = plp.lpSum([problem.h_s[m] * I_s[t,m] for t in range(T) for m in range(M)]) + problem.c_per_km * plp.lpSum( problem.to_central[n] * X_vars[t,n] for t in range(T) for n in range(N) ) 
-
-        #objective function
-        ISI_model += add_cost + transport_cost, 'Z'
-        
-        # constraint 9 in Latex script, respect capacities + min. stock of schools and warehouses
-        for t in range(1,T):
-            # schools: problem.L_s < I_s < problem.U_s
+            # constraint 9 in Latex script, respect capacities + min. stock of schools and warehouses
             for m in range(M):
+                # schools: problem.L_s < I_s < problem.U_s
                 ISI_model += I_s[t,m] <= problem.U_s[m]       #I_s < U_s
                 ISI_model += I_s[t,m] >= problem.L_s[m]      #I_s > L_s
-            # warehouses: problem.L_w <I_w < problem.U_w
+            
             for n in range(N):
+                # warehouses: problem.L_w <I_w < problem.U_w
                 ISI_model += I_w[t,n] <= problem.U_w[n]       #I_w < U_w      # can maybe be omitted 
                 ISI_model += I_w[t,n] >= problem.L_w[n]      #I_w > L_w
 
-        # constraint on capacity of trucks
-        for t in range(T):
-            for n in range(N):
+
+            for n in range(N):                
                 for k in range(K):
+                    # constraint on capacity of trucks
                     ISI_model += plp.lpSum(q_vars[t,n,k,m] for  m in range(M) if (t,n,k,m) in set_q ) <=1
 
-        
-        # constraint 11: only positive amount to deliver if school is served in that round
-        #q < (self.Y - delta + omega)   no need to multiply by U because the component of q is already smaller than 1 because it is normalized by Q1
-        for (t,n,k,m) in set_q:     
-            if (t,n,k,m) in set_delta :
-                ISI_model += q_vars[t,n,k,m] <= 1 - delta_vars[t,n,k,m]
-            elif (t,n,k,m) in set_omega : 
-                ISI_model += q_vars[t,n,k,m] <= omega_vars[t,n,k,m]
 
-        #constraint 18: bound on the number of changes comitted by the ISI model
-        #sum(delta+omega, axis = 3) < G
-        for t in range(T):
-            for k in range(K):
-                ISI_model += plp.lpSum(delta_vars[t,n,k,m] for n in range(N) for m in range(M) if (t,n,k,m) in set_delta ) + plp.lpSum(omega_vars[t,n,k,m] for n in range(N) for m in range(M) if (t,n,k,m) in set_omega ) <= G
-
-
-        # Constraint on the time spending in one tour
-        #sum( omega*self.time_adding, axis  = 3 ) + self.time_route - sum( delta*self.time_substracting, axis  = 3 )  < Tmax
-        for t in range(T):
             for n in range(N):
                 for k in range(K):
+                    # Constraint on the time spending in one tour
+                    #sum( omega*self.time_adding, axis  = 3 ) + self.time_route - sum( delta*self.time_substracting, axis  = 3 )  < Tmax
                     expression = self.time_route[t,n,k]
                     expression = expression + plp.lpSum(omega_vars[t,n,k,m] * self.time_adding[t,n,k,m] for m in range(M) if (t,n,k,m) in set_omega )
                     expression = expression - plp.lpSum(delta_vars[t,n,k,m] * self.time_substract[t,n,k,m] for m in range(M) if (t,n,k,m) in set_delta)
 
                     ISI_model += expression <= problem.Tmax
 
-        #print(ISI_model)
+
+            for n in range(N):
+                for k in range(K):
+                # constaint for asymetry of the problem in vehicles
+                    empties = np.where(~vehicle_used[t,n,:])
+                    for i in range(len(empties)-1):
+                        k1,k2 = empties[i], empties[i+1]
+                        ISI_model += plp.lpSum(omega_vars[t,n,k2,m] for m in range(M) if (t,n,k2,m) in set_omega )<= plp.lpSum(omega_vars[t,n,k1,m] for m in range(M) if (t,n,k1,m) in set_omega )
+
+
+            for k in range(K):
+                #constraint 18: bound on the number of changes comitted by the ISI model
+                #sum(delta+omega, axis = 3) < G
+                ISI_model += plp.lpSum(delta_vars[t,n,k,m] for n in range(N) for m in range(M) if (t,n,k,m) in set_delta ) + plp.lpSum(omega_vars[t,n,k,m] for n in range(N) for m in range(M) if (t,n,k,m) in set_omega ) <= G
+
+
         
-        ISI_model.solve(solver = plp.GLPK_CMD(options=['--mipgap', str(accuracy)]))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        transport_cost = problem.c_per_km * plp.lpSum( self.b[t,n,k,m] * omega_vars[t,n,k,m] for (t,n,k,m) in set_omega ) - problem.c_per_km * plp.lpSum( self.a[t,n,k,m] * delta_vars[t,n,k,m] for (t,n,k,m) in set_delta )
+        add_cost = plp.lpSum([problem.h_s[m] * I_s[t,m] for t in range(1,T) for m in range(M)]) + problem.c_per_km * plp.lpSum( problem.to_central[n] * X_vars[t,n] for t in range(1,T) for n in range(N) ) 
+
+        #objective function
+        ISI_model += add_cost + transport_cost, 'Z'
+
+
+        #print(ISI_model)
+        t1 = time()
+
+        ISI_model.solve(solver = plp.GLPK_CMD(options=['--mipgap', str(accuracy),"--tmlim", str(time_lim)],msg=0))
+
+        t2 = time()
         #ISI_model.solve()
 
         # transform the _vars things into numpy array to return it. 
@@ -342,33 +361,40 @@ class Solution :
                 self.Y[t,n,k,m] += omega_vars[t,n,k,m].varValue
 
 
-        for t in range(T):
+        for t in range(1,T):
             for n in range(N):
                 self.X[t,n]=X_vars[t,n].varValue
 
         add = add_cost.value()
-    
+        t3 = time()
+
         self.compute_r()
         self.compute_costs(add=add)
+        t4 = time()
+        self.running_time = { "Define problem" : t1-t0 , "Solve problem ":t2-t1 , "Compute TSPs" : t4-t3  }
+
 
 
     def visualization(self,filename):
+        t0 = time()
         km = np.sum(self.dist, axis = (1,2))
         self.compute_inventory()
         visual = visu(self.problem,"WFP Inventory problem", self.I_s,self.I_w, km, self.r, self.X)
         fig = go.Figure(visual)
         offline.plot(fig, filename= filename, auto_open = False)
+        self.fig = fig
+        self.running_time["visualisation"] = time()-t0
         
 
+
     def __repr__(self):
-        km = np.sum(self.dist, axis = (1,2))
-        self.compute_inventory()
-        visual = visu(self.problem,"WFP Inventory problem", self.I_s,self.I_w, km, self.r, self.X)
-        fig = go.Figure(visual)
         file = "visu.html"
-        offline.plot(fig, filename= file, auto_open = False)
-        fig.show()
-        return("Solution in file {}  with a total cost of {} ".format(file,round(self.cost)))
+        self.visualization(file)
+        self.fig.show()
+        string_running_time = "Running time : \n  "
+        for name, t in self.running_time.items():
+            string_running_time += name +"  :  " + str(round(t,4)) + "\n  "
+        return("Solution in file {}  with a total cost of {} ".format(file,round(self.cost),3) + "\n "+ string_running_time )
 
 
 
