@@ -201,14 +201,26 @@ class Solution :
             self.I_s[t] = self.I_s[t-1]+ self.problem.Q1 * np.sum( self.q[t,:,:,:], axis = (0,1) ) - self.problem.dt[t,:]
             self.I_w[t] = self.I_w[t-1]- self.problem.Q1 * np.sum( self.q[t,:,:,:], axis = (1,2) ) + self.problem.Q2 * self.X[t,:]
 
+    def verify_feasibility(self):
+        t0 = time()
+        self.compute_inventory()
+        self.compute_time_adding()
+        tol = 1e-4
+        self.feasibility = {
+                "Truck constraint" : np.all(np.sum(self.q , axis = 3) <= 1 + tol) and np.all(self.q >=-tol),
+                "Duration constraint" : np.all(self.time_route <=self.problem.Tmax+ tol ),
+                "I_s constraint" : np.all( [ np.all(self.I_s[t]<= self.problem.U_s + tol) and np.all(self.I_s[t]>= self.problem.L_s - tol) for t in range(self.T)]),
+                "I_w constraint" : np.all( [ np.all(self.I_w[t]<= self.problem.U_w + tol) and np.all(self.I_w[t]>= self.problem.L_w - tol) for t in range(self.T)])
+        }
 
+        
+        self.running_time["feasibility"] = time()-t0
                     
 
 
-
-
-    def ISI(self, G = 1, accuracy = 0.01, time_lim = 1000):
+    def ISI(self, G = 1, accuracy = 0.01, time_lim = 1000, solver = "CBC"):
         # change the solution itself to the ISI solution
+        self.solver = solver
         t0 = time()
 
         problem = self.problem
@@ -239,12 +251,23 @@ class Solution :
 
         ISI_model=plp.LpProblem("ISI_Model",plp.LpMinimize)
 
+
         # build dictionaries of decision variables:
         q_vars = plp.LpVariable.dicts("q",set_q, cat='Continuous', lowBound=0., upBound=1.)
         X_vars = plp.LpVariable.dicts("X",[(t,n) for t in range(1,T) for n in range(N)], cat='Binary')
         delta_vars = plp.LpVariable.dicts("delta",set_delta, cat='Binary')
         omega_vars = plp.LpVariable.dicts("omega",set_omega, cat='Binary')
         # just to remember : the psi of the paper is the same thing as our Y
+
+        for (t,n,k,m) in set_q : 
+            q_vars[t,n,k,m].setInitialValue(self.q[t,n,k,m])
+            if (t,n,k,m) in set_omega : omega_vars[t,n,k,m].setInitialValue(0.)
+            elif (t,n,k,m) in set_delta : delta_vars[t,n,k,m].setInitialValue(0.)
+
+        for t in range(1,T):
+            for n in range(N):
+                X_vars[t,n].setInitialValue(self.X[t,n])
+
         
 
         # constraint 11: only positive amount to deliver if school is served in that round
@@ -343,7 +366,9 @@ class Solution :
         #print(ISI_model)
         t1 = time()
 
-        ISI_model.solve(solver = plp.GLPK_CMD(options=['--mipgap', str(accuracy),"--tmlim", str(time_lim)],msg=0))
+        if solver == "CBC"    : ISI_model.solve(solver = plp.PULP_CBC_CMD(msg=False, mip_start=True))
+        elif solver == "GLPK" : ISI_model.solve(solver = plp.GLPK_CMD(options=['--mipgap', str(accuracy),"--tmlim", str(time_lim)],msg=0))
+        
 
         t2 = time()
         #ISI_model.solve()
@@ -389,9 +414,18 @@ class Solution :
         self.visualization(file)
         self.fig.show()
         string_running_time = "Running time : \n  "
+        string_f = "Constraints furfilled : \n  "
         for name, t in self.running_time.items():
             string_running_time += name +"  :  " + str(round(t,4)) + "\n  "
-        return("Solution in file {}  with a total cost of {} ".format(file,round(self.cost),3) + "\n "+ string_running_time )
+
+        for name, boole in self.feasibility.items():
+            string_f += name +"  :  " + str(boole) + "\n  "
+
+
+        return("Solution in file {}  with a total cost of {} ".format(file,round(self.cost),3)
+                + " \n Solver : "+self.solver 
+                + " \n "  + string_f
+                + "\n "+ string_running_time)
 
 
 
