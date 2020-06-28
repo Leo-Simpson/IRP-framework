@@ -22,7 +22,7 @@ class Problem :
         inf = 10000
 
         central_w = {"capacity": inf, "lower":-inf, "dist_central":0, "fixed_cost":0, "initial": 0, "name": "CENTRAL" , "location": self.central}
-        self.Warehouses = [central_w] + Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'dist_central': ... , 'fixed_cost': ... , 'initial': ...,  'name' : ..., 'location': ...}
+        self.Warehouses = [central_w] + Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'fixed_cost': ... , 'initial': ...,  'name' : ..., 'location': ...}
         self.Schools = Schools  # list of dictionary {'capacity': ..., 'lower':..., 'consumption': ...,'storage_cost': ... , 'initial': ...,  'name' : ..., 'location':...}
         self.T = T # time horizon
         self.K = K # number of vehicles
@@ -40,7 +40,7 @@ class Problem :
             self.D = D # distance matrix. Numpy array , NOT pandas dataframe
 
         for i,w in enumerate(self.Warehouses) : 
-            if w["dist_central"]<= 0. : w["dist_central"] = self.D[0,i]*2
+            w["dist_central"] = self.D[0,i]*2
 
         
 
@@ -425,6 +425,8 @@ class Matheuristic :
 
     def final_algo(self, param):
         # here one can do the final matheuristic described in the paper
+        rd.seed(param.seed)
+
         M,N,K,T = self.solution.M, self.solution.N, self.solution.K, self.solution.T
         
         # initialization (step 2 and 3 of the pseudo code)
@@ -432,7 +434,7 @@ class Matheuristic :
         self.solution_best = self.solution.copy()
 
         # line 4 of pseudocode
-        epsilon = rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1], seed = param.seed  )
+        epsilon = rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1]  )
 
         tau = param.tau_start
         iterations = 0

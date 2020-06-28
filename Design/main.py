@@ -105,8 +105,6 @@ class Window(QtWidgets.QMainWindow):
         else: 
             self.central = np.array([self.ui.doubleSpinBox_cw1.value(), self.ui.doubleSpinBox_cw2.value()])
             
-        for w in self.warehouses:
-            w['dist_central'] = distance.euclidean(self.central, w['location'])
             
         # print(self.time_horizon)
         # print(self.Q1)
