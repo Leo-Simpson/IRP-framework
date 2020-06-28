@@ -21,7 +21,7 @@ class Problem :
 
         inf = 10000
 
-        central_w = {"capacity": inf, "lower":-inf, "dist_central":0, "fixed_cost":0, "initial": inf, "name": "CENTRAL" , "location": self.central}
+        central_w = {"capacity": inf, "lower":-inf, "dist_central":0, "fixed_cost":0, "initial": 0, "name": "CENTRAL" , "location": self.central}
         self.Warehouses = [central_w] + Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'dist_central': ... , 'fixed_cost': ... , 'initial': ...,  'name' : ..., 'location': ...}
         self.Schools = Schools  # list of dictionary {'capacity': ..., 'lower':..., 'consumption': ...,'storage_cost': ... , 'initial': ...,  'name' : ..., 'location':...}
         self.T = T # time horizon
@@ -35,13 +35,12 @@ class Problem :
 
         if D is None : 
             locations = [w['location'] for w in self.Warehouses] + [s['location'] for s in self.Schools] 
-            names = [w['name'] for w in self.Warehouses] + [s['name'] for s in self.Schools]
             self.D = distance_matrix(locations,locations)
         else : 
             self.D = D # distance matrix. Numpy array , NOT pandas dataframe
 
-        # for i,w in enumerate(self.Warehouses) : 
-        #         w["dist_central"] = self.D[0,i]*2
+        for i,w in enumerate(self.Warehouses) : 
+            if w["dist_central"]<= 0. : w["dist_central"] = self.D[0,i]*2
 
         
 
