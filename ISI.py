@@ -521,6 +521,21 @@ class Matheuristic :
             iterations += 1
             tau = tau*param.cooling
 
+
+    def choose_operator(operators):
+        weights = [operator['weight'] for operator in operators]
+        s = 0.
+        v = rd.random()*sum(weights)
+        for i in range(len(weights)):
+            s+=weights[i]
+            if s>=v : return i
+
+
+    def update_weights(self, r):        # r is the reaction factor
+        for op in self.operators : 
+            if (op['number_used']>0): op['weight'] = (1-r)*op['weight'] + r* op['score']/op['number_used']
+            op['score']  = 0
+            op['number_used'] = 0
         
 
                 
@@ -568,11 +583,11 @@ def random_problem(T,N,K,M, seed = None):
 
         Warehouses.append({'capacity': capacity, 'lower': lower , 'dist_central': np.linalg.norm(location-central) , 'fixed_cost':  0, 'initial': initial,  'name' : 'Warehouse {}'.format(i+1), 'location': location })
 
-    Q1 = np.random.randint(low = 5, high = 20)*10
+    Q1 = np.random.randint(low = 5, high = 20)
     Q2 = np.random.randint(low = 10, high = 30)
 
 
-    problem = Problem(Schools = Schools, Warehouses = Warehouses,T = T,K = K, Q1 = Q1, Q2 = Q2, v = 40, t_load = 0.5, c_per_km = 0.1, Tmax = 6, central = central)
+    problem = Problem(Schools = Schools, Warehouses = Warehouses,T = T,K = K, Q1 = Q1, Q2 = Q2, v = 50, t_load = 0.5, c_per_km = 0.1, Tmax = 10, central = central)
     
     return problem
 
