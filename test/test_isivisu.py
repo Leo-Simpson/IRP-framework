@@ -4,25 +4,36 @@ sys.path.append('../')
 from ISI import random_problem, Solution
 
 
-T, N, K,M = 5,2,4,6
-problem = random_problem(T,N,K,M, seed=25)
+T, N, K,M = 6,2,4,6
+problem = random_problem(T,N,K,M, seed=10)
+solver = "CBC"
+G = 6
+print( "Solver : ", solver)
 
 solution = Solution(problem)
-solution.ISI(G = 6, solver = "CBC")
+print("G = ", G)
+solution.ISI(G = G, solver = solver)
 solution.verify_feasibility()
 print(solution)
+G = G-1
 
-solution.ISI(G = 5, solver = "CBC")
+print("G = ", G)
+solution.ISI(G = G, solver = solver )
 solution.verify_feasibility()
 print(solution)
+G = G-1
 
-solution.ISI(G = 4, solver = "CBC")
+print("G = ", G)
+solution.ISI(G = G, solver = solver)
 solution.verify_feasibility()
 print(solution)
+G = G-1
 
-solution.ISI(G = 3, solver = "CBC")
+print("G = ", G)
+solution.ISI(G = G, solver = solver)
 solution.verify_feasibility()
 print(solution)
+G = G-1
 
 
 

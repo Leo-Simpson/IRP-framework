@@ -60,6 +60,8 @@ def tsp_tour_comp(distance_matrix):
     return tsp_route#, route_distance
     
 def tsp_tour(tour_school, warehouse, dist):
+    if (len(tour_school)<=2): return list(tour_school)
+    
     tour_complete = np.zeros(len(tour_school)+1,dtype=int)
     tour_complete[1:] = np.array(tour_school)
     tour_complete[0]  = warehouse

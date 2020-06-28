@@ -181,8 +181,6 @@ class Solution :
 
         add = np.sum([self.problem.h_s[m] * self.I_s[t,m] for t in range(1,self.T) for m in range(self.M)]) + self.problem.c_per_km * np.sum( self.problem.to_central[n] * self.X[t,n] for t in range(1,self.T) for n in range(self.N) ) * 2
 
-
-
         self.cost = self.problem.c_per_km * np.sum(self.dist) + add
         self.cost = self.cost
 
@@ -227,7 +225,6 @@ class Solution :
 
     def ISI(self, G = 1, accuracy = 0.01, time_lim = 1000, solver = "CBC"):
         # change the solution itself to the ISI solution
-        self.solver = solver
         t0 = time()
 
         problem = self.problem
@@ -425,7 +422,6 @@ class Solution :
 
 
         return("Solution in file {}  with a total cost of {} ".format(file,round(self.cost),3)
-                + " \n Solver : "+self.solver 
                 + " \n "  + string_f
                 + "\n "+ string_running_time)
 
