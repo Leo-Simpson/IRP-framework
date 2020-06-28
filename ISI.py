@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import numpy as np
 import numpy.random as rd
 import random
@@ -603,7 +602,7 @@ def random_problem(T,N,K,M, seed = None):
     return problem
 
 
-=======
+
 import numpy as np
 import numpy.random as rd
 import random
@@ -1195,5 +1194,3 @@ def random_problem(T,N,K,M, seed = None):
     
     return problem
 
-
->>>>>>> 50286fded6f0405edbf945cf6d5af28be6467c22
