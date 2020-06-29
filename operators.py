@@ -117,8 +117,8 @@ def assign_to_nearest_plant(solution, rho):
             if cost_temp < cost:
                 route = route_temp
                 index = k
-        solution.Y[t,nearest_plant,k,m] = 1
-        solution.r[t][nearest_plant][k] = route
+        solution.Y[t,nearest_plant,index,m] = 1
+        solution.r[t][nearest_plant][index] = route
     
 def insert_best_rho(solution, rho):
     candidates = ~np.any(solution.Y, axis = (1,2))   # ~ is the negation of a boolean array
