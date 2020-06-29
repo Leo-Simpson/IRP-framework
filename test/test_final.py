@@ -6,10 +6,10 @@ from ISI import random_problem, Meta_param, Matheuristic
 
 T, N, K,M = 4,2,4,6
 problem = random_problem(T,N,K,M, seed=10)
-param = Meta_param()
+param = Meta_param(seed = 1)
 heuristic = Matheuristic(problem)
 
-heuristic.algo2(param, MAXiter = 10, solver = "CBC")
+heuristic.algo2(param, MAXiter = 50, solver = "CBC")
 
 
 

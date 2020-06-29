@@ -409,9 +409,9 @@ class Solution :
 
     def multi_ISI(self,G,solver="CBC", plot = False ,info=True):
         penalization = 10
-        for p in range(10):
+        for p in range(50):
             self.ISI(G, penalization=penalization,solver = solver, plot = False, info=info)
-            if not self.feasibility["Duration constraint"] :penalization +=20
+            if not self.feasibility["Duration constraint"] :penalization +=50
             elif not self.feasible : raise ValueError("Problem is infeasible")
             else : return 
         print("Not enough penalization")
@@ -454,7 +454,9 @@ class Solution :
 
 
 class Meta_param : 
-    def __init__(self):
+    def __init__(self,seed=1):
+        self.seed = seed
+        rd.seed(self.seed)
         self.Delta = 20
         self.epsilon_bound = (0.05,0.15)
         self.tau_start = 8000
@@ -463,7 +465,6 @@ class Meta_param :
         self.reaction_factor = 0.8
         self.sigmas = (10,5,2)
         self.ksi = rd.uniform(low=0.1,high=0.2)
-        self.seed = None
         self.rho = 10
         self.max_subloop = 20
 
@@ -571,14 +572,14 @@ class Matheuristic :
             op['number_used'] = 0
         
 
-    def algo2(self, param, MAXiter = 1000, solver= "CBC"):
+    def algo2(self, param, MAXiter = 1000, solver= "CBC", info = False):
         # modified algo :  we don't do line 20, 23, 24
         rd.seed(param.seed)
 
         M,N,K,T,p= self.solution.M, self.solution.N, self.solution.K, self.solution.T, 0
         
 
-        self.solution.multi_ISI(G = N, solver=solver) 
+        self.solution.multi_ISI(G = N, solver=solver, info=info) 
         self.solution_best = self.solution.copy()
 
 
@@ -590,7 +591,7 @@ class Matheuristic :
             self.solution_prime = self.solution.copy()
             operator(self.solution_prime, param.rho)
             G = N
-            self.solution_prime.multi_ISI(G=G, solver=solver)
+            self.solution_prime.multi_ISI(G=G, solver=solver, info=info)
             
 
             amelioration, finish = False, False
@@ -604,7 +605,7 @@ class Matheuristic :
                     if finish : break
                     finish = True
 
-                self.solution_prime.multi_ISI(G=G, solver=solver)
+                self.solution_prime.multi_ISI(G=G, solver=solver, info=info)
 
             
             if self.solution.cost < self.solution_best.cost : 
@@ -627,8 +628,7 @@ class Matheuristic :
             iterations += 1
             tau = tau*param.cooling
 
-            print("Step %i is finished !!" %iterations)
-            print("Current cost is : ", self.solution_best.cost )
+            print("Step %i is finished " %iterations, "Current cost is : ", self.solution_best.cost)
         print(self.solution_best)
 
 
