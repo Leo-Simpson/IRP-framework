@@ -628,7 +628,7 @@ class Matheuristic :
             iterations += 1
             tau = tau*param.cooling
 
-            print("Step %i is finished " %iterations, "Current cost is : ", self.solution_best.cost)
+            print("Step : ", iterations,"Tau : ",tau, "Current cost is : ",self.solution.cost , "Current best cost is : ", self.solution_best.cost)
         print(self.solution_best)
 
 
