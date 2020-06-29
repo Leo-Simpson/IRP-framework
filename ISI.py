@@ -407,11 +407,13 @@ class Solution :
 
         if info : print(self.informations())
 
-    def multi_ISI(self,G,solver="CBC", plot = False ,info=True):
-        penalization = 10
-        for p in range(50):
+    def multi_ISI(self,G,solver="CBC", plot = False ,info=True,typ_cost=100):
+        itera = 50
+        c = typ_cost**(1/itera)
+        penalization = c
+        for p in range(itera):
             self.ISI(G, penalization=penalization,solver = solver, plot = False, info=info)
-            if not self.feasibility["Duration constraint"] :penalization +=50
+            if not self.feasibility["Duration constraint"] :penalization = penalization*c
             elif not self.feasible : raise ValueError("Problem is infeasible")
             else : return 
         print("Not enough penalization")
@@ -457,11 +459,11 @@ class Meta_param :
     def __init__(self,seed=1):
         self.seed = seed
         rd.seed(self.seed)
-        self.Delta = 20
+        self.Delta = 10
         self.epsilon_bound = (0.05,0.15)
-        self.tau_start = 8000
-        self.tau_end = 0.01
-        self.cooling = 0.989
+        self.tau_start = 1e-1
+        self.tau_end = 1e-3
+        self.cooling = 0.9
         self.reaction_factor = 0.8
         self.sigmas = (10,5,2)
         self.ksi = rd.uniform(low=0.1,high=0.2)
@@ -572,7 +574,7 @@ class Matheuristic :
             op['number_used'] = 0
         
 
-    def algo2(self, param, MAXiter = 1000, solver= "CBC", info = False):
+    def algo2(self, param, MAXiter = 100, solver= "CBC", info = False):
         # modified algo :  we don't do line 20, 23, 24
         rd.seed(param.seed)
 
@@ -580,18 +582,19 @@ class Matheuristic :
         
 
         self.solution.multi_ISI(G = N, solver=solver, info=info) 
+        typical_cost = self.solution.cost
         self.solution_best = self.solution.copy()
 
 
         tau, iterations, epsilon = param.tau_start, 0, rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1]  )
         while tau > param.tau_end and iterations < MAXiter : 
-            
+            t0 = time()
             i = Matheuristic.choose_operator(self.operators)
             operator = self.operators[i]['function']
             self.solution_prime = self.solution.copy()
             operator(self.solution_prime, param.rho)
             G = N
-            self.solution_prime.multi_ISI(G=G, solver=solver, info=info)
+            self.solution_prime.multi_ISI(G=G, solver=solver, info=info,typ_cost=typical_cost)
             
 
             amelioration, finish = False, False
@@ -605,7 +608,7 @@ class Matheuristic :
                     if finish : break
                     finish = True
 
-                self.solution_prime.multi_ISI(G=G, solver=solver, info=info)
+                self.solution_prime.multi_ISI(G=G, solver=solver, info=info,typ_cost=typical_cost)
 
             
             if self.solution.cost < self.solution_best.cost : 
@@ -614,7 +617,7 @@ class Matheuristic :
 
             if amelioration : self.operators[i]['score'] += param.sigmas[1]   
             
-            elif self.solution_prime.cost < self.solution.cost - np.log(rd.random())*tau : # choose theta everytime as a new random value or is it a fixed random value?
+            elif self.solution_prime.cost < self.solution.cost - np.log(rd.random())*tau*typical_cost : # choose theta everytime as a new random value or is it a fixed random value?
                 self.solution = self.solution_prime.copy()                        
                 self.operators[i]['score'] += param.sigmas[2]                       
                 
@@ -627,8 +630,9 @@ class Matheuristic :
 
             iterations += 1
             tau = tau*param.cooling
+            dt = time()-t0
 
-            print("Step : ", iterations,"Tau : ",tau, "Current cost is : ",self.solution.cost , "Current best cost is : ", self.solution_best.cost)
+            print("Step : ", iterations,"Tau : ",round(tau,2), "Current cost is : ",round(self.solution.cost) , "Current best cost is : ", round(self.solution_best.cost), "Runnin time : ",round(dt,2) )
         print(self.solution_best)
 
 
