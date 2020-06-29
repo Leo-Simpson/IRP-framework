@@ -179,22 +179,23 @@ def swap_rho_cust_intra_plants(solution, rho):
     max_iter = 100
     iterations = 0
     changed = 0
-    candidates_warehouses = np.transpose(np.nonzero(np.any(solution.Y, axis = (2,3))))
     candidates_time = np.where(np.sum(np.any(solution.Y, axis = (2,3)), axis = 1) > 1)[0]
-    while iterations < max_iter and changed < rho :
-        t = random.choice(candidates_time)
-        candidates_warehouses = np.nonzero(np.any(solution.Y[t,:,:,:], axis = (1,2)))[0]
-        temp1, temp2 = np.random.choice(len(candidates_warehouses), 2, replace = False)
-        n1, n2 = candidates_warehouses[temp1], candidates_warehouses[temp2]
-        candidates_1 = np.transpose(np.nonzero(solution.Y[t,n1,:,:]))
-        candidates_2 = np.transpose(np.nonzero(solution.Y[t,n2,:,:]))
-        [k1,m1], [k2,m2] = random.choice(candidates_1), random.choice(candidates_2)
-        if solution.Cl[n1,m2] == 1 and solution.Cl[n2,m1] == 1:
-            solution.Y[t,[n1, n2],[k1, k2],m1] = [0, 1]
-            solution.Y[t,[n1, n2],[k1, k2],m2] = [1, 0]
-            solution.r[t][n1][k1], solution.r[t][n2][k2] = tsp_tour(np.nonzero(solution.Y[t,n1,k1,:])[0] + solution.N, n1, solution.problem.D), tsp_tour(np.nonzero(solution.Y[t,n2,k2,:])[0] + solution.N, n2, solution.problem.D)
-            changed += 1
-        iterations += 1
+    if len(candidates_time) > 0:
+        while iterations < max_iter and changed < rho :
+            t = random.choice(candidates_time)
+            candidates_warehouses = np.nonzero(np.any(solution.Y[t,:,:,:], axis = (1,2)))[0]
+            temp1, temp2 = np.random.choice(len(candidates_warehouses), 2, replace = False)
+            n1, n2 = candidates_warehouses[temp1], candidates_warehouses[temp2]
+            candidates_1 = np.transpose(np.nonzero(solution.Y[t,n1,:,:]))
+            candidates_2 = np.transpose(np.nonzero(solution.Y[t,n2,:,:]))
+            [k1,m1], [k2,m2] = random.choice(candidates_1), random.choice(candidates_2)
+            if solution.Cl[n1,m2] == 1 and solution.Cl[n2,m1] == 1:
+                solution.Y[t,[n1, n2],[k1, k2],m1] = [0, 1]
+                solution.Y[t,[n1, n2],[k1, k2],m2] = [1, 0]
+                solution.r[t][n1][k1], solution.r[t][n2][k2] = tsp_tour(np.nonzero(solution.Y[t,n1,k1,:])[0] + solution.N, n1, solution.problem.D), tsp_tour(np.nonzero(solution.Y[t,n2,k2,:])[0] + solution.N, n2, solution.problem.D)
+                changed += 1
+            iterations += 1
+        
 
 
     
