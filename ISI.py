@@ -376,7 +376,7 @@ class Solution :
         # transform the _vars things into numpy array to return it. 
 
         for (t,n,k,m) in set_q : 
-            self.q[t,n,k,m] = q_vars[t,n,k,m].varValue
+            self.q[t,n,k,m] = max(q_vars[t,n,k,m].varValue,0.)
             if (t,n,k,m) in set_delta : 
                 self.Y[t,n,k,m] -= delta_vars[t,n,k,m].varValue
             elif (t,n,k,m) in set_omega : 
@@ -402,16 +402,14 @@ class Solution :
 
         if info : print(self.informations())
 
-    def multi_ISI(self,G=1,solver="CBC", info=True):
+    def multi_ISI(self,G=1,solver="CBC",info=False):
         Gprime = G
         for p in range(20):
             solution = self.copy()
             solution.ISI(Gprime,solver = solver, info=info)
             Gprime+=1
-            if solution.feasible : 
-                self = solution
-                break
-        assert p<20 , "Problem looks infeasible"
+            if solution.feasible : return solution
+        assert p<19 , "Problem looks infeasible"
 
 
 
@@ -575,8 +573,7 @@ class Matheuristic :
         M,N,K,T,p= self.solution.M, self.solution.N, self.solution.K, self.solution.T, 0
         
 
-        self.solution.multi_ISI(G = N, solver=solver) 
-        
+        self.solution = self.solution.multi_ISI(G = N, solver=solver) 
         self.solution_best = self.solution.copy()
 
 
@@ -588,9 +585,7 @@ class Matheuristic :
             self.solution_prime = self.solution.copy()
             operator(self.solution_prime, param.rho)
             G = N
-            self.solution_prime.multi_ISI(G=G, solver=solver)
-            
-
+            self.solution_prime = self.solution_prime.multi_ISI(G=G, solver=solver).copy()
             
 
             amelioration, finish = False, False
@@ -606,6 +601,7 @@ class Matheuristic :
 
                 self.solution_prime.ISI(G=G, solver=solver)
 
+            
             if self.solution.cost < self.solution_best.cost : 
                 self.solution_best = self.solution.copy()  
                 self.operators[i]['score'] += param.sigmas[0]   
