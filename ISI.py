@@ -228,7 +228,7 @@ class Solution :
                     
 
 
-    def ISI(self, G = 1, accuracy = 0.01, time_lim = 1000, solver = "CBC", plot = False, info = True):
+    def ISI(self, G = 1, penalization=10,accuracy = 0.01, time_lim = 1000, solver = "CBC", plot = False, info = True):
         # change the solution itself to the ISI solution
         t0 = time()
 
@@ -266,6 +266,7 @@ class Solution :
         X_vars = plp.LpVariable.dicts("X",[(t,n) for t in range(1,T) for n in range(N)], cat='Binary')
         delta_vars = plp.LpVariable.dicts("delta",set_delta, cat='Binary')
         omega_vars = plp.LpVariable.dicts("omega",set_omega, cat='Binary')
+        violation_vars = plp.LpVariable.dicts("V",[(t,n,k) for t in range(1,T) for n in range(N) for k in range(K)], cat='Binary')
         # just to remember : the psi of the paper is the same thing as our Y
 
         for (t,n,k,m) in set_q : 
@@ -331,8 +332,9 @@ class Solution :
                     expression = self.time_route[t,n,k]
                     expression = expression + plp.lpSum(omega_vars[t,n,k,m] * self.time_adding[t,n,k,m] for m in range(M) if (t,n,k,m) in set_omega )
                     expression = expression - plp.lpSum(delta_vars[t,n,k,m] * self.time_substract[t,n,k,m] for m in range(M) if (t,n,k,m) in set_delta)
-
-                    ISI_model += expression <= problem.Tmax
+                    
+                    ISI_model += expression <= problem.Tmax + violation_vars[t,n,k]* (sum(self.time_adding[t,n,k])+self.time_route[t,n,k] )
+                    #ISI_model += expression <= problem.Tmax
 
 
             for n in range(N):
@@ -359,8 +361,11 @@ class Solution :
         transport_cost = problem.c_per_km * plp.lpSum( self.b[t,n,k,m] * omega_vars[t,n,k,m] for (t,n,k,m) in set_omega ) - problem.c_per_km * plp.lpSum( self.a[t,n,k,m] * delta_vars[t,n,k,m] for (t,n,k,m) in set_delta )
         add_cost = plp.lpSum([problem.h_s[m] * I_s[t,m] for t in range(1,T) for m in range(M)]) + problem.c_per_km * plp.lpSum( problem.to_central[n] * X_vars[t,n] for t in range(1,T) for n in range(N) ) * 2
 
+        violation_cost = penalization* plp.lpSum( violation_vars[t,n,k] for t in range(1,T) for n in range(N) for k in range(K)  )
         #objective function
-        ISI_model += add_cost + transport_cost, 'Z'
+
+
+        ISI_model += add_cost + transport_cost + violation_cost, 'Z'
 
 
         #print(ISI_model)
@@ -402,14 +407,14 @@ class Solution :
 
         if info : print(self.informations())
 
-    def multi_ISI(self,G=1,solver="CBC",info=False):
-        Gprime = G
-        for p in range(20):
-            solution = self.copy()
-            solution.ISI(Gprime,solver = solver, info=info)
-            Gprime+=1
-            if solution.feasible : return solution
-        assert p<19 , "Problem looks infeasible"
+    def multi_ISI(self,G,solver="CBC", plot = False ,info=True):
+        penalization = 10
+        for p in range(10):
+            self.ISI(G, penalization=penalization,solver = solver, plot = False, info=info)
+            if not self.feasibility["Duration constraint"] :penalization +=20
+            elif not self.feasible : raise ValueError("Problem is infeasible")
+            else : return 
+        print("Not enough penalization")
 
 
 
@@ -573,7 +578,7 @@ class Matheuristic :
         M,N,K,T,p= self.solution.M, self.solution.N, self.solution.K, self.solution.T, 0
         
 
-        self.solution = self.solution.multi_ISI(G = N, solver=solver) 
+        self.solution.multi_ISI(G = N, solver=solver) 
         self.solution_best = self.solution.copy()
 
 
@@ -585,7 +590,7 @@ class Matheuristic :
             self.solution_prime = self.solution.copy()
             operator(self.solution_prime, param.rho)
             G = N
-            self.solution_prime = self.solution_prime.multi_ISI(G=G, solver=solver).copy()
+            self.solution_prime.multi_ISI(G=G, solver=solver)
             
 
             amelioration, finish = False, False
@@ -599,7 +604,7 @@ class Matheuristic :
                     if finish : break
                     finish = True
 
-                self.solution_prime.ISI(G=G, solver=solver)
+                self.solution_prime.multi_ISI(G=G, solver=solver)
 
             
             if self.solution.cost < self.solution_best.cost : 
