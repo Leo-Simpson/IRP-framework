@@ -461,20 +461,21 @@ class Meta_param :
         rd.seed(self.seed)
         self.Delta = 10
         self.epsilon_bound = (0.05,0.15)
-        self.tau_start = 1e-1
-        self.tau_end = 1e-3
-        self.cooling = 0.9
+        self.tau_start = 3.
+        self.tau_end = 1e-1
+        self.cooling = 0.95
         self.reaction_factor = 0.8
         self.sigmas = (10,5,2)
         self.ksi = rd.uniform(low=0.1,high=0.2)
         self.rho = 10
-        self.max_subloop = 20
+        self.max_loop = 100
+        self.solver = "CBC"
 
 
 
 from operators import operators
 class Matheuristic : 
-    def __init__(self, problem):
+    def __init__(self, problem, seed=1):
 
         self.operators = [ {'weight' : 1, 'score': 0 , 'number_used':0, 'function':function, 'name':name } for (name, function) in operators ]
 
@@ -482,7 +483,9 @@ class Matheuristic :
         #self.solution_best = self.solution.copy()
         #self.solution_prime = self.solution.copy()
 
-        self.solver = "CBC"
+        
+
+        self.param = Meta_param(seed=seed)
 
 
 
@@ -557,6 +560,12 @@ class Matheuristic :
 
 
 
+    def info_operators(self):
+        print("\n Scores of operators :  " )
+        for op in self.operators :
+            print("w = ",format(op["weight"], '.2f'), " number used = ", op['number_used'], "score = ",op["score"], " name : ", op["name"])
+        print("\n")
+
 
     def choose_operator(operators):
         weights = [operator['weight'] for operator in operators]
@@ -574,27 +583,29 @@ class Matheuristic :
             op['number_used'] = 0
         
 
-    def algo2(self, param, MAXiter = 100, solver= "CBC", info = False):
+    def algo2(self, info = False):
         # modified algo :  we don't do line 20, 23, 24
+        param = self.param
         rd.seed(param.seed)
 
         M,N,K,T,p= self.solution.M, self.solution.N, self.solution.K, self.solution.T, 0
         
 
-        self.solution.multi_ISI(G = N, solver=solver, info=info) 
+        self.solution.multi_ISI(G = N, solver=param.solver, info=info) 
         typical_cost = self.solution.cost
         self.solution_best = self.solution.copy()
 
 
         tau, iterations, epsilon = param.tau_start, 0, rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1]  )
-        while tau > param.tau_end and iterations < MAXiter : 
+        while tau > param.tau_end and iterations < param.max_loop : 
             t0 = time()
             i = Matheuristic.choose_operator(self.operators)
             operator = self.operators[i]['function']
+            self.operators[i]['number_used'] += 1
             self.solution_prime = self.solution.copy()
             operator(self.solution_prime, param.rho)
             G = N
-            self.solution_prime.multi_ISI(G=G, solver=solver, info=info,typ_cost=typical_cost)
+            self.solution_prime.multi_ISI(G=G, solver=param.solver, info=info,typ_cost=typical_cost)
             
 
             amelioration, finish = False, False
@@ -608,7 +619,7 @@ class Matheuristic :
                     if finish : break
                     finish = True
 
-                self.solution_prime.multi_ISI(G=G, solver=solver, info=info,typ_cost=typical_cost)
+                self.solution_prime.multi_ISI(G=G, solver=param.solver, info=info,typ_cost=typical_cost)
 
             
             if self.solution.cost < self.solution_best.cost : 
@@ -623,6 +634,7 @@ class Matheuristic :
                 
 
             if iterations % param.Delta == 0 :
+                self.info_operators()
                 epsilon = rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1])
                 # implement update_weights or is this already done?
                 self.update_weights(param.reaction_factor)
@@ -632,7 +644,7 @@ class Matheuristic :
             tau = tau*param.cooling
             dt = time()-t0
 
-            print("Step : ", iterations,"Tau : ",round(tau,2), "Current cost is : ",round(self.solution.cost) , "Current best cost is : ", round(self.solution_best.cost), "Runnin time : ",round(dt,2) )
+            print("Step : ", iterations,"Tau : ",round(tau,2), "Current cost is : ",round(self.solution.cost,1) , "Current best cost is : ", round(self.solution_best.cost,1), "Running time : ",round(dt,2) )
         print(self.solution_best)
 
 

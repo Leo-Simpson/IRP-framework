@@ -10,14 +10,14 @@ import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import *
 import pandas as pd
-from scipy.spatial import distance_matrix, distance
+#from scipy.spatial import distance_matrix, distance
 import numpy as np
 
 
 sys.path.append('../')
 
 from Design.DesignDT_testing2 import Ui_MainWindow
-from ISI import Problem, Solution
+from ISI import Problem, Matheuristic
 
 
 class Window(QtWidgets.QMainWindow):
@@ -132,14 +132,10 @@ class Window(QtWidgets.QMainWindow):
                               t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, 
                               central = self.central, D = None)
             
-                
-            solution = Solution(problem)
-            solution.ISI(G = 4)
-
-            print(solution)
-    
-            # solution.ISI(G = 2)
-            # print(solution)
+ 
+            heuristic = Matheuristic(problem)
+            heuristic.param.tau_end = 1.
+            heuristic.algo2()          
         
 
 

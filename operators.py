@@ -168,8 +168,9 @@ def swap_rho_cust_intra_routes(solution, rho):
             number = len(candid_veh)
             k1, k2 = candid_veh[np.random.choice(number,2,replace= False)]
             m1, m2 = random.choice(np.nonzero(solution.Y[t,n,k1,:])[0]), random.choice(np.nonzero(solution.Y[t,n,k2,:])[0])
-            solution.Y[t,n,[k1, k2],m1] = [0, 1]
-            solution.Y[t,n,[k1, k2],m2] = [1, 0]
+            if m1 != m2 :
+                solution.Y[t,n,[k1, k2],m1] = [0, 1]
+                solution.Y[t,n,[k1, k2],m2] = [1, 0]
             solution.r[t][n][k1], solution.r[t][n][k2] = tsp_tour(np.nonzero(solution.Y[t,n,k1,:])[0] + solution.N, n, solution.problem.D), tsp_tour(np.nonzero(solution.Y[t,n,k2,:])[0] + solution.N, n, solution.problem.D)
     #else:
     #    print('Applied swap_rho_cust_intra_routes, but there were no viable candidates (=Warehouses with two departing vehicles in one time step')
@@ -199,17 +200,17 @@ def swap_rho_cust_intra_plants(solution, rho):
     
 
 operators = [
-        ('rand_remove_rho',rand_remove_rho),
-        ('remove_worst_rho',remove_worst_rho),
-        ('shaw_removal_route_based',shaw_removal_route_based),
-        ('shaw_removal_greedy',shaw_removal_greedy),
-        ('avoid_consecutive_visits',avoid_consecutive_visits),
-        ('empty_one_period',empty_one_period),
-        ('empty_one_vehicle',empty_one_vehicle),
-        ('empty_one_plant',empty_one_plant),
-        ('rand_insert_rho',rand_insert_rho),
-        ('assign_to_nearest_plant',assign_to_nearest_plant),
-        ('insert_best_rho',insert_best_rho),
-        ('swap_rho_cust_intra_routes',swap_rho_cust_intra_routes),
-        ('swap_rho_cust_intra_plants',swap_rho_cust_intra_plants)
+        ('rand remove rho',rand_remove_rho),
+        ('remove worst rho',remove_worst_rho),
+        ('shaw removal route based',shaw_removal_route_based),
+        ('shaw removal greedy',shaw_removal_greedy),
+        ('avoid consecutive visits',avoid_consecutive_visits),
+        ('empty one period',empty_one_period),
+        ('empty one vehicle',empty_one_vehicle),
+        ('empty one plant',empty_one_plant),
+        ('rand insert rho',rand_insert_rho),
+        ('assign to nearest plant',assign_to_nearest_plant),
+        ('insert best rho',insert_best_rho),
+        ('swap rho cust intra routes',swap_rho_cust_intra_routes),
+        ('swap rho cust intra plants',swap_rho_cust_intra_plants)
 ]
