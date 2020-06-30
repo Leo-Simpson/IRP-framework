@@ -10,7 +10,6 @@ def rand_remove_rho(solution, rho):
         solution.r[t][n][k] = np.ndarray.tolist(tour[tour != m + solution.N])
         
 def remove_worst_rho(solution, rho):
-    if solution.a is None : solution.compute_a_and_b()
     for i in range( min(rho,np.sum(solution.Y)) ):   
         Y_flat = solution.Y.reshape(-1)
         a_flat = solution.a.reshape(-1)
@@ -125,7 +124,6 @@ def assign_to_nearest_plant(solution, rho):
     
 def insert_best_rho(solution, rho):
     candidates = ~np.any(solution.Y, axis = (1,2))   # ~ is the negation of a boolean array
-    if solution.b is None : solution.compute_a_and_b()
     for i in range( min(rho,np.sum(candidates)) ):
         b_flat = solution.b.reshape(-1)
         Y_flat = solution.Y.reshape(-1)

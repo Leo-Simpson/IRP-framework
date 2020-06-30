@@ -89,8 +89,9 @@ class Solution :
         self.running_time = dict()
         self.feasibility = dict()
         self.feasible = False
-        self.a = None
-        self.b = None
+        self.a = np.zeros((self.T,self.N,self.K,self.M)) # routing cost reduction if school m is removed from the tour of vehicle k from WH n at time t ==> array TxKxMxN
+        self.b = np.zeros((self.T,self.N,self.K,self.M)) # routing cost addition if school m is added to the tour of vehicle k from WH n at time t ==> array TxKxMxN
+
 
         self.build_Cl()
         self.compute_costs()
@@ -153,8 +154,8 @@ class Solution :
     
     def compute_a_and_b(self):
        
-        self.a = np.zeros((self.T,self.N,self.K,self.M)) # routing cost reduction if school m is removed from the tour of vehicle k from WH n at time t ==> array TxKxMxN
-        self.b = np.zeros((self.T,self.N,self.K,self.M)) # routing cost addition if school m is added to the tour of vehicle k from WH n at time t ==> array TxKxMxN
+        self.a[:,:,:,:] = 0.
+        self.b[:,:,:,:] = 0.
 
         for t in range(self.T): 
             for n in range(self.N):
