@@ -226,7 +226,7 @@ class Solution :
                 "I_s constraint" : np.all( [ np.all(self.I_s[t]<= self.problem.U_s + tol) and np.all(self.I_s[t]>= self.problem.L_s - tol) for t in range(self.T)]),
                 "I_w constraint" : np.all( [ np.all(self.I_w[t]<= self.problem.U_w + tol) and np.all(self.I_w[t]>= self.problem.L_w - tol) for t in range(self.T)])
         }
-        self.feasible = self.feasibility["Truck constraint"] and self.feasibility["Duration constraint"] and self.feasibility["I_s constraint"] and self.feasibility["I_w constraint"]
+        self.feasible = np.all(self.feasibility.values())
                     
 
 
@@ -370,15 +370,14 @@ class Solution :
         ISI_model += add_cost + transport_cost + violation_cost, 'Z'
 
 
-        #print(ISI_model)
+        
         t1 = time()
 
         if solver == "CBC"    : ISI_model.solve(solver = plp.PULP_CBC_CMD(msg=False, mip_start=True))
         elif solver == "GLPK" : ISI_model.solve(solver = plp.GLPK_CMD(options=['--mipgap', str(accuracy),"--tmlim", str(time_lim)],msg=0))
-        
+        else : raise ValueError(str(solver) + " is not a known solver, use CBC or GLPK")
 
         t2 = time()
-        #ISI_model.solve()
 
         # transform the _vars things into numpy array to return it. 
 
@@ -668,7 +667,7 @@ def random_problem(T,N,K,M, seed = None):
     for i in range(M):
         comsumption =  np.random.randint(low = 1, high = 5)
         lower = 0.
-        capacity = lower + np.random.randint(low = 1, high = 10)
+        capacity = comsumption + np.random.randint(low = 1, high = 10)
         initial = capacity
         storage_cost = np.random.randint(low = 1, high = 5)
         location = np.array([np.random.randint(low = -100, high = 100),np.random.randint(low = -100, high = 100)])
