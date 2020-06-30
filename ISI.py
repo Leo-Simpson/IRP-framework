@@ -45,11 +45,12 @@ class Problem :
         
 
     def define_arrays(self):
+        self.d         =  np.array([s["consumption"] for s in self.Schools])       # consumption of schools
         self.I_s_init  =  np.array([s["initial"] for s in self.Schools])           # initial inventory of school
         self.U_s       =  np.array([s["capacity"] for s in self.Schools])          # capactiy upper bound school
-        self.L_s       =  np.array([s["lower"] for s in self.Schools])             # capacity lower bound school     
+        self.L_s       =  np.array([s["lower"] for s in self.Schools])+self.d      # capacity lower bound school     
         self.h_s       =  np.array([s["storage_cost"] for s in self.Schools])      # storage cost school
-        self.d         =  np.array([s["consumption"] for s in self.Schools])       # consumption of schools
+        
         self.dt        =  np.array([self.d]*self.T)
 
         self.I_w_init  =  np.array([w["initial"] for w in self.Warehouses])        # initial inventory of warehouses
@@ -666,7 +667,7 @@ def random_problem(T,N,K,M, seed = None):
     
     for i in range(M):
         comsumption =  np.random.randint(low = 1, high = 5)
-        lower = comsumption
+        lower = 0.
         capacity = lower + np.random.randint(low = 1, high = 10)
         initial = capacity
         storage_cost = np.random.randint(low = 1, high = 5)
