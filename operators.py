@@ -9,7 +9,6 @@ def rand_remove_rho(solution, rho):
         tour = np.array(solution.r[t][n][k])
         solution.r[t][n][k] = np.ndarray.tolist(tour[tour != m + solution.N])
         
-
 def remove_worst_rho(solution, rho):
     for i in range( min(rho,np.sum(solution.Y)) ):   
         Y_flat = solution.Y.reshape(-1)
@@ -39,7 +38,6 @@ def shaw_removal_route_based(solution, rho):
         solution.Y[t,n,k,:] = 0
         solution.r[t][n][k] = []
 
-
 def shaw_removal_greedy(solution, rho):
     t,n,k,m = random.choice(np.transpose(np.nonzero(solution.Y)))
     route = np.array(solution.r[t][n][k])
@@ -64,6 +62,8 @@ def avoid_consecutive_visits(solution, rho):
         for n,k in change:
             schools = np.nonzero(solution.Y[t+1,n,k,:])[0]
             solution.r[t+1][n][k] = tsp_tour(schools  + solution.N, n, solution.problem.D)
+
+
 
 def empty_one_period(solution, rho):
     period = np.random.randint(solution.T)
@@ -103,6 +103,8 @@ def rand_insert_rho(solution, rho):
         solution.Y[t,n,k,m] = 1
         solution.r[t][n][k],_ = solution.cheapest_school_insert(t,n,k,m)
     
+
+
 def assign_to_nearest_plant(solution, rho):
     candidates = ~np.any(solution.Y, axis = (1,2))  # ~ is the negation of a boolean array
     for i in range( min(rho,np.sum(candidates)) ):
@@ -209,9 +211,11 @@ operators = [
         ('empty one period',empty_one_period),
         ('empty one vehicle',empty_one_vehicle),
         ('empty one plant',empty_one_plant),
+        ('further customer', furthest_customer),
         ('rand insert rho',rand_insert_rho),
         ('assign to nearest plant',assign_to_nearest_plant),
         ('insert best rho',insert_best_rho),
+        ('shaw insertion', shaw_insertion),
         ('swap rho cust intra routes',swap_rho_cust_intra_routes),
         ('swap rho cust intra plants',swap_rho_cust_intra_plants)
 ]
