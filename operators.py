@@ -22,7 +22,7 @@ def remove_worst_rho(solution, rho):
         k,m = np.divmod(rest, solution.M)
         tour = np.array(solution.r[t][n][k])
         solution.r[t][n][k] = np.ndarray.tolist(tour[tour != m + solution.N])
-        solution.compute_school_remove_costs(t,n,k)
+        solution.compute_school_remove_dist(t,n,k)
 
 def shaw_removal_route_based(solution, rho):
     t,n,k,m = random.choice(np.transpose(np.nonzero(solution.Y)))
@@ -136,7 +136,7 @@ def insert_best_rho(solution, rho):
         solution.r[t][n][k],_ = solution.cheapest_school_insert(t,n,k,m)
         #tour_school = np.nonzero(solution.Y[t,n,k,:])[0] + solution.N 
         #solution.r[t][n][k] = tsp_tour(tour_school, n, solution.problem.D)
-        solution.compute_school_insert_costs(t,n,k)
+        solution.compute_school_insert_dist(t,n,k)
     
 def shaw_insertion(solution, rho): 
     period = np.random.randint(solution.T)

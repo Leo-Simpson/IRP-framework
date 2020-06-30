@@ -125,12 +125,12 @@ class Solution :
             self.Cl[dist_vect > dist_max , m] = False
 
     
-    def compute_school_remove_costs(self,t,n,k):
+    def compute_school_remove_dist(self,t,n,k):
         tour_complete = [n]+self.r[t][n][k]+[n]
         for i in range(1,len(tour_complete)-1): 
             self.a[t,n,k, tour_complete[i] - self.N] = self.problem.D[tour_complete[i], tour_complete[i+1]] + self.problem.D[tour_complete[i], tour_complete[i-1]] - self.problem.D[tour_complete[i-1], tour_complete[i+1]]
             
-    def compute_school_insert_costs(self,t,n,k):
+    def compute_school_insert_dist(self,t,n,k):
         
         tour_complete   = [n]+self.r[t][n][k]+[n] 
 
@@ -160,9 +160,9 @@ class Solution :
             for n in range(self.N):
                 for k in range(self.K):
                     
-                    self.compute_school_remove_costs(t,n,k)
+                    self.compute_school_remove_dist(t,n,k)
                         
-                    self.compute_school_insert_costs(t,n,k)
+                    self.compute_school_insert_dist(t,n,k)
                    
     def compute_r(self):
         # here are the TSP to be computed
