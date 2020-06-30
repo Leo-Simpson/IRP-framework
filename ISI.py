@@ -416,7 +416,9 @@ class Solution :
         for p in range(itera):
             self.ISI(G, penalization=penalization,solver = solver, plot = False, info=info)
             if not self.feasibility["Duration constraint"] :penalization = penalization*c
-            elif not self.feasible : raise ValueError("Problem is infeasible")
+            elif not self.feasible : 
+                print(self)
+                raise ValueError("Problem is infeasible")
             else : return 
         print("Not enough penalization")
 
