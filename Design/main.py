@@ -54,16 +54,32 @@ class Window(QtWidgets.QMainWindow):
         df_w = pd.read_excel(io=p, sheet_name='Warehouses')         #reads the excel table Warehouses
         self.warehouses = df_w.to_dict('records')                   #and transforms it into a Panda dataframe
         for w in self.warehouses:                                   #puts longitude and latitude together in a numpy array 'location'
-            location = np.array([w['latitude'],w['longitude']])
-            del w['latitude'], w['longitude']
+            location = np.array([w['Latitude'],w['Longitude']])
+            del w['Latitude'], w['Longitude']
             w['location']=location
+            w['name'] = w.pop('Name')
+            w['capacity'] = w.pop('Capacity')
+            w['lower'] = w.pop('Lower')
+            w['initial'] = w.pop('Initial')
+            w['fixed_cost'] = w.pop('Fixed Cost')
+            
     
         df_s = pd.read_excel(io=p, sheet_name='Schools')
         self.schools = df_s.to_dict('records')
         for s in self.schools:                                      #puts longitude and latitude together in a numpy array 'location'
-            location = np.array([s['latitude'],s['longitude']])
-            del s['latitude'], s['longitude']
+            location = np.array([s['Latitude'],s['Longitude']])
+            del s['Latitude'], s['Longitude']
             s['location']=location
+            s['name'] = s.pop('Name_ID')
+            s['lower'] = s.pop('Lower')
+            s['initial'] = s.pop('Initial')
+            s['consumption'] = s.pop('Consumption per week in mt')
+            s['storage_cost'] = s.pop('Storage Cost')
+            s['capacity'] = s.pop('Capacity')
+            del s['Total Sum of Beneficiaries']
+            del s['Total Sum of Commodities']
+            del s['Consumption per day in mt']
+       
 
     
     
@@ -101,7 +117,7 @@ class Window(QtWidgets.QMainWindow):
         self.Tmax = self.ui.doubleSpinBox_maxtime.value()
         
         if self.ui.checkBox.isChecked():
-            self.central = np.mean(np.array([w['location'] for w in self.warehouses]),axis=0)
+            self.central = self.warehouses[0]
         else: 
             self.central = np.array([self.ui.doubleSpinBox_cw1.value(), self.ui.doubleSpinBox_cw2.value()])
             
@@ -128,14 +144,14 @@ class Window(QtWidgets.QMainWindow):
         else:               
             #and here we set up our model
             problem = Problem(Schools = self.schools, Warehouses = self.warehouses, 
-                              T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v, 
-                              t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, 
-                              central = self.central, D = None)
+                               T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v, 
+                               t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, 
+                               central = self.central, D = None)
             
  
-            heuristic = Matheuristic(problem)
-            heuristic.param.tau_end = 1.
-            heuristic.algo2()          
+            # heuristic = Matheuristic(problem)
+            # heuristic.param.tau_end = 1.
+            # heuristic.algo2()          
         
 
 
