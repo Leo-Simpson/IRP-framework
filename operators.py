@@ -20,8 +20,9 @@ def remove_worst_rho(solution, rho):
         t, rest = np.divmod(choice, solution.N*solution.K*solution.M)
         n, rest = np.divmod(rest, solution.K*solution.M)
         k,m = np.divmod(rest, solution.M)
-        tour = np.array(solution.r[t][n][k])
-        solution.r[t][n][k] = np.ndarray.tolist(tour[tour != m + solution.N])
+        if m+solution.N in solution.r[t][n][k]: solution.r[t][n][k].remove(m+solution.N)
+        #tour = np.array(solution.r[t][n][k])
+        #solution.r[t][n][k] = np.ndarray.tolist(tour[tour != m + solution.N])
         solution.compute_school_remove_dist(t,n,k)
 
 def shaw_removal_route_based(solution, rho):
@@ -68,7 +69,7 @@ def avoid_consecutive_visits(solution, rho):
 def empty_one_period(solution, rho):
     period = np.random.randint(solution.T)
     solution.Y[period,:,:,:] = 0
-    solution.r[period] = [[[]]*solution.K]*solution.N
+    solution.r[period] = [ [[]]*solution.K]*solution.N
 
 def empty_one_vehicle(solution, rho):
     warehouse = np.random.randint(solution.N)
@@ -91,7 +92,7 @@ def furthest_customer(solution, rho):
         route = solution.r[t][n][k]
         furthest_cust_index = np.argmax(solution.problem.D[np.ix_([n],route)][0])
         solution.Y[t,n,k,route[furthest_cust_index] - solution.N] = 0
-        solution.r[t][n][k] = np.delete(route, furthest_cust_index)
+        route.pop(furthest_cust_index)
         candidates[t,n,k] -= 1
     
 def rand_insert_rho(solution, rho):    
@@ -111,7 +112,7 @@ def assign_to_nearest_plant(solution, rho):
         t, m = random.choice(np.transpose(np.nonzero(candidates)))
         allowed_plants = [i for i in range(solution.N) if solution.Cl[i,m] == 1]
         nearest_plant = allowed_plants[np.argmin(solution.problem.D[np.ix_([m + solution.N],allowed_plants)][0])]
-        candidates[t,m] = 0
+        candidates[t,m] = False
         route, cost = solution.cheapest_school_insert(t,nearest_plant,0,m)
         index = 0
         for k in range(1, solution.K):
@@ -219,3 +220,8 @@ operators = [
         ('swap rho cust intra routes',swap_rho_cust_intra_routes),
         ('swap rho cust intra plants',swap_rho_cust_intra_plants)
 ]
+
+
+#remove_worst_rho
+#insert_best_rho
+#assign_to_nearest_plant

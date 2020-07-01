@@ -136,6 +136,11 @@ class Solution :
         
         tour_complete   = [n]+self.r[t][n][k]+[n] 
 
+        if type(self.r[t][n][k]) == np.ndarray : 
+            print("hey")
+            tour_complete = [n,n]
+
+
         edges_cost = np.array( [self.problem.D[tour_complete[i],tour_complete[i+1]] for i in range(len(tour_complete)-1)] )
         allowed  = [m for m in range(self.M) if self.Cl[n,m] and not self.Y[t,n,k,m] ]
         #allowed = [m for m in np.where(np.sum(self.Y[t,:,:,:], axis = (0,1)) == 0)[0] if self.Cl[n,m] == 1]
@@ -161,7 +166,7 @@ class Solution :
         for t in range(self.T): 
             for n in range(self.N):
                 for k in range(self.K):
-                    
+
                     self.compute_school_remove_dist(t,n,k)
                         
                     self.compute_school_insert_dist(t,n,k)
@@ -230,7 +235,7 @@ class Solution :
                     
 
 
-    def ISI(self, G = 1, penalization=10,accuracy = 0.01, time_lim = 1000, solver = "CBC", plot = False, info = True):
+    def ISI(self, G = 1, penalization=10,accuracy = 0.01, time_lim = 1000, solver = "CBC", plot = False, info = True, total_running_time=None):
         # change the solution itself to the ISI solution
         t0 = time()
 
@@ -408,12 +413,17 @@ class Solution :
 
         if info : print(self.informations())
 
-    def multi_ISI(self,G,solver="CBC", plot = False ,info=True,typ_cost=100):
+        if not total_running_time is None : 
+            for name,dt in total_running_time.items() : 
+                total_running_time[name] = dt + self.running_time[name]
+
+
+    def multi_ISI(self,G,solver="CBC", plot = False ,info=True,typ_cost=100,total_running_time=None):
         itera = 50
         c = typ_cost**(1/itera)
         penalization = c
         for p in range(itera):
-            self.ISI(G, penalization=penalization,solver = solver, plot = False, info=info)
+            self.ISI(G, penalization=penalization,solver = solver, plot = False, info=info, total_running_time=total_running_time)
             if not self.feasibility["Duration constraint"] :penalization = penalization*c
             elif not self.feasible : 
                 print(self)
@@ -495,12 +505,15 @@ class Matheuristic :
 
     def algo1(self, param, MAXiter = 1000, solver= "CBC"):
         # here one can do the final matheuristic described in the paper : page 18
+        t0 = time()
         rd.seed(param.seed)
 
         M,N,K,T = self.solution.M, self.solution.N, self.solution.K, self.solution.T
         
         # initialization (step 2 and 3 of the pseudo code)
         self.solution.ISI(G = N, solver=solver)
+        running_time = self.solution.running_time.copy()
+
         self.solution_best = self.solution.copy()
 
         # line 4 of pseudocode
@@ -559,7 +572,14 @@ class Matheuristic :
 
             print("Step %i is finished !!" %iterations)
             print("Current cost is : ", self.solution_best.cost )
-        print(self.solution_best)
+        t1 = time()
+        visualization(self.solution_best, "solution.html")
+        t2 = time()
+        print('Total algorithm time = {} <br> Final visualisation time = {} '.format(round(t1-t0,2),round(t2-t1,2)))
+
+        string_running_time ="Total ISI running times : \n "
+        for name, t in self.running_time.items():
+            string_running_time += name +"  :  " + str(round(t,4)) + "\n  "
 
 
 
@@ -588,6 +608,7 @@ class Matheuristic :
 
     def algo2(self, info = False):
         # modified algo :  we don't do line 20, 23, 24
+        t0 = time()
         param = self.param
         rd.seed(param.seed)
 
@@ -596,19 +617,20 @@ class Matheuristic :
 
         self.solution.multi_ISI(G = N, solver=param.solver, info=info) 
         typical_cost = self.solution.cost
+        self.running_time = self.solution.running_time.copy()
         self.solution_best = self.solution.copy()
 
 
         tau, iterations, epsilon = param.tau_start, 0, rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1]  )
         while tau > param.tau_end and iterations < param.max_loop : 
-            t0 = time()
+            t0_loop = time()
             i = Matheuristic.choose_operator(self.operators)
             operator = self.operators[i]['function']
             self.operators[i]['number_used'] += 1
             self.solution_prime = self.solution.copy()
             operator(self.solution_prime, param.rho)
             G = N
-            self.solution_prime.multi_ISI(G=G, solver=param.solver, info=info,typ_cost=typical_cost)
+            self.solution_prime.multi_ISI(G=G, solver=param.solver, info=info,typ_cost=typical_cost, total_running_time=self.running_time)
             
 
             amelioration, finish = False, False
@@ -622,7 +644,7 @@ class Matheuristic :
                     if finish : break
                     finish = True
 
-                self.solution_prime.multi_ISI(G=G, solver=param.solver, info=info,typ_cost=typical_cost)
+                self.solution_prime.multi_ISI(G=G, solver=param.solver, info=info,typ_cost=typical_cost,total_running_time=self.running_time)
 
             
             if self.solution.cost < self.solution_best.cost : 
@@ -645,10 +667,23 @@ class Matheuristic :
 
             iterations += 1
             tau = tau*param.cooling
-            dt = time()-t0
+            dt = time()-t0_loop
 
             print("Step : ", iterations,"Tau : ",round(tau,2), "Current cost is : ",round(self.solution.cost,1) , "Current best cost is : ", round(self.solution_best.cost,1), "Running time : ",round(dt,2) )
-        print(self.solution_best)
+        
+        t1 = time()
+        self.solution_best.visualization("solution.html").show()
+        t2 = time()
+        print(" Total algorithm time = {} \n Final visualisation time = {} ".format(round(t1-t0,2),round(t2-t1,2)))
+
+        string_running_time ="Total ISI running times : \n  "
+        for name, t in self.running_time.items():
+            string_running_time += name +"  :  " + str(round(t,2)) + "\n  "
+
+        print(string_running_time )
+
+
+
 
 
 

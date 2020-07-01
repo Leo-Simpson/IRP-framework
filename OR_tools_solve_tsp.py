@@ -61,7 +61,6 @@ def tsp_tour_comp(distance_matrix):
     
 def tsp_tour(tour_school, warehouse, dist):
     if (len(tour_school)<=2): return list(tour_school)
-    
     tour_complete = np.zeros(len(tour_school)+1,dtype=int)
     tour_complete[1:] = np.array(tour_school)
     tour_complete[0]  = warehouse
@@ -70,4 +69,7 @@ def tsp_tour(tour_school, warehouse, dist):
     tsp_sol = tsp_tour_comp(distance_matrix)
     
     tsp_tour = np.ndarray.tolist(tour_complete[tsp_sol])  #converting indices back from range(len(tour)) to range(M+N)
+
+
+    
     return tsp_tour
