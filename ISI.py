@@ -16,13 +16,22 @@ from visu import visu
 class Problem :
     #this is the class that contains the data of the problem
     def __init__(self,Warehouses,Schools,T,K, Q1, Q2, v, t_load, c_per_km, Tmax, central = None, D = None):
-        if central is None : self.central = np.zeros(2)
-        else: self.central = central
-
         inf = 10000
-
-        central_w = {"capacity": inf, "lower":-inf, "dist_central":0, "fixed_cost":0, "initial": 0, "name": "CENTRAL" , "location": self.central}
-        self.Warehouses = [central_w] + Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'fixed_cost': ... , 'initial': ...,  'name' : ..., 'location': ...}
+        
+        if type(central) is dict:
+            self.central = central
+            self.central['capacity'] = inf
+            self.central['lower'] = -inf
+            self.central['intial'] = 0
+            self.central['fixed_cost'] = 0
+            self.Warehouses = Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'fixed_cost': ... , 'initial': ...,  'name' : ..., 'location': ...}
+        elif type(central) is np.ndarray:
+            self.central = {"capacity": inf, "lower":-inf, "dist_central":0, "fixed_cost":0, "initial": 0, "name": "CENTRAL" , "location": central}
+            self.Warehouses = [self.central] + Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'fixed_cost': ... , 'initial': ...,  'name' : ..., 'location': ...}
+        elif central is None:
+            self.central = {"capacity": inf, "lower":-inf, "dist_central":0, "fixed_cost":0, "initial": 0, "name": "CENTRAL" , "location": np.zeros(2)}
+            self.Warehouses = [self.central] + Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'fixed_cost': ... , 'initial': ...,  'name' : ..., 'location': ...}
+        
         self.Schools = Schools  # list of dictionary {'capacity': ..., 'lower':..., 'consumption': ...,'storage_cost': ... , 'initial': ...,  'name' : ..., 'location':...}
         self.T = T # time horizon
         self.K = K # number of vehicles
