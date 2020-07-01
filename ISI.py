@@ -207,7 +207,7 @@ class Solution :
         problem  = self.problem
         self.compute_dist()
         self.time_route     = self.dist / problem.v + problem.t_load*np.sum(self.Y, axis = 3)
-        self.time_adding    = self.b / problem.v + problem.t_load
+        self.time_adding    = self.b / problem.v + problem.t_load    # to change : t_load can depends on the schools ! 
         self.time_substract = self.a / problem.v + problem.t_load
 
     def compute_inventory(self):
@@ -429,7 +429,7 @@ class Solution :
                 print(self)
                 raise ValueError("Problem is infeasible")
             else : return 
-        print("Not enough penalization")
+        raise ValueError("Not enough penalization for duration constraint")
 
 
 
@@ -480,7 +480,7 @@ class Meta_param :
         self.reaction_factor = 0.8
         self.sigmas = (10,5,2)
         self.ksi = rd.uniform(low=0.1,high=0.2)
-        self.rho = 10
+        self.rho_percent = 0.5
         self.max_loop = 100
         self.solver = "CBC"
 
@@ -499,6 +499,8 @@ class Matheuristic :
         
 
         self.param = Meta_param(seed=seed)
+
+        
 
 
 
@@ -610,12 +612,13 @@ class Matheuristic :
         # modified algo :  we don't do line 20, 23, 24
         t0 = time()
         param = self.param
+        param.rho = max(int(param.rho_percent * self.solution.M),1)
         rd.seed(param.seed)
 
         M,N,K,T,p= self.solution.M, self.solution.N, self.solution.K, self.solution.T, 0
         
 
-        self.solution.multi_ISI(G = N, solver=param.solver, info=info) 
+        self.solution.multi_ISI(G = N, solver=param.solver, info=info, plot=plot) 
         typical_cost = self.solution.cost
         self.running_time = self.solution.running_time.copy()
         self.solution_best = self.solution.copy()
@@ -630,7 +633,7 @@ class Matheuristic :
             self.solution_prime = self.solution.copy()
             operator(self.solution_prime, param.rho)
             G = N
-            self.solution_prime.multi_ISI(G=G, solver=param.solver, info=info,typ_cost=typical_cost, total_running_time=self.running_time)
+            self.solution_prime.multi_ISI(G=G, solver=param.solver, info=info,typ_cost=typical_cost, total_running_time=self.running_time, plot=plot)
             
 
             amelioration, finish = False, False
@@ -644,7 +647,7 @@ class Matheuristic :
                     if finish : break
                     finish = True
 
-                self.solution_prime.multi_ISI(G=G, solver=param.solver, info=info,typ_cost=typical_cost,total_running_time=self.running_time)
+                self.solution_prime.multi_ISI(G=G, solver=param.solver, info=info,typ_cost=typical_cost,total_running_time=self.running_time, plot=plot)
 
             
             if self.solution.cost < self.solution_best.cost : 
@@ -681,8 +684,6 @@ class Matheuristic :
             string_running_time += name +"  :  " + str(round(t,2)) + "\n  "
 
         print(string_running_time )
-
-
 
 
 
