@@ -42,7 +42,7 @@ class Problem :
         self.c_per_km = c_per_km # average routing cost per kilometer
         self.Tmax = Tmax
 
-        if D is None : 
+        if D is 1 : 
             locations = [w['location'] for w in self.Warehouses] + [s['location'] for s in self.Schools] 
             self.D = distance_matrix(locations,locations)
         else : 
@@ -73,8 +73,8 @@ class Problem :
 
 
 class Solution : 
-    
-    def __init__(self,problem, Y = None, q = None, X = None, Cl=None):
+    #radfactor: parameter to build Cl, gives maximal factor of min distance to warehouse still allowed to serve school, between 1.1 and 1.6
+    def __init__(self,problem, Y = None, q = None, X = None, Cl=None, radfactor=100):
         M,N,K,T = len(problem.Schools), len(problem.Warehouses),problem.K, problem.T
         self.M, self.N, self.K, self.T = M,N,K,T
 
@@ -103,7 +103,7 @@ class Solution :
         self.b = np.zeros((self.T,self.N,self.K,self.M)) # routing cost addition if school m is added to the tour of vehicle k from WH n at time t ==> array TxKxMxN
 
 
-        self.build_Cl()
+        self.build_Cl(radfactor)
         self.compute_costs()
 
 
@@ -125,13 +125,13 @@ class Solution :
         return solution
 
         
-    def build_Cl(self):
+    def build_Cl(self,radfactor):
         for m in range(self.M):
             dist_vect = self.problem.D[m+self.N][:self.N]
 
-            dist_time = (self.problem.Tmax - self.problem.t_load) * self.problem.v /2          #only warehouses allowed to serve schools that are reachable in tour within Tmax (   
-            dist_radius = 2*np.min(dist_vect)      
-                                                     #alternatively: only warehouses allowed that are not more than twice (or take another value) far away as the closest warehouses
+            dist_time = (self.problem.Tmax - self.problem.t_load) * self.problem.v /2          #only warehouses allowed to serve schools that are reachable in tour within Tmax    
+            dist_radius = radfactor*np.min(dist_vect)      
+                                                     #additionally: only warehouses allowed that are not more than radfactor far away as the closest warehouses
             dist_max = min(dist_time,dist_radius)
             self.Cl[dist_vect > dist_max , m] = False
 
@@ -492,7 +492,6 @@ class Meta_param :
         self.rho_percent = 0.5
         self.max_loop = 100
         self.solver = "CBC"
-
 
 
 from operators import operators
