@@ -298,7 +298,7 @@ class Solution :
                 "I_w constraint" : np.all( [ np.all(self.I_w[t]<= self.problem.U_w + tol) and np.all(self.I_w[t]>= self.problem.L_w - tol) for t in range(self.T)]),
                 "q constraint" : np.all( np.sum(self.q, axis = 3 ) <= 1. ) and np.all(self.q>=0)
         }
-        self.feasible = np.all(self.feasibility.values())
+        self.feasible = self.feasibility["Truck constraint"] and self.feasibility["I_s constraint"] and self.feasibility["I_s constraint"] and self.feasibility["I_w constraint"] and self.feasibility["q constraint"]
                     
 
 
@@ -491,30 +491,44 @@ class Solution :
         penalization = c
         for p in range(itera):
             self.ISI(G, penalization=penalization,solver = solver, plot = plot, info=info, total_running_time=total_running_time)
-            if not self.feasibility["Duration constraint"] :penalization = penalization*c
-            elif not self.feasible : 
+            if not self.feasible : 
                 print(self)
-                raise ValueError("Problem is infeasible")
+                raise ValueError("Problem looks infeasible")
+            elif not self.feasibility["Duration constraint"] : penalization = penalization*c
             else : return 
         raise ValueError("Not enough penalization for duration constraint")
 
 
     def ISI_multi_time(self, H, G,solver="CBC", plot = False ,info=True,typ_cost=100,total_running_time=None):
-        solutions = self.split(H)
+        solutions = self.time_split(H)
         for sol in solutions : 
+            sol.problem.I_w_init = I_w_init
+            sol.problem.I_s_init = I_s_init
             sol.multi_ISI(G,solver = solver, plot = plot, info = info, typ_cost=typ_cost, total_running_time= total_running_time)
-
-        self.rewrite(solutions)
+            I_w_init = sol.I_w[-1]
+            I_s_init = sol.I_s[-1]
+            
+        self.time_desplit(solutions)
         
-    def split(self,H):
+    def time_split(self,H):
         solutions = []
-        # to do here 
+        L = ceil(self.T/H)
+        for l in range(L):
+            sol = self.copy()
+            sol.cut(Tmin,Tmax)
+            solutions.append(sol)
         return solutions
 
-    def rewrite(self,solutions):
-        # to do here
-        pass
+    def time_desplit(self,solutions):
+        self.Y = np.concatenate( [], axis=0  )
+        self.q = 
+        self.r = 
 
+        
+
+    def cut(self,Tmin,Tmax):
+        pass
+    
     
     
     def visualization(self,filename):
