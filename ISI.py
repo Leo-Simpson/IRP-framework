@@ -295,7 +295,8 @@ class Solution :
                 "Truck constraint" : np.all(np.sum(self.q , axis = 3) <= 1 + tol) and np.all(self.q >=-tol),
                 "Duration constraint" : np.all(self.time_route <=self.problem.Tmax+ tol ),
                 "I_s constraint" : np.all( [ np.all(self.I_s[t]<= self.problem.U_s + tol) and np.all(self.I_s[t]>= self.problem.L_s - tol) for t in range(self.T)]),
-                "I_w constraint" : np.all( [ np.all(self.I_w[t]<= self.problem.U_w + tol) and np.all(self.I_w[t]>= self.problem.L_w - tol) for t in range(self.T)])
+                "I_w constraint" : np.all( [ np.all(self.I_w[t]<= self.problem.U_w + tol) and np.all(self.I_w[t]>= self.problem.L_w - tol) for t in range(self.T)]),
+                "q constraint" : np.all( np.sum(self.q, axis = 3 ) <= 1. ) and np.all(self.q>=0)
         }
         self.feasible = np.all(self.feasibility.values())
                     
