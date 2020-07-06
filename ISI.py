@@ -17,14 +17,26 @@ from visu import visu
 class Problem :
     #this is the class that contains the data of the problem
     def __init__(self,Warehouses,Schools,T,K, Q1, Q2, v, t_load, c_per_km, Tmax, central = None, D = None):
-        if type(central) is dict and 'location' in central.keys() and type(central['location']) is np.ndarray: self.central = central['location'] 
-        elif type(central) is np.ndarray : self.central = central
-        else : self.central = np.zeros(2)
-
+        
         inf = 10000
+        
+        if type(central) is dict and 'location' in central.keys() and type(central['location']) is np.ndarray: 
+            self.central = central['location']  
+            Warehouses[0]['capacity'] = inf
+            Warehouses[0]['lower'] = -inf
+            Warehouses[0]['intial'] = 0
+            Warehouses[0]['fixed_cost'] = 0
+            self.Warehouses = Warehouses
+        elif type(central) is np.ndarray : 
+            self.central = central
+            central_w = {"capacity": inf, "lower":-inf, "dist_central":0, "fixed_cost":0, "initial": 0, "name": "CENTRAL" , "location": self.central}
+            self.Warehouses = [central_w] + Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'fixed_cost': ... , 'initial': ...,  'name' : ..., 'location': ...}
+        else : 
+            self.central = np.zeros(2)
+            central_w = {"capacity": inf, "lower":-inf, "dist_central":0, "fixed_cost":0, "initial": 0, "name": "CENTRAL" , "location": self.central}
+            self.Warehouses = [central_w] + Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'fixed_cost': ... , 'initial': ...,  'name' : ..., 'location': ...}
 
-        central_w = {"capacity": inf, "lower":-inf, "dist_central":0, "fixed_cost":0, "initial": 0, "name": "CENTRAL" , "location": self.central}
-        self.Warehouses = [central_w] + Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'fixed_cost': ... , 'initial': ...,  'name' : ..., 'location': ...}
+
 
         self.Schools = Schools  # list of dictionary {'capacity': ..., 'lower':..., 'consumption': ...,'storage_cost': ... , 'initial': ...,  'name' : ..., 'location':...}
         self.T = T # time horizon
@@ -488,7 +500,7 @@ class Solution :
 
     def ISI_multi_time(self, H, G,solver="CBC", plot = False ,info=True,typ_cost=100,total_running_time=None):
         solutions = self.split(H)
-        for sol in solurions : 
+        for sol in solutions : 
             sol.multi_ISI(G,solver = solver, plot = plot, info = info, typ_cost=typ_cost, total_running_time= total_running_time)
 
         self.rewrite(solutions)
