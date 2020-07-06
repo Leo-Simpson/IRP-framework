@@ -7,6 +7,7 @@ import pulp as plp
 from scipy.spatial import distance_matrix
 import pandas as pd
 from time import time
+from math import *  # for ceil
 
 import plotly.graph_objects as go 
 from plotly import offline
@@ -16,22 +17,15 @@ from visu import visu
 class Problem :
     #this is the class that contains the data of the problem
     def __init__(self,Warehouses,Schools,T,K, Q1, Q2, v, t_load, c_per_km, Tmax, central = None, D = None):
+        if type(central) is dict and 'location' in central.keys() and type(central['location']) is np.ndarray: self.central = central['location'] 
+        elif type(central) is np.ndarray : self.central = central
+        else : self.central = np.zeros(2)
+
         inf = 10000
-        
-        if type(central) is dict:
-            self.central = central
-            self.central['capacity'] = inf
-            self.central['lower'] = -inf
-            self.central['intial'] = 0
-            self.central['fixed_cost'] = 0
-            self.Warehouses = Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'fixed_cost': ... , 'initial': ...,  'name' : ..., 'location': ...}
-        elif type(central) is np.ndarray:
-            self.central = {"capacity": inf, "lower":-inf, "dist_central":0, "fixed_cost":0, "initial": 0, "name": "CENTRAL" , "location": central}
-            self.Warehouses = [self.central] + Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'fixed_cost': ... , 'initial': ...,  'name' : ..., 'location': ...}
-        elif central is None:
-            self.central = {"capacity": inf, "lower":-inf, "dist_central":0, "fixed_cost":0, "initial": 0, "name": "CENTRAL" , "location": np.zeros(2)}
-            self.Warehouses = [self.central] + Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'fixed_cost': ... , 'initial': ...,  'name' : ..., 'location': ...}
-        
+
+        central_w = {"capacity": inf, "lower":-inf, "dist_central":0, "fixed_cost":0, "initial": 0, "name": "CENTRAL" , "location": self.central}
+        self.Warehouses = [central_w] + Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'fixed_cost': ... , 'initial': ...,  'name' : ..., 'location': ...}
+
         self.Schools = Schools  # list of dictionary {'capacity': ..., 'lower':..., 'consumption': ...,'storage_cost': ... , 'initial': ...,  'name' : ..., 'location':...}
         self.T = T # time horizon
         self.K = K # number of vehicles
@@ -42,7 +36,7 @@ class Problem :
         self.c_per_km = c_per_km # average routing cost per kilometer
         self.Tmax = Tmax
 
-        if D is 1 : 
+        if D is None : 
             locations = [w['location'] for w in self.Warehouses] + [s['location'] for s in self.Schools] 
             self.D = distance_matrix(locations,locations)
         else : 
@@ -67,6 +61,51 @@ class Problem :
         self.L_w       =  np.array([w["lower"] for w in self.Warehouses])          # capacity lower bound warehouse
         self.F_w       =  np.array([w["fixed_cost"] for w in self.Warehouses])     # fixed costs for each warehouse
         self.to_central=  np.array([w["dist_central"] for w in self.Warehouses])   # distance between the warehouses and the central
+
+
+    def copy(self):
+        problem = Problem(self.Warehouses.copy(),Schools.copy(),self.T,self.K,self.Q1,self.Q2,self.v,self.t_load, self.c_per_km,self.Tmax,self.central,self.D)
+        problem.define_arrays()
+        return problem
+
+    def fuse(self,time_step):
+        # first copy the problem
+        problem = self.copy()
+
+        # then change time horizon : 
+        problem.T = ceil(problem.T/time_step)
+
+        # then change the consumption and the prices 
+        for s in problem.Schools : 
+            s['consumption']  =  s['consumption'] * time_step
+            s['storage_cost'] = s['storage_cost'] * time_step
+
+        # then redifine the arrays 
+        problem.define_arrays()
+
+        return problem
+
+
+    def defuse(self,time_step) : 
+        # first copy the problem
+        problem = self.copy()
+
+        # then change time horizon : 
+        problem.T = ceil(problem.T*time_step)
+
+        # then change the consumption and the prices 
+        for s in problem.Schools : 
+            s['consumption']  =  s['consumption'] / time_step
+            s['storage_cost'] = s['storage_cost'] / time_step
+
+        # then redifine the arrays 
+        problem.define_arrays()
+
+        return problem
+
+    
+
+
 
 
 
@@ -432,7 +471,7 @@ class Solution :
         c = typ_cost**(1/itera)
         penalization = c
         for p in range(itera):
-            self.ISI(G, penalization=penalization,solver = solver, plot = False, info=info, total_running_time=total_running_time)
+            self.ISI(G, penalization=penalization,solver = solver, plot = plot, info=info, total_running_time=total_running_time)
             if not self.feasibility["Duration constraint"] :penalization = penalization*c
             elif not self.feasible : 
                 print(self)
@@ -441,8 +480,21 @@ class Solution :
         raise ValueError("Not enough penalization for duration constraint")
 
 
+    def ISI_multi_time(self, H, G,solver="CBC", plot = False ,info=True,typ_cost=100,total_running_time=None):
+        solutions = self.split(H)
+        for sol in solurions : 
+            sol.multi_ISI(G,solver = solver, plot = plot, info = info, typ_cost=typ_cost, total_running_time= total_running_time)
 
+        self.rewrite(solutions)
         
+    def split(self,H):
+        solutions = []
+        # to do here 
+        return solutions
+
+    def rewrite(self,solutions):
+        # to do here
+        pass
 
     
     
@@ -616,7 +668,7 @@ class Matheuristic :
             op['number_used'] = 0
         
 
-    def algo2(self, info = False):
+    def algo2(self, info = False, plot = False):
         # modified algo :  we don't do line 20, 23, 24
         t0 = time()
         param = self.param
