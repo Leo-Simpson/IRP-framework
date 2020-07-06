@@ -232,7 +232,6 @@ class Solution :
                 for k in range(self.K):
                     tour_school = np.nonzero(self.Y[t,n,k,:])[0] + self.N 
                     #tour = [n] + np.ndarray.tolist(np.array(s[0])+self.N) + [n] #  the tour starts at the warehouse then add the school in the wrong order
-                    #edit Chris 07.06.20:
                     self.r[t][n][k] = tsp_tour(tour_school, n, self.problem.D)  #function returns optimal tour and length of optimal tour
                     # tour without the warehouses, but indexed from N to N+M
 
@@ -255,7 +254,7 @@ class Solution :
     def compute_route_dist(self, tour_schools, warehouse : int):
         tour_complete   = [warehouse]+tour_schools+[warehouse]
         distance = sum( [ self.problem.D[tour_complete[i],tour_complete[i+1]] for i in range(len(tour_complete)-1)])
-        #distance = distance + something  CHRIS
+        #distance = distance + something  CHRIS not for wednesday
         return distance
 
     def compute_time_adding(self):
