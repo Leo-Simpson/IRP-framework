@@ -142,24 +142,25 @@ def insert_best_rho(solution, rho):
 def shaw_insertion(solution, rho): 
     period = np.random.randint(solution.T)
     not_served = np.where(np.sum(solution.Y[period,:,:,:], axis = (0,1)) == 0)[0]
-    (index, choice) = random.choice(list(enumerate(not_served)))
-    dist_to_all = solution.problem.D[np.ix_([choice + solution.N],[m  + solution.N for m in range(solution.M) if m != choice])][0]
-    rest_not_served = np.delete(not_served, index)
-    dist_to_not_served = solution.problem.D[np.ix_([choice + solution.N],rest_not_served + solution.N)][0]
-    close = rest_not_served[dist_to_not_served <= 2*np.min(dist_to_all)]
-    closest_warehouse = np.argmin(solution.problem.D[np.ix_([choice + solution.N],[i for i in range(solution.N)])][0])
-    close_reachable = [m for m in close[solution.Cl[closest_warehouse, close] == 1]]
-    route = tsp_tour(close_reachable + solution.r[period][closest_warehouse][0],closest_warehouse,solution.problem.D)
-    costs = solution.compute_route_dist(route, closest_warehouse)
-    index = 0
-    for k in range(1, solution.K):
-        route_temp = tsp_tour(close_reachable + solution.r[period][closest_warehouse][k],closest_warehouse,solution.problem.D)
-        costs_temp = solution.compute_route_dist(route_temp, closest_warehouse)
-        if costs_temp < costs:
-            route = route_temp
-            index = k
-    solution.Y[period,closest_warehouse,index, close_reachable] = 1
-    solution.r[period][closest_warehouse][index] = route
+    if len(not_served) > 0:
+        (index, choice) = random.choice(list(enumerate(not_served)))
+        dist_to_all = solution.problem.D[np.ix_([choice + solution.N],[m  + solution.N for m in range(solution.M) if m != choice])][0]
+        rest_not_served = np.delete(not_served, index)
+        dist_to_not_served = solution.problem.D[np.ix_([choice + solution.N],rest_not_served + solution.N)][0]
+        close = rest_not_served[dist_to_not_served <= 2*np.min(dist_to_all)]
+        closest_warehouse = np.argmin(solution.problem.D[np.ix_([choice + solution.N],[i for i in range(solution.N)])][0])
+        close_reachable = [m for m in close[solution.Cl[closest_warehouse, close] == 1]]
+        route = tsp_tour(close_reachable + solution.r[period][closest_warehouse][0],closest_warehouse,solution.problem.D)
+        costs = solution.compute_route_dist(route, closest_warehouse)
+        index = 0
+        for k in range(1, solution.K):
+            route_temp = tsp_tour(close_reachable + solution.r[period][closest_warehouse][k],closest_warehouse,solution.problem.D)
+            costs_temp = solution.compute_route_dist(route_temp, closest_warehouse)
+            if costs_temp < costs:
+                route = route_temp
+                index = k
+        solution.Y[period,closest_warehouse,index, close_reachable] = 1
+        solution.r[period][closest_warehouse][index] = route
     
 def swap_rho_cust_intra_routes(solution, rho):
     not_empty_veh = np.any(solution.Y,axis=3)
