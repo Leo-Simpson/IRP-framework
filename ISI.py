@@ -68,7 +68,7 @@ class Problem :
         problem.define_arrays()
         return problem
 
-    def fuse(self,time_step):
+    def time_fuse(self,time_step):
         # first copy the problem
         problem = self.copy()
 
@@ -86,7 +86,7 @@ class Problem :
         return problem
 
 
-    def defuse(self,time_step) : 
+    def time_defuse(self,time_step) : 
         # first copy the problem
         problem = self.copy()
 
@@ -104,7 +104,12 @@ class Problem :
         return problem
 
     
+    def clustering(self):
+        problems = []
+        # CHRIS : to do 
+        return problems 
 
+    
 
 
 
@@ -249,7 +254,9 @@ class Solution :
 
     def compute_route_dist(self, tour_schools, warehouse : int):
         tour_complete   = [warehouse]+tour_schools+[warehouse]
-        return sum( [ self.problem.D[tour_complete[i],tour_complete[i+1]] for i in range(len(tour_complete)-1)])
+        distance = sum( [ self.problem.D[tour_complete[i],tour_complete[i+1]] for i in range(len(tour_complete)-1)])
+        #distance = distance + something  CHRIS
+        return distance
 
     def compute_time_adding(self):
         problem  = self.problem

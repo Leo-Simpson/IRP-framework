@@ -148,9 +148,12 @@ class Window(QtWidgets.QMainWindow):
                                t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, 
                                central = self.central, D = None)
             
-            heuristic = Matheuristic(problem)
-            heuristic.param.tau_end = 1.
-            heuristic.algo2()          
+            problems = problem.clustering()
+            for pb in problems :
+                heuristic = Matheuristic(pb)
+                heuristic.param.tau_end = 1.
+                heuristic.algo2()      
+            
         
 
 
