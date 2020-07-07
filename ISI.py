@@ -8,6 +8,7 @@ from scipy.spatial import distance_matrix
 import pandas as pd
 from time import time
 from math import *  # for ceil
+from sklearn.mixture import GaussianMixture
 
 import plotly.graph_objects as go 
 from plotly import offline
@@ -116,9 +117,35 @@ class Problem :
         return problem
 
     
-    def clustering(self):
+    def clustering(self, k):
+        
         problems = []
-        # CHRIS : to do 
+        central = self.Warehouses[0]
+        warehouses = self.Warehouses[1:]
+        schools = self.Schools
+        X = np.array([s['location'] for s in schools])
+        
+        gmm_class = GaussianMixture(k)     #compute clustering
+        gmm_class.fit(X)
+        labels = gmm_class.predict(X)
+        centers = gmm_class.means_
+        
+        schools_div = [[] for i in range(k)]     #split schools into clusters
+        for counter, label in enumerate(labels):
+            schools_div[label].append(schools[counter])
+            
+        wh_div = [[] for i in range(k)]            #assign nearest warehouse(s) to every cluster
+        for counter, c in enumerate(centers):
+            dist = np.array([np.linalg.norm(c - wh['location']) for wh in warehouses])
+            min_dist = np.min(dist)
+            wh_near = np.where(dist <= 1.1*min_dist)[0]
+            for i in wh_near:
+                wh_div[counter].append(warehouses[i])
+        
+        for i in range(k):
+            problem = Problem(wh_div[i], schools_div[i], self.T, self.K, self.Q1, self.Q2, self.v, self.t_load, self.c_per_km, self.Tmax, central = central, H= self.H )
+            problems.append(problem)
+        
         return problems 
 
     
