@@ -142,19 +142,23 @@ class Window(QtWidgets.QMainWindow):
         if self.ui.lineEdit_main.text()=='':
             print('No file inserted. Could not optimize!')
         else:               
-            #and here we set up our model
+            # and here we set up our model
             problem = Problem(Schools = self.schools, Warehouses = self.warehouses, 
-                               T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v, 
-                               t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, 
-                               central = self.central, D = None)
+                                T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v, 
+                                t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, 
+                                central = self.central, D = None)
             
-            problems = problem.clustering()
-            for pb in problems :
-                heuristic = Matheuristic(pb)
-                heuristic.param.tau_end = 1.
-                heuristic.algo2()      
+            # problems = problem.clustering()
+            # for pb in problems :
+            #     heuristic = Matheuristic(pb)
+            #     heuristic.param.tau_end = 1.
+            #     heuristic.algo2()      
             
-        
+            heuristic = Matheuristic(problem)
+            heuristic.param.tau_start = 3
+            heuristic.param.tau_end = 1.
+            heuristic.algo2(info = True)  
+
 
 
 if __name__ == '__main__':
