@@ -150,15 +150,16 @@ def build_arrows(routes, q):
         for n in range(len(routes[0])):
             for k in range(len(routes[0][0])):
                 route = routes[t][n][k]
-                quantity = q[t,n,k]
-                start = -n-1              # index is negative for the indices of warehouse but positive for schools
-                for i_s in route :
-                    end = i_s
-                    add_indice(start,end,ind_v,l,quantity[i_s])
-                    start = end
-                end = -n-1
-                add_indice(start,end,ind_v,l,0)
-                if route : ind_v +=1
+                if route : 
+                    quantity = q[t,n,k]
+                    start = -n-1              # index is negative for the indices of warehouse but positive for schools
+                    add_indice(route[-1],-n-1,ind_v,l,0) # last arrow
+                    for i_s in route :
+                        end = i_s
+                        add_indice(start,end,ind_v,l,quantity[i_s])
+                        start = end
+                    
+                    ind_v +=1
 
         indices_step.append(l)
 
