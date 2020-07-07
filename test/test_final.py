@@ -11,5 +11,5 @@ heuristic = Matheuristic(problem)
 heuristic.param.rho_percent = 0.3
 heuristic.param.cooling = 0.5
 
-heuristic.algo2(info = False, plot = False)
+heuristic.algo2(info = True, plot = False)
 

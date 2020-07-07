@@ -506,7 +506,7 @@ class Solution :
         L = ceil( self.T/H)
         I_w_init = self.problem.I_w_init
         I_s_init = self.problem.I_s_init
-        Tmin, Tmax = 0, H
+        Tmin, Tmax = 0, min(H,self.T)
         for l in range(L) : 
             sol = self.copy()
             sol.time_cut(Tmin,Tmax)
@@ -514,7 +514,7 @@ class Solution :
             sol.multi_ISI(G,solver = solver, plot = plot, info = info, typ_cost=typ_cost, total_running_time= total_running_time)
             solutions.append(sol)
             I_w_init, I_s_init = sol.I_w[-1], sol.I_s[-1]
-            Tmin, Tmax = Tmax, Tmax+H
+            Tmin, Tmax = Tmax, min(Tmax+H,self.T)
              
         self.q[1:] = np.concatenate( [sol.q[1:] for sol in solutions], axis=0  )
         self.X[1:] = np.concatenate( [sol.X[1:] for sol in solutions], axis=0  )
