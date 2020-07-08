@@ -190,6 +190,15 @@ class Solution :
 
         self.build_Cl(radfactor)
         self.compute_costs()
+        
+        
+    def Cl_shaped_like_Y(self):
+        Cl_shape_Y = np.zeros(self.Y.shape)
+        for i in range(self.T + 1):
+            for j in range(self.N):
+                for k in range(self.K):
+                    Cl_shape_Y[i,j,k,:] = self.Cl[j,:]
+        return Cl_shape_Y
 
 
     def copy(self):
