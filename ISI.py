@@ -44,7 +44,9 @@ class Problem :
         if H is None : self.H = T
         else : self.H = H
         self.K = K # number of vehicles
-        self.Q1 = Q1 # capacity of the trucks for school deliveries
+        if type(Q1) is int : self.Q1 = np.ones((len(self.Warehouses),K),dtype=float)*Q1 # capacity of the trucks for school deliveries    / array of size NxK with different capacities 
+        elif type(Q1) is np.ndarray : self.Q1 = Q1
+        else : raise ValueError("Wrong Q1 entered")
         self.Q2 = Q2 # capacity of the trucks for warehouses deliveries
         self.v = v # average speed of trucks in km/h
         self.t_load = t_load # average loading/unloading time at schools in hours
@@ -157,7 +159,7 @@ class Problem :
 
 class Solution : 
     #radfactor: parameter to build Cl, gives maximal factor of min distance to warehouse still allowed to serve school, between 1.1 and 1.6
-    def __init__(self,problem, Y = None, q = None, X = None, Cl=None, V_exists = None, radfactor=100):
+    def __init__(self,problem, Y = None, q = None, X = None, Cl=None, V_number = None, radfactor=100):
         M,N,K,T = len(problem.Schools), len(problem.Warehouses),problem.K, problem.T
         self.M, self.N, self.K, self.T = M,N,K,T
 
@@ -178,8 +180,8 @@ class Solution :
         if Cl is None : self.Cl = np.ones((N,M),dtype=bool)    # equal one when we consider that it is possible that the school m could be served by n
         else          : self.Cl = Cl  
 
-        if V_exists is None : self.V_exists = np.ones((N,K),dtype=bool)
-        else            : self.V_exists = V_exists
+        if V_number is None : self.V_number = np.ones(N,dtype=int)*K     # array of size N , of integers, telling the number of vehicules in the warehouse N
+        else            : self.V_number = V_number
     
         self.r = [[[[] for k in range(self.K)] for n in range(self.N)] for t in range(self.T+1)]
         self.running_time = dict()
@@ -269,8 +271,7 @@ class Solution :
 
         for t in range(self.T+1): 
             for n in range(self.N):
-                for k in range(self.K):
-                    if self.V_exists[n,k]:
+                for k in range(self.V_number[n]):
                         self.compute_school_remove_dist(t,n,k)
                         self.compute_school_insert_dist(t,n,k)
                    
@@ -322,8 +323,8 @@ class Solution :
         self.I_w[0] = self.problem.I_w_init[:]
 
         for t in range(1,self.T+1): 
-            self.I_s[t] = self.I_s[t-1]+ self.problem.Q1 * np.sum( self.q[t,:,:,:], axis = (0,1) ) - self.dt[t,:]
-            self.I_w[t] = self.I_w[t-1]- self.problem.Q1 * np.sum( self.q[t,:,:,:], axis = (1,2) ) + self.problem.Q2 * self.X[t,:]
+            self.I_s[t] = self.I_s[t-1]+  np.sum( self.problem.Q1[:,:,np.newaxis] * self.q[t,:,:,:], axis = (0,1) ) - self.dt[t,:]
+            self.I_w[t] = self.I_w[t-1]-  np.sum( self.problem.Q1[:,:,np.newaxis] * self.q[t,:,:,:], axis = (1,2) ) + self.problem.Q2 * self.X[t,:]
 
     def verify_feasibility(self):
         self.compute_inventory()
@@ -355,7 +356,7 @@ class Solution :
         # delta(t,n,k,m): binary variable, equals 1 if school n is removed from tour performed by truck k from warehouse m at time t, 0 else
         # omega(t,n,k,m): binary variable, equals 1 if school n is inserted into route by truck k from warehouse m at time t, 0 else
 
-        set_q     = [ (t,n,k,m) for t in range(1,T+1) for n in range(N) for k in range(K) for m in range(M) if (self.Cl[n,m] and self.V_exists[n,k])  ]
+        set_q     = [ (t,n,k,m) for t in range(1,T+1) for n in range(N) for k in range(K) for m in range(M) if (self.Cl[n,m] and k< self.V_number[n])  ]
         set_delta = [ (t,n,k,m) for (t,n,k,m) in set_q if self.Y[t,n,k,m]  ]
         set_omega = [ (t,n,k,m) for (t,n,k,m) in set_q if not self.Y[t,n,k,m] ]
 
@@ -408,14 +409,14 @@ class Solution :
         for t in range (1,T+1): 
             I_s.update(  {(t,m):
                          I_s[t-1,m]
-                         + problem.Q1 * plp.lpSum(q_vars[t,n,k,m] for k in range(K) for n in range(N) if (self.Cl[n,m] and self.V_exists[n,k]) ) 
+                         + plp.lpSum(problem.Q1[n,k]*q_vars[t,n,k,m] for k in range(K) for n in range(N) if (self.Cl[n,m] and k< self.V_number[n]) ) 
                          - self.dt[t,m]
                          for m in range(M) }  
                         )
             
             I_w.update(  {(t,n):
                          I_w[t-1,n]  
-                         - problem.Q1 * plp.lpSum(q_vars[t,n,k,m] for k in range(K) for m in range(M) if (self.Cl[n,m] and self.V_exists[n,k]) ) 
+                         - plp.lpSum(problem.Q1[n,k]*q_vars[t,n,k,m] for k in range(K) for m in range(M) if (self.Cl[n,m] and k< self.V_number[n]) ) 
                          + problem.Q2 * X_vars[t,n]
                          for n in range(N) }  
                         )
@@ -578,7 +579,7 @@ class Solution :
     def visualization(self,filename):
         t0 = time()
         km = np.sum(self.dist, axis = (1,2))
-        visual = visu(self.problem,"WFP Inventory problem", self.I_s,self.I_w, km, self.r, self.X, self.q*self.problem.Q1,self.problem.Q2)
+        visual = visu(self.problem,"WFP Inventory problem", self.I_s,self.I_w, km, self.r, self.X, self.q*self.problem.Q1[np.newaxis,:,:,np.newaxis],self.problem.Q2)
         fig = go.Figure(visual)
         offline.plot(fig, filename= filename, auto_open = False)
         self.running_time["visualisation"] = time()-t0
