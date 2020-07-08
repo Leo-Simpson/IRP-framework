@@ -126,6 +126,9 @@ def assign_to_nearest_plant(solution, rho):
     
 def insert_best_rho(solution, rho):
     candidates = ~np.any(solution.Y, axis = (1,2))   # ~ is the negation of a boolean array
+    eliminate = np.transpose(np.where(np.any(solution.Y, axis = (1,2))))
+    for t,m in eliminate:
+        solution.b[t,:,:,m] = sys.maxsize
     for i in range( min(rho,np.sum(candidates)) ):
         b_flat = solution.b.reshape(-1)
         Y_flat = solution.Y.reshape(-1)
@@ -135,10 +138,15 @@ def insert_best_rho(solution, rho):
         t, rest = np.divmod(choice, solution.N*solution.K*solution.M)
         n, rest = np.divmod(rest, solution.K*solution.M)
         k, m = np.divmod(rest, solution.M)
-        solution.r[t][n][k],_ = solution.cheapest_school_insert(t,n,k,m)
-        #tour_school = np.nonzero(solution.Y[t,n,k,:])[0] + solution.N 
-        #solution.r[t][n][k] = tsp_tour(tour_school, n, solution.problem.D)
+        #solution.r[t][n][k],_ = solution.cheapest_school_insert(t,n,k,m)
+        tour_school = np.nonzero(solution.Y[t,n,k,:])[0] + solution.N 
+        solution.r[t][n][k] = tsp_tour(tour_school, n, solution.problem.D)
         solution.compute_school_insert_dist(t,n,k)
+        for m_temp in range(solution.M):
+            if np.any(solution.Y, axis = (1,2))[t,m_temp]:
+                solution.b[t,n,k,m_temp] = sys.maxsize
+        solution.b[t,:,:,m] = sys.maxsize
+    solution.compute_a_and_b()
         
     
 def shaw_insertion(solution, rho): 
