@@ -108,8 +108,8 @@ class Window(QtWidgets.QMainWindow):
         self.K_max = max(self.V_number)
         self.Q1_arr = np.zeros((len(self.warehouses), self.K_max))
         for n in range(len(self.warehouses)):
-            for k in range(self.K_max):
-                if k < self.V_number[n]: self.Q1_arr[n,k] = self.vehicle_list[n][k]['Capacity in MT']
+            for k in range(self.V_number[n]):
+                self.Q1_arr[n,k] = self.vehicle_list[n][k]['Capacity in MT']
         
     
     # def write_path_capac(self):

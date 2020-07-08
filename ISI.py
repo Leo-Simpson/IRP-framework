@@ -20,36 +20,50 @@ class Problem :
     def __init__(self,Warehouses,Schools,T, Q1, Q2, v, t_load, c_per_km, Tmax, K = None, V_number = None, central = None, D = None, H= None):
         
         inf = 10000
+
+        if type(central) is np.ndarray :
+            self.central = central
+            central_w = {"capacity": inf, "lower":-inf, "dist_central":0, "fixed_cost":0, "initial": 0, "name": "CENTRAL" , "location": self.central}
+            self.Warehouses = [central_w] + Warehouses 
         
-        if type(central) is dict and 'location' in central.keys() and type(central['location']) is np.ndarray: 
-            self.central = central['location']  
+        else : 
+            if type(central) is dict and 'location' in central.keys() and type(central['location']) is np.ndarray: self.central = central['location']  
+            else : self.central = Warehouses[0]['location']
             Warehouses[0]['capacity'] = inf
             Warehouses[0]['lower'] = -inf
             Warehouses[0]['intial'] = 0
             Warehouses[0]['fixed_cost'] = 0
             self.Warehouses = Warehouses
-        elif type(central) is np.ndarray : 
-            self.central = central
-            central_w = {"capacity": inf, "lower":-inf, "dist_central":0, "fixed_cost":0, "initial": 0, "name": "CENTRAL" , "location": self.central}
-            self.Warehouses = [central_w] + Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'fixed_cost': ... , 'initial': ...,  'name' : ..., 'location': ...}
-        else : 
-            self.central = np.zeros(2)
-            central_w = {"capacity": inf, "lower":-inf, "dist_central":0, "fixed_cost":0, "initial": 0, "name": "CENTRAL" , "location": self.central}
-            self.Warehouses = [central_w] + Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'fixed_cost': ... , 'initial': ...,  'name' : ..., 'location': ...}
+           
+          
+            
 
-
+        N = len(self.Warehouses)
         self.Schools = Schools  # list of dictionary {'capacity': ..., 'lower':..., 'consumption': ...,'storage_cost': ... , 'initial': ...,  'name' : ..., 'location':...}
         self.T = T # time horizon
         
         if H is None : self.H = T
         else : self.H = H
         
-        if (K is None and V_number is None): raise ValueError("Please put in K or V_number.")
-        elif K is None: self.K = max(V_number) # TO DO: If V_number is given, do we need K and what to do with it??????
-        elif (type(K) is int and V_number is None): self.K = K
-        else: raise ValueError("Wrong input of K or V_number.")
+        if K is None : 
+            if V_number is None : raise ValueError("Please put in K or V_number.")
+            else : 
+                if type(V_number) is np.ndarray : 
+                    if V_number.shape == (N,) : 
+                        if V_number.dtype == 'int': self.K,self.V_number = max(V_number),V_number
+                        
+                        else : raise ValueError("V_number should be integers not {}".format(V_number.dtype))
+                    else : raise ValueError("V_number should be have a shape of {}, not {}".format((N,),V_number.shape))
+                else : raise ValueError("V_number should be an array")
+
+        elif type(K) is int :
+            if V_number is None : self.K, self.V_number = K, np.ones(N,dtype=int)*K  
+            else                : raise ValueError("Please choose between entering K and V_number")
+        else : 
+            raise ValueError("K should be an integer, and not a {}".format(type(K)))
         
-        if type(Q1) is int : self.Q1 = np.ones((len(self.Warehouses),K),dtype=float)*Q1 # capacity of the trucks for school deliveries    / array of size NxK with different capacities 
+        
+        if type(Q1) is int : self.Q1 = np.ones((N,K),dtype=float)*Q1 # capacity of the trucks for school deliveries    / array of size NxK with different capacities 
         elif type(Q1) is np.ndarray : self.Q1 = Q1
         else : raise ValueError("Wrong Q1 entered")
         
@@ -59,8 +73,6 @@ class Problem :
         self.c_per_km = c_per_km # average routing cost per kilometer
         self.Tmax = Tmax
         
-        if V_number is None : self.V_number = np.ones(len(self.Warehouses),dtype=int)*K     # array of size N , of integers, telling the number of vehicles in the warehouse N
-        else : self.V_number = V_number
         
         if D is None : 
             locations = [w['location'] for w in self.Warehouses] + [s['location'] for s in self.Schools] 
@@ -70,9 +82,7 @@ class Problem :
 
         for i,w in enumerate(self.Warehouses) : 
             w["dist_central"] = self.D[0,i]
-
-        
-
+       
     def define_arrays(self):
         self.I_s_init  =  np.array([s["initial"] for s in self.Schools])                 # initial inventory of school
         self.U_s       =  np.array([s["capacity"] for s in self.Schools])                # capactiy upper bound school
@@ -86,9 +96,8 @@ class Problem :
         self.F_w       =  np.array([w["fixed_cost"] for w in self.Warehouses])           # fixed costs for each warehouse
         self.to_central=  np.array([w["dist_central"] for w in self.Warehouses])         # distance between the warehouses and the central
 
-
     def copy(self):
-        problem = Problem(self.Warehouses.copy(),Schools.copy(),self.T,self.Q1,self.Q2,self.v,self.t_load, self.c_per_km,self.Tmax,self.K, self.V_number, self.central,self.D, self.H)
+        problem = Problem(self.Warehouses.copy(),Schools.copy(),self.T,self.Q1,self.Q2,self.v,self.t_load, self.c_per_km,self.Tmax,self.K, self.V_number.copy(), self.central,self.D, self.H)
         problem.define_arrays()
         return problem
 
@@ -109,7 +118,6 @@ class Problem :
 
         return problem
 
-
     def time_defuse(self,time_step) : 
         # first copy the problem
         problem = self.copy()
@@ -127,11 +135,9 @@ class Problem :
 
         return problem
 
-    
     def clustering(self, k):
         
-        problems = []
-        central = self.Warehouses[0]
+        
         warehouses = self.Warehouses[1:]
         schools = self.Schools
         X = np.array([s['location'] for s in schools])
@@ -153,10 +159,10 @@ class Problem :
             for i in wh_near:
                 wh_div[counter].append(warehouses[i])
         
-        for i in range(k):
-            problem = Problem(wh_div[i], schools_div[i], self.T, self.Q1, self.Q2, self.v, self.t_load, self.c_per_km, self.Tmax, self.K, self.V_number, central = central, H =self.H )
-            problems.append(problem)
-        
+        problems = [
+            Problem([self.Warehouses[0]]+wh_div[i], schools_div[i], self.T, self.Q1, self.Q2, self.v, self.t_load, self.c_per_km, self.Tmax, self.K, self.V_number, H =self.H )
+            for i in range(k)]
+      
         return problems 
 
     
@@ -880,7 +886,6 @@ def random_problem(T,N,M,K = None, H = None, seed = None):
     
     Q2 = Q2 - 1
 
-    central = np.array([np.random.randint(low = -100, high = 100),np.random.randint(low = -100, high = 100)])
-    problem = Problem(Schools = Schools, Warehouses = Warehouses,T = T,K = K, Q1 = Q1, Q2 = Q2, v = 50, t_load = 0.5, c_per_km = 0.1, Tmax = 100, central = central, H = H, V_number = V_number)
+    problem = Problem(Schools = Schools, Warehouses = Warehouses,T = T,K = K, Q1 = Q1, Q2 = Q2, v = 50, t_load = 0.5, c_per_km = 0.1, Tmax = 100, H = H, V_number = V_number)
     
     return problem
