@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import *
 import pandas as pd
 #from scipy.spatial import distance_matrix, distance
 import numpy as np
+from copy import deepcopy
 
 
 sys.path.append('../')
@@ -51,6 +52,11 @@ class Window(QtWidgets.QMainWindow):
     def write_path_main(self):
         p = self.get_path()             
         self.ui.lineEdit_main.setText(p)             # writes path into the lineEdit
+        self.read_from_excel(p)
+        
+        
+    def read_from_excel(self, path):
+        p = path
         df_w = pd.read_excel(io=p, sheet_name='Warehouses')         #reads the excel table Warehouses
         self.warehouses = df_w.to_dict('records')                   #and transforms it into a Panda dataframe
         for w in self.warehouses:                                   #puts longitude and latitude together in a numpy array 'location'
@@ -79,9 +85,32 @@ class Window(QtWidgets.QMainWindow):
             del s['Total Sum of Beneficiaries']
             del s['Total Sum of Commodities']
             del s['Consumption per day in mt']
-       
+            
+        df_v = pd.read_excel(io=p, sheet_name='VehicleFleet')
+        self.vehicles = df_v.to_dict('records') # list of dictionaries of the form {'Warehouse':...,'Plate Nr':....,'Make':...,'Model':....,'Capacity in MT':....}
+        
 
-    
+        
+        i = 0
+        # list with N entries, which contain the list of dictionaries {'Warehouse':...., 'Plate Nr':....., 'Capacity in MT':...} per Warehouse
+        # self.vehicle_list[i] gives you the list of vehicles(dictionaries) of warehouse i
+        self.vehicle_list=[[] for j in range(len(self.warehouses))]
+        
+        for w in self.warehouses:
+            for v in self.vehicles:
+                if w['name'] == v['Warehouse']: 
+                    v2 = deepcopy(v)
+                    self.vehicle_list[i].append(v2)
+                    del self.vehicle_list[i][-1]['Make'], self.vehicle_list[i][-1]['Model']    
+            i+=1 
+        
+        self.V_number = [len(self.vehicle_list[j]) for j in range(len(self.warehouses))]
+        self.K_max = max(self.V_number)
+        self.Q1_arr = np.zeros((len(self.warehouses), self.K_max))
+        for n in range(len(self.warehouses)):
+            for k in range(self.K_max):
+                if k < self.V_number[n]: self.Q1_arr[n,k] = self.vehicle_list[n][k]['Capacity in MT']
+        
     
     # def write_path_capac(self):
     #     p = self.get_path()
@@ -108,18 +137,24 @@ class Window(QtWidgets.QMainWindow):
     
     def get_parameters(self):
         self.time_horizon = self.ui.spinBox_TimeHorizon.value()
-        self.K = self.ui.spinBox_vehicles.value()
-        self.Q1 = self.ui.spinBox_Q1.value()
         self.Q2 = self.ui.spinBox_Q2.value()
         self.v = self.ui.doubleSpinBox_avgspeed.value()
         self.t_load = self.ui.doubleSpinBox_loadingtime.value()
         self.c_per_km = self.ui.doubleSpinBox_costsperkm.value()
         self.Tmax = self.ui.doubleSpinBox_maxtime.value()
         
-        if self.ui.checkBox.isChecked():
+        if self.ui.checkBox_central.isChecked():
             self.central = self.warehouses[0]
         else: 
             self.central = np.array([self.ui.doubleSpinBox_cw1.value(), self.ui.doubleSpinBox_cw2.value()])
+            
+        if self.ui.checkBox_vehiclefleet.isChecked():
+            self.Q1 = self.Q1_arr
+            self.K = None
+        else: 
+            self.Q1 = self.ui.spinBox_Q1.value()
+            self.K = self.ui.spinBox_vehicles.value()
+            self.V_number = None
             
             
         # print(self.time_horizon)
@@ -145,14 +180,9 @@ class Window(QtWidgets.QMainWindow):
             # and here we set up our model
             problem = Problem(Schools = self.schools, Warehouses = self.warehouses, 
                                 T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v, 
-                                t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, 
+                                t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, V_number = self.V_number,
                                 central = self.central, D = None)
-            
-            # problems = problem.clustering()
-            # for pb in problems :
-            #     heuristic = Matheuristic(pb)
-            #     heuristic.param.tau_end = 1.
-            #     heuristic.algo2()      
+             
             
             heuristic = Matheuristic(problem)
             heuristic.param.tau_start = 3

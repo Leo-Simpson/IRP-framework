@@ -17,7 +17,7 @@ from visu import visu
 
 class Problem :
     #this is the class that contains the data of the problem
-    def __init__(self,Warehouses,Schools,T,K, Q1, Q2, v, t_load, c_per_km, Tmax, central = None, D = None, H= None):
+    def __init__(self,Warehouses,Schools,T, Q1, Q2, v, t_load, c_per_km, Tmax, K = None, V_number = None, central = None, D = None, H= None):
         
         inf = 10000
         
@@ -38,21 +38,30 @@ class Problem :
             self.Warehouses = [central_w] + Warehouses # list of dictionary {'capacity': ..., 'lower':..., 'fixed_cost': ... , 'initial': ...,  'name' : ..., 'location': ...}
 
 
-
         self.Schools = Schools  # list of dictionary {'capacity': ..., 'lower':..., 'consumption': ...,'storage_cost': ... , 'initial': ...,  'name' : ..., 'location':...}
         self.T = T # time horizon
+        
         if H is None : self.H = T
         else : self.H = H
-        self.K = K # number of vehicles
+        
+        if (K is None and V_number is None): raise ValueError("Please put in K or V_number.")
+        elif K is None: self.K = max(V_number) # TO DO: If V_number is given, do we need K and what to do with it??????
+        elif (type(K) is int and V_number is None): self.K = K
+        else: raise ValueError("Wrong input of K or V_number.")
+        
         if type(Q1) is int : self.Q1 = np.ones((len(self.Warehouses),K),dtype=float)*Q1 # capacity of the trucks for school deliveries    / array of size NxK with different capacities 
         elif type(Q1) is np.ndarray : self.Q1 = Q1
         else : raise ValueError("Wrong Q1 entered")
+        
         self.Q2 = Q2 # capacity of the trucks for warehouses deliveries
         self.v = v # average speed of trucks in km/h
         self.t_load = t_load # average loading/unloading time at schools in hours
         self.c_per_km = c_per_km # average routing cost per kilometer
         self.Tmax = Tmax
-
+        
+        if V_number is None : self.V_number = np.ones(len(self.Warehouses),dtype=int)*K     # array of size N , of integers, telling the number of vehicles in the warehouse N
+        else : self.V_number = V_number
+        
         if D is None : 
             locations = [w['location'] for w in self.Warehouses] + [s['location'] for s in self.Schools] 
             self.D = distance_matrix(locations,locations)
@@ -79,7 +88,7 @@ class Problem :
 
 
     def copy(self):
-        problem = Problem(self.Warehouses.copy(),Schools.copy(),self.T,self.K,self.Q1,self.Q2,self.v,self.t_load, self.c_per_km,self.Tmax,self.central,self.D, H=self.H)
+        problem = Problem(self.Warehouses.copy(),Schools.copy(),self.T,self.Q1,self.Q2,self.v,self.t_load, self.c_per_km,self.Tmax,self.K, self.V_number, self.central,self.D, self.H)
         problem.define_arrays()
         return problem
 
@@ -145,7 +154,7 @@ class Problem :
                 wh_div[counter].append(warehouses[i])
         
         for i in range(k):
-            problem = Problem(wh_div[i], schools_div[i], self.T, self.K, self.Q1, self.Q2, self.v, self.t_load, self.c_per_km, self.Tmax, central = central, H= self.H )
+            problem = Problem(wh_div[i], schools_div[i], self.T, self.Q1, self.Q2, self.v, self.t_load, self.c_per_km, self.Tmax, self.K, self.V_number, central = central, H =self.H )
             problems.append(problem)
         
         return problems 
@@ -159,9 +168,9 @@ class Problem :
 
 class Solution : 
     #radfactor: parameter to build Cl, gives maximal factor of min distance to warehouse still allowed to serve school, between 1.1 and 1.6
-    def __init__(self,problem, Y = None, q = None, X = None, Cl=None, V_number = None, radfactor=100):
-        M,N,K,T = len(problem.Schools), len(problem.Warehouses),problem.K, problem.T
-        self.M, self.N, self.K, self.T = M,N,K,T
+    def __init__(self,problem, Y = None, q = None, X = None, Cl=None, radfactor=100):
+        M,N,K,T, V_number = len(problem.Schools), len(problem.Warehouses),problem.K, problem.T, problem.V_number
+        self.M, self.N, self.K, self.T, self.V_number = M,N,K,T, V_number
 
         self.name_schools    = [s["name"] for s in problem.Schools ]
         self.name_warehouses = [w["name"] for w in problem.Warehouses ]
@@ -179,9 +188,6 @@ class Solution :
 
         if Cl is None : self.Cl = np.ones((N,M),dtype=bool)    # equal one when we consider that it is possible that the school m could be served by n
         else          : self.Cl = Cl  
-
-        if V_number is None : self.V_number = np.ones(N,dtype=int)*K     # array of size N , of integers, telling the number of vehicules in the warehouse N
-        else            : self.V_number = V_number
     
         self.r = [[[[] for k in range(self.K)] for n in range(self.N)] for t in range(self.T+1)]
         self.running_time = dict()
@@ -588,7 +594,7 @@ class Solution :
 
     def informations(self):
         string_running_time = "Running time : \n  "
-        string_f = "Constraints furfilled : \n  "
+        string_f = "Constraints fulfilled : \n  "
         for name, t in self.running_time.items():
             string_running_time += name +"  :  " + str(round(t,4)) + "\n  "
 
@@ -833,7 +839,7 @@ class Matheuristic :
 
 # test !
 
-def random_problem(T,N,K,M,H = None, seed = None):
+def random_problem(T,N,M,K = None, H = None, seed = None):
     
 
     np.random.seed(seed)
@@ -862,10 +868,19 @@ def random_problem(T,N,K,M,H = None, seed = None):
 
         Warehouses.append({'capacity': capacity, 'lower': lower, 'fixed_cost':  0, 'initial': initial,  'name' : 'Warehouse {}'.format(i+1), 'location': location })
 
-    Q1 = np.random.randint(low = 5, high = 20)
+    if K is None: 
+        V_number = np.array([np.random.randint(low = 2, high = 6) for i in range(N)])
+        Q1 = np.zeros((N, max(V_number)))
+        for n in range(N):
+            for k in range(max(V_number)):
+                if k < V_number[n]: Q1[n,k] = np.random.randint(low = 2, high = 20)
+    else : 
+        Q1 = np.random.randint(low = 5, high = 20)
+        V_number = None
+    
     Q2 = Q2 - 1
 
     central = np.array([np.random.randint(low = -100, high = 100),np.random.randint(low = -100, high = 100)])
-    problem = Problem(Schools = Schools, Warehouses = Warehouses,T = T,K = K, Q1 = Q1, Q2 = Q2, v = 50, t_load = 0.5, c_per_km = 0.1, Tmax = 100, central = central, H = H)
+    problem = Problem(Schools = Schools, Warehouses = Warehouses,T = T,K = K, Q1 = Q1, Q2 = Q2, v = 50, t_load = 0.5, c_per_km = 0.1, Tmax = 100, central = central, H = H, V_number = V_number)
     
     return problem
