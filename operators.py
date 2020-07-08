@@ -1,6 +1,7 @@
 import numpy as np
 from OR_tools_solve_tsp import tsp_tour
 import random
+import sys
 
 def rand_remove_rho(solution, rho):
     for i in range( min(rho,np.sum(solution.Y)) ):  
@@ -128,16 +129,17 @@ def insert_best_rho(solution, rho):
     for i in range( min(rho,np.sum(candidates)) ):
         b_flat = solution.b.reshape(-1)
         Y_flat = solution.Y.reshape(-1)
-        choice = np.where(b_flat>0)[0][np.argmin(b_flat[b_flat>0])]
+        Cl_flat = solution.Cl_shaped_like_Y().reshape(-1)
+        choice = np.where(Cl_flat - Y_flat > 0)[0][np.argmin(b_flat[Cl_flat - Y_flat>0])]
         Y_flat[choice] = 1
         t, rest = np.divmod(choice, solution.N*solution.K*solution.M)
         n, rest = np.divmod(rest, solution.K*solution.M)
         k, m = np.divmod(rest, solution.M)
-        solution.b[t,:,:,m] = 0
         solution.r[t][n][k],_ = solution.cheapest_school_insert(t,n,k,m)
         #tour_school = np.nonzero(solution.Y[t,n,k,:])[0] + solution.N 
         #solution.r[t][n][k] = tsp_tour(tour_school, n, solution.problem.D)
         solution.compute_school_insert_dist(t,n,k)
+        
     
 def shaw_insertion(solution, rho): 
     period = np.random.randint(solution.T)
