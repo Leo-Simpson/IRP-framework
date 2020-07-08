@@ -157,7 +157,7 @@ class Problem :
 
 class Solution : 
     #radfactor: parameter to build Cl, gives maximal factor of min distance to warehouse still allowed to serve school, between 1.1 and 1.6
-    def __init__(self,problem, Y = None, q = None, X = None, Cl=None, radfactor=100):
+    def __init__(self,problem, Y = None, q = None, X = None, Cl=None, V_exists = None, radfactor=100):
         M,N,K,T = len(problem.Schools), len(problem.Warehouses),problem.K, problem.T
         self.M, self.N, self.K, self.T = M,N,K,T
 
@@ -176,7 +176,10 @@ class Solution :
         else         : self.X = X
 
         if Cl is None : self.Cl = np.ones((N,M),dtype=bool)    # equal one when we consider that it is possible that the school m could be served by n
-        else          : self.Cl = Cl   
+        else          : self.Cl = Cl  
+
+        if V_exists is None : self.V_exists = np.ones((N,K),dtype=bool)
+        else            : self.V_exists = V_exists
     
         self.r = [[[[] for k in range(self.K)] for n in range(self.N)] for t in range(self.T+1)]
         self.running_time = dict()
@@ -267,10 +270,9 @@ class Solution :
         for t in range(self.T+1): 
             for n in range(self.N):
                 for k in range(self.K):
-
-                    self.compute_school_remove_dist(t,n,k)
-                        
-                    self.compute_school_insert_dist(t,n,k)
+                    if self.V_exists[n,k]:
+                        self.compute_school_remove_dist(t,n,k)
+                        self.compute_school_insert_dist(t,n,k)
                    
     def compute_r(self):
         # here are the TSP to be computed
@@ -353,7 +355,7 @@ class Solution :
         # delta(t,n,k,m): binary variable, equals 1 if school n is removed from tour performed by truck k from warehouse m at time t, 0 else
         # omega(t,n,k,m): binary variable, equals 1 if school n is inserted into route by truck k from warehouse m at time t, 0 else
 
-        set_q     = [ (t,n,k,m) for t in range(1,T+1) for n in range(N) for k in range(K) for m in range(M) if self.Cl[n,m]  ]
+        set_q     = [ (t,n,k,m) for t in range(1,T+1) for n in range(N) for k in range(K) for m in range(M) if (self.Cl[n,m] and self.V_exists[n,k])  ]
         set_delta = [ (t,n,k,m) for (t,n,k,m) in set_q if self.Y[t,n,k,m]  ]
         set_omega = [ (t,n,k,m) for (t,n,k,m) in set_q if not self.Y[t,n,k,m] ]
 
@@ -406,14 +408,14 @@ class Solution :
         for t in range (1,T+1): 
             I_s.update(  {(t,m):
                          I_s[t-1,m]
-                         + problem.Q1 * plp.lpSum(q_vars[t,n,k,m] for k in range(K) for n in range(N) if self.Cl[n,m] ) 
+                         + problem.Q1 * plp.lpSum(q_vars[t,n,k,m] for k in range(K) for n in range(N) if (self.Cl[n,m] and self.V_exists[n,k]) ) 
                          - self.dt[t,m]
                          for m in range(M) }  
                         )
             
             I_w.update(  {(t,n):
                          I_w[t-1,n]  
-                         - problem.Q1 * plp.lpSum(q_vars[t,n,k,m] for k in range(K) for m in range(M) if self.Cl[n,m] ) 
+                         - problem.Q1 * plp.lpSum(q_vars[t,n,k,m] for k in range(K) for m in range(M) if (self.Cl[n,m] and self.V_exists[n,k]) ) 
                          + problem.Q2 * X_vars[t,n]
                          for n in range(N) }  
                         )
@@ -449,10 +451,11 @@ class Solution :
 
             for n in range(N):
                 for k in range(K):
-                # constaint for asymetry of the problem in vehicles
+                # constaint for asymetry of the problem in vehicles : if k1 and k2 are initially empty sum(omega, k = k1) <= sum(omega, k=k2)
                     empties = np.where(~vehicle_used[t,n,:])
                     for i in range(len(empties)-1):
                         k1,k2 = empties[i], empties[i+1]
+                        #if problem.Q[k1] == problem.Q[k2]:
                         ISI_model += plp.lpSum(omega_vars[t,n,k2,m] for m in range(M) if (t,n,k2,m) in set_omega )<= plp.lpSum(omega_vars[t,n,k1,m] for m in range(M) if (t,n,k1,m) in set_omega )
 
 
