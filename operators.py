@@ -9,7 +9,8 @@ def rand_remove_rho(solution, rho):
         solution.Y[t,n,k,m] = 0
         tour = np.array(solution.r[t][n][k])
         solution.r[t][n][k] = np.ndarray.tolist(tour[tour != m + solution.N])
-        
+
+
 def remove_worst_rho(solution, rho):
     for i in range( min(rho,np.sum(solution.Y)) ):   
         Y_flat = solution.Y.reshape(-1)
