@@ -20,7 +20,7 @@ from copy import deepcopy
 sys.path.append('../')
 
 from Design.DesignDT_testing2 import Ui_MainWindow
-from ISI import Problem, Matheuristic
+from ISI import Problem, Matheuristic, Meta_param
 
 
 class Window(QtWidgets.QMainWindow):
@@ -185,15 +185,16 @@ class Window(QtWidgets.QMainWindow):
             problem = Problem(Schools = self.schools, Warehouses = self.warehouses,
                                 T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v,
                                 t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, V_number = self.V_number,
-                                central = self.central, D = None)
+                                central = self.central)
              
             problems = problem.clustering(len(problem.Warehouses) - 1)
+            param = Meta_param(seed=1)
+            param.tau_start = 3.
+            param.tau_end = 1.
             for counter, pr in enumerate(problems):
-                heuristic = Matheuristic(pr)
-                heuristic.param.tau_start = 3
-                heuristic.param.tau_end = 1.
+                heuristic = Matheuristic(pr,param=param)
                 heuristic.algo2(info = True)
-                print('Cluster {} of {} computed!'.format(counter + 1, len(problems) + 1))
+                print('Cluster {} of {} computed!'.format(counter + 1, len(problems)))
 
 
 
