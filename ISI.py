@@ -137,7 +137,7 @@ class Problem :
 
     def clustering(self, k):
         
-        
+        central = self.central
         warehouses = self.Warehouses[1:]
         schools = self.Schools
         X = np.array([s['location'] for s in schools])
@@ -152,15 +152,26 @@ class Problem :
             schools_div[label].append(schools[counter])
             
         wh_div = [[] for i in range(k)]            #assign nearest warehouse(s) to every cluster
+        v_num_div = [[] for i in range(k)]
+        q1_div = [[] for i in range(k)]
         for counter, c in enumerate(centers):
             dist = np.array([np.linalg.norm(c - wh['location']) for wh in warehouses])
             min_dist = np.min(dist)
             wh_near = np.where(dist <= 1.1*min_dist)[0]
             for i in wh_near:
                 wh_div[counter].append(warehouses[i])
+                v_num_div[counter].append(self.V_number[i+1])
+                q1_div[counter].append(self.Q1[i+1,:].copy())
         
+        for i in range(k):
+            v_num_div[i].insert(0,self.V_number[0])
+            q1_div[i].insert(0,self.Q1[0,:].copy())
+            v_num_div[i] = np.array(v_num_div[i])
+            q1_div[i] = np.array(q1_div[i])
+    
+                
         problems = [
-            Problem([self.Warehouses[0]]+wh_div[i], schools_div[i], self.T, self.Q1, self.Q2, self.v, self.t_load, self.c_per_km, self.Tmax, self.K, self.V_number, H =self.H )
+            Problem(wh_div[i], schools_div[i], self.T, q1_div[i], self.Q2, self.v, self.t_load, self.c_per_km, self.Tmax, V_number = v_num_div[i], central = central, H =self.H )
             for i in range(k)]
       
         return problems 
