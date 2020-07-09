@@ -102,11 +102,10 @@ def rand_insert_rho(solution, rho):
     for i in range( min(rho,np.sum(candidates)) ):
         t, m = random.choice(np.transpose(np.nonzero(candidates)))
         candidates[t,m] -= 1
-        n, k = random.choice(np.nonzero(solution.Cl[:,m])[0]), np.random.randint(solution.K)
+        n = random.choice(np.nonzero(solution.Cl[:,m])[0])
+        k = random.choice(np.nonzero(solution.V_num_array()[n,:])[0])
         solution.Y[t,n,k,m] = 1
         solution.r[t][n][k],_ = solution.cheapest_school_insert(t,n,k,m)
-    
-
 
 def assign_to_nearest_plant(solution, rho):
     candidates = ~np.any(solution.Y, axis = (1,2))  # ~ is the negation of a boolean array
@@ -117,7 +116,7 @@ def assign_to_nearest_plant(solution, rho):
         candidates[t,m] = False
         route, cost = solution.cheapest_school_insert(t,nearest_plant,0,m)
         index = 0
-        for k in range(1, solution.K):
+        for k in range(1, solution.V_number[nearest_plant]):
             route_temp, cost_temp = solution.cheapest_school_insert(t,nearest_plant,k,m)
             if cost_temp < cost:
                 route = route_temp
@@ -134,7 +133,8 @@ def insert_best_rho(solution, rho):
         b_flat = solution.b.reshape(-1)
         Y_flat = solution.Y.reshape(-1)
         Cl_flat = solution.Cl_shaped_like_Y().reshape(-1)
-        choice = np.where(Cl_flat - Y_flat > 0)[0][np.argmin(b_flat[Cl_flat - Y_flat>0])]
+        V_num_flat = solution.V_num_array(shape_Y = True).reshape(-1)
+        choice = np.where(V_num_flat + Cl_flat - Y_flat > 1)[0][np.argmin(b_flat[V_num_flat + Cl_flat - Y_flat > 1])]
         Y_flat[choice] = 1
         t, rest = np.divmod(choice, solution.N*solution.K*solution.M)
         n, rest = np.divmod(rest, solution.K*solution.M)
@@ -164,7 +164,7 @@ def shaw_insertion(solution, rho):
         route = tsp_tour(close_reachable + solution.r[period][closest_warehouse][0],closest_warehouse,solution.problem.D)
         costs = solution.compute_route_dist(route, closest_warehouse)
         index = 0
-        for k in range(1, solution.K):
+        for k in range(1, solution.V_number[closest_warehouse]):
             route_temp = tsp_tour(close_reachable + solution.r[period][closest_warehouse][k],closest_warehouse,solution.problem.D)
             costs_temp = solution.compute_route_dist(route_temp, closest_warehouse)
             if costs_temp < costs:

@@ -216,7 +216,17 @@ class Solution :
                 for k in range(self.K):
                     Cl_shape_Y[i,j,k,:] = self.Cl[j,:]
         return Cl_shape_Y
-
+    
+    def V_num_array(self, shape_Y = False):
+        V_num_array = np.array([[i for i in range(self.K)] for j in range(self.N)]) < self.V_number.reshape(self.N,1)
+        if shape_Y:
+            V_num_shaped_Y = np.zeros(self.Y.shape, dtype = bool)
+            for i in range(self.T + 1):
+                for j in range(self.N):
+                    for k in range(self.K):
+                        V_num_shaped_Y[i,j,k,:] = V_num_array[j,k]
+            return V_num_shaped_Y
+        return V_num_array
 
     def copy(self):
         solution = Solution(self.problem,
