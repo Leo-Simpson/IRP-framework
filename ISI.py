@@ -659,7 +659,7 @@ class Meta_param :
 
 from operators import operators
 class Matheuristic : 
-    def __init__(self, problem, seed=1):
+    def __init__(self, problem,param=None, seed=1):
 
         self.operators = [ {'weight' : 1, 'score': 0 , 'number_used':0, 'function':function, 'name':name } for (name, function) in operators ]
 
@@ -669,7 +669,8 @@ class Matheuristic :
 
         
 
-        self.param = Meta_param(seed=seed)
+        if param is None  : self.param = Meta_param(seed=seed)
+        else              : self.param = param   
 
         
 
