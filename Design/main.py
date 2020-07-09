@@ -183,7 +183,7 @@ class Window(QtWidgets.QMainWindow):
             problem = Problem(Schools = self.schools, Warehouses = self.warehouses, 
                                 T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v, 
                                 t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, V_number = self.V_number,
-                                central = self.central, D = None)
+                                central = self.central)
              
             
             heuristic = Matheuristic(problem)

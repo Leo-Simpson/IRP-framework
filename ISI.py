@@ -9,6 +9,7 @@ import pandas as pd
 from time import time
 from math import *  # for ceil
 from sklearn.mixture import GaussianMixture
+from sklearn.metrics import silhouette_score
 
 import plotly.graph_objects as go 
 from plotly import offline
@@ -135,17 +136,26 @@ class Problem :
 
         return problem
 
-    def clustering(self, k):
+    def clustering(self):
         
         central = self.central
         warehouses = self.Warehouses[1:]
         schools = self.Schools
         X = np.array([s['location'] for s in schools])
         
-        gmm_class = GaussianMixture(k)     #compute clustering
-        gmm_class.fit(X)
-        labels = gmm_class.predict(X)
-        centers = gmm_class.means_
+        N = len(warehouses)     #determine best amount of clusters
+        best_score = 0
+        for k_temp in range(np.max(2,N-3),N+4):
+            gmm_class = GaussianMixture(k_temp)     #compute clustering
+            gmm_class.fit(X)
+            pred = gmm_class.predict(X)
+            score = silhouette_score(X, pred, metric='euclidean')
+            if score > best_score:
+                labels = pred
+                centers = gmm_class.means_
+                best_score = score
+                k = k_temp
+        print('Found {} clusters!'.format(k))
         
         schools_div = [[] for i in range(k)]     #split schools into clusters
         for counter, label in enumerate(labels):
@@ -659,7 +669,7 @@ class Meta_param :
 
 from operators import operators
 class Matheuristic : 
-    def __init__(self, problem, seed=1):
+    def __init__(self, problem,param=None, seed=1):
 
         self.operators = [ {'weight' : 1, 'score': 0 , 'number_used':0, 'function':function, 'name':name } for (name, function) in operators ]
 
@@ -669,7 +679,8 @@ class Matheuristic :
 
         
 
-        self.param = Meta_param(seed=seed)
+        if param is None  : self.param = Meta_param(seed=seed)
+        else              : self.param = param   
 
         
 
