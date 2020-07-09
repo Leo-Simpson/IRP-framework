@@ -187,7 +187,7 @@ class Window(QtWidgets.QMainWindow):
                                 t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, V_number = self.V_number,
                                 central = self.central)
              
-            problems = problem.clustering(len(problem.Warehouses) - 1)
+            problems = problem.clustering()
             param = Meta_param(seed=1)
             param.tau_start = 3.
             param.tau_end = 1.
