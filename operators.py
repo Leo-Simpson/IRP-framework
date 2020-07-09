@@ -210,10 +210,19 @@ def swap_rho_cust_intra_plants(solution, rho):
                 solution.r[t][n1][k1], solution.r[t][n2][k2] = tsp_tour(np.nonzero(solution.Y[t,n1,k1,:])[0] + solution.N, n1, solution.problem.D), tsp_tour(np.nonzero(solution.Y[t,n2,k2,:])[0] + solution.N, n2, solution.problem.D)
                 changed += 1
             iterations += 1
-        
-
-
-    
+            
+def swap_routes(solution, rho):
+    not_empty_veh = np.any(solution.Y,axis=3)
+    candidates = np.transpose(np.where(np.sum(not_empty_veh, axis = 2) > 1))
+    if len(candidates) > 0:
+        for i in range(rho): 
+            [t,n] = random.choice(candidates)
+            candid_veh = np.where(not_empty_veh[t,n,:])[0]
+            k1_ind, k2_ind = np.random.choice(len(candid_veh),2,replace= False)
+            k1, k2 = candid_veh[[k1_ind, k2_ind]]
+            route1 = solution.Y[t,n,k1,:].copy()
+            solution.Y[t,n,k1,:] = solution.Y[t,n,k2,:].copy()
+            solution.Y[t,n,k2,:] = route1
 
 operators = [
         ('rand remove rho',rand_remove_rho),
@@ -230,7 +239,8 @@ operators = [
         ('insert best rho',insert_best_rho),
         ('shaw insertion', shaw_insertion),
         ('swap rho cust intra routes',swap_rho_cust_intra_routes),
-        ('swap rho cust intra plants',swap_rho_cust_intra_plants)
+        ('swap rho cust intra plants',swap_rho_cust_intra_plants),
+        ('swap routes', swap_routes)
 ]
 
 
