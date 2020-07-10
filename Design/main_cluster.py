@@ -221,9 +221,10 @@ class Window(QtWidgets.QMainWindow):
             param = Meta_param(seed=1)
             param.tau_start = 3.
             param.tau_end = 1.
+            param.cooling = 0.8
             for counter, pr in enumerate(problems):
                 heuristic = Matheuristic(pr,param=param)
-                heuristic.algo2(info = True)
+                heuristic.algo2(info = False, file = "cluster %i" % (counter+1) )
                 print('Cluster {} of {} computed!'.format(counter + 1, len(problems)))
 
 

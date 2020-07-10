@@ -11,6 +11,8 @@ col_vehicules.append("black") # color for the pickups
 COLORS = {"school" : "green", "warehouse": "blue", "central":"red","road":col_vehicules}
 SIZES = {"school" : 30, "warehouse": 40,"central": 50}
 
+annotation_size = 10
+
 
 def make_annotation(pos,txt,color):
 
@@ -18,7 +20,7 @@ def make_annotation(pos,txt,color):
             text=txt, # text within the circles
             x=pos[0], y=pos[1],
             xref='x1', yref='y1',
-            font=dict(color=color, size=15),
+            font=dict(color=color, size=annotation_size),
             showarrow=False)
 
 
@@ -27,10 +29,10 @@ def make_annotation(pos,txt,color):
 def annotations_inventory(pos_s, pos_w, I_s, I_w):
     annotations = []
     for i in range(len(I_s)):
-        annotations.append(make_annotation(pos_s[i],"I = {}".format(round(I_s[i],1)),'black'))
+        annotations.append(make_annotation(pos_s[i],str(round(I_s[i],1)),'black'))
 
     for j in range(len(I_w)):
-        annotations.append(make_annotation(pos_w[j],"I = {}".format(round(I_w[j],1)),'yellow'))
+        annotations.append(make_annotation(pos_w[j],str(round(I_w[j],1)),'yellow'))
 
     return annotations
 
@@ -187,12 +189,13 @@ def plot_arr(start,end,distance, color, quantity):
 
 def visu(problem, TITLE, I_s, I_w, km, routes1,X, q, Q2):
 
-    N =len(problem.Warehouses)
-    routes = [[[ [routes1[t][n][k][m]-N for m in range(len(routes1[t][n][k]))] for k in range(problem.K)] for n in range(N)] for t in range(problem.T)]
+    N,T =len(problem.Warehouses),len(I_s)
+    routes = [[[ [routes1[t][n][k][m]-N for m in range(len(routes1[t][n][k]))] for k in range(problem.K)] for n in range(N)] for t in range(T)]
     
 
 
     title = TITLE + "   Truck 1 capacity : {}   Truck 2 capacity : {} ".format(problem.Q1,problem.Q2)
+    title = TITLE 
 
     pos_s = [s["location"] for s in problem.Schools]
     pos_w = [w["location"] for w in problem.Warehouses]
@@ -224,7 +227,7 @@ def visu(problem, TITLE, I_s, I_w, km, routes1,X, q, Q2):
     L = []
     cumulative_km = 0
     visible_arr = np.zeros(len(arrows), dtype=bool )
-    for t in range(problem.T):
+    for t in range(T):
         visible_arr[indices_step[t]] = True
         
         cumulative_km += km[t]

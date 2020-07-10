@@ -569,21 +569,25 @@ class Solution :
                 total_running_time[name] = dt + self.running_time[name]
 
 
-    def multi_ISI(self,G,solver="CBC", plot = False ,info=True,typ_cost=100,total_running_time=None):
-        itera = 50
-        c = typ_cost**(1/itera)
-        penalization = c
-        for p in range(itera):
+    def multi_ISI(self,G,solver="CBC", plot = False ,info=True,total_running_time=None):
+        itera = 10
+        for p in range(1,itera+1):
+            penalization = 2*self.cost * p / itera
             self.ISI(G, penalization=penalization,solver = solver, plot = plot, info=info, total_running_time=total_running_time)
             if not self.feasible : 
                 print(self)
                 raise ValueError("Problem looks infeasible")
-            elif not self.feasibility["Duration constraint"] : penalization = penalization*c
-            else : return 
-        raise ValueError("Not enough penalization for duration constraint")
+            elif not self.feasibility["Duration constraint"] : 
+                continue
+            else : 
+                break
+        
+        if not self.feasibility["Duration constraint"] : 
+            print(self)
+            raise ValueError("Duration constraint looks infeasible")
 
 
-    def ISI_multi_time(self, G,solver="CBC", plot = False ,info=True,typ_cost=100,total_running_time=None):
+    def ISI_multi_time(self, G,solver="CBC", plot = False ,info=True,total_running_time=None):
         solutions = []
         H = self.problem.H
         L = ceil( self.T/H)
@@ -594,7 +598,7 @@ class Solution :
             sol = self.copy()
             sol.time_cut(Tmin,Tmax)
             sol.problem.I_w_init, sol.problem.I_s_init = I_w_init, I_s_init
-            sol.multi_ISI(G,solver = solver, plot = plot, info = info, typ_cost=typ_cost, total_running_time= total_running_time)
+            sol.multi_ISI(G,solver = solver, plot = plot, info = info, total_running_time= total_running_time)
             solutions.append(sol)
             I_w_init, I_s_init = sol.I_w[-1], sol.I_s[-1]
             Tmin, Tmax = Tmax, min(Tmax+H,self.T)
@@ -790,19 +794,18 @@ class Matheuristic :
             op['number_used'] = 0
         
 
-    def algo2(self, info = False, plot = False):
+    def algo2(self, info = False, plot = False, file = "solution.html"):
         # modified algo :  we don't do line 20, 23, 24
         t0 = time()
         param = self.param
         param.rho = max(int(param.rho_percent * self.solution.M),1)
         rd.seed(param.seed)
+        self.running_time = { "Define problem" : 0., "Solve problem ":0. , "Compute TSPs" : 0. , "Visualisation" : 0.}
 
         M,N,K,T,p= self.solution.M, self.solution.N, self.solution.K, self.solution.T, 0
         
-
-        self.solution.ISI_multi_time(G = N, solver=param.solver, info=info, plot=plot) 
+        self.solution.ISI_multi_time(G = N, solver=param.solver, info=info, total_running_time=self.running_time, plot=plot)
         typical_cost = self.solution.cost
-        self.running_time = self.solution.running_time.copy()
         self.solution_best = self.solution.copy()
 
 
@@ -815,7 +818,7 @@ class Matheuristic :
             self.solution_prime = self.solution.copy()
             operator(self.solution_prime, param.rho)
             G = N
-            self.solution_prime.ISI_multi_time(G=G, solver=param.solver, info=info,typ_cost=typical_cost, total_running_time=self.running_time, plot=plot)
+            self.solution_prime.ISI_multi_time(G=G, solver=param.solver, info=info, total_running_time=self.running_time, plot=plot)
             
 
             amelioration, finish = False, False
@@ -829,7 +832,7 @@ class Matheuristic :
                     if finish : break
                     finish = True
 
-                self.solution_prime.ISI_multi_time(G=G, solver=param.solver, info=info,typ_cost=typical_cost,total_running_time=self.running_time, plot=plot)
+                self.solution_prime.ISI_multi_time(G=G, solver=param.solver, info=info,total_running_time=self.running_time, plot=plot)
 
             
             if self.solution.cost < self.solution_best.cost : 
