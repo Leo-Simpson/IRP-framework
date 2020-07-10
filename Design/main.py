@@ -104,11 +104,11 @@ class Window(QtWidgets.QMainWindow):
                     del self.vehicle_list[i][-1]['Make'], self.vehicle_list[i][-1]['Model']    
             i+=1 
         
-        self.V_number = np.array([len(self.vehicle_list[j]) for j in range(len(self.warehouses))])
-        self.K_max = max(self.V_number)
+        self.V_number_input = np.array([len(self.vehicle_list[j]) for j in range(len(self.warehouses))])
+        self.K_max = max(self.V_number_input)
         self.Q1_arr = np.zeros((len(self.warehouses), self.K_max))
         for n in range(len(self.warehouses)):
-            for k in range(self.V_number[n]):
+            for k in range(self.V_number_input[n]):
                 self.Q1_arr[n,k] = self.vehicle_list[n][k]['Capacity in MT']
 
         
@@ -145,28 +145,62 @@ class Window(QtWidgets.QMainWindow):
         self.c_per_km = self.ui.doubleSpinBox_costsperkm.value()
         self.Tmax = self.ui.doubleSpinBox_maxtime.value()
         
-        if self.ui.checkBox_central.isChecked():
-            self.central = self.warehouses[0]
-        else: 
-            self.central = np.array([self.ui.doubleSpinBox_cw1.value(), self.ui.doubleSpinBox_cw2.value()])
+        
             
         if self.ui.checkBox_vehiclefleet.isChecked():
-            self.Q1 = self.Q1_arr
             self.K = None
+            if self.ui.checkBox_central.isChecked():
+                self.V_number = deepcopy(self.V_number_input)
+                self.central = self.warehouses[0]
+                self.Q1 = self.Q1_arr
+                
+            else: 
+                self.V_number = deepcopy(self.V_number_input)
+                self.central = np.array([self.ui.doubleSpinBox_cw1.value(), self.ui.doubleSpinBox_cw2.value()])
+                self.K_central = self.ui.spinBox_vehicles_central.value()
+                self.V_number = np.concatenate(([self.K_central], self.V_number), axis = 0)
+                
+                if self.K_central <= self.K_max: 
+                    self.Q1_central = np.zeros((1,self.K_max))
+                    for i in range(self.K_central): self.Q1_central[0][i] = self.Q2
+                    self.Q1 = np.concatenate((self.Q1_central, self.Q1_arr),axis = 0)
+                else: 
+                    diff = self.K_central - self.K_max
+                    zero_mat = np.zeros((len(self.warehouses), diff))
+                    self.Q1_central = np.ones((1,self.K_central),dtype=float)*self.Q2
+                    self.Q1_arr_ext = np.concatenate((self.Q1_arr, zero_mat), axis = 1)
+                    self.Q1 = np.concatenate((self.Q1_central, self.Q1_arr_ext), axis = 0)
+                    
+                    
+              
         else: 
-            self.Q1 = self.ui.spinBox_Q1.value()
-            self.K = self.ui.spinBox_vehicles.value()
-            self.V_number = None
-            
-            
-        # print(self.time_horizon)
-        # print(self.Q1)
-        # print(self.Q2)
-        # print(self.v)
-        # print(self.t_load)
-        # print(self.c_per_km)
-        # print(self.Tmax)
-        # print(self.central)
+            if self.ui.checkBox_central.isChecked():
+                self.central = self.warehouses[0]
+                self.K = self.ui.spinBox_vehicles_wh.value()
+                self.Q1 = self.ui.spinBox_Q1.value()
+                self.V_number = None
+            else: 
+                self.K = None
+                self.central = np.array([self.ui.doubleSpinBox_cw1.value(), self.ui.doubleSpinBox_cw2.value()])
+                self.K_central = self.ui.spinBox_vehicles_central.value()
+                K = self.ui.spinBox_vehicles_wh.value()
+                Q1_value = self.ui.spinBox_Q1.value()
+                self.V_number = np.array([K for i in range(len(self.warehouses))])
+                self.V_number = np.concatenate(([self.K_central], self.V_number), axis = 0)
+                self.Q1_arr = np.ones((len(self.warehouses),K),dtype=float)*Q1_value
+                
+                if self.K_central <= K: 
+                    self.Q1_central = np.zeros((1,K))
+                    for i in range(self.K_central): self.Q1_central[0][i] = self.Q2
+                    self.Q1 = np.concatenate((self.Q1_central, self.Q1_arr),axis = 0)
+                else: 
+                    diff = self.K_central - K
+                    zero_mat = np.zeros((len(self.warehouses), diff))
+                    self.Q1_central = np.ones((1,self.K_central),dtype=float)*self.Q2
+                    self.Q1_arr_ext = np.concatenate((self.Q1_arr, zero_mat), axis = 1)
+                    self.Q1 = np.concatenate((self.Q1_central, self.Q1_arr_ext), axis = 0)
+                
+                
         
         
     def optimize(self):
@@ -184,7 +218,12 @@ class Window(QtWidgets.QMainWindow):
                                 T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v, 
                                 t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, V_number = self.V_number,
                                 central = self.central)
-             
+            
+            print('Use central in excel: ' + str(self.ui.checkBox_central.isChecked()))
+            print('Use vehicle fleet: ' + str(self.ui.checkBox_vehiclefleet.isChecked()))
+            print('Q1: ' + str(self.Q1))
+            print('K: ' + str(self.K))
+            print('V_number: ' + str(self.V_number))
             
             heuristic = Matheuristic(problem)
             heuristic.param.tau_start = 3
