@@ -860,7 +860,7 @@ class Matheuristic :
             print("Step : ", iterations,"Tau : ",round(tau,2), "Current cost is : ",round(self.solution.cost,1) , "Current best cost is : ", round(self.solution_best.cost,1), "Running time : ",round(dt,2) )
         
         t1 = time()
-        self.solution_best.visualization("solution.html").show()
+        self.solution_best.visualization(file).show()
         t2 = time()
         print(" Total algorithm time = {} \n Final visualisation time = {} ".format(round(t1-t0,2),round(t2-t1,2)))
 
