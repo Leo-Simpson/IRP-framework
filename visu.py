@@ -37,7 +37,7 @@ def annotations_inventory(pos_s, pos_w, I_s, I_w):
     return annotations
 
 
-def plots(schools, warehouses, central):
+def plots(schools, warehouses,central):
     x, y, text = [],[],[]
     for s in schools:
         
@@ -64,8 +64,8 @@ def plots(schools, warehouses, central):
 
 
     x, y, text = [],[],[]
-    for w in warehouses:
-        if not w["name"] == "CENTRAL" : 
+    for i,w in enumerate(warehouses):
+        if i>0 :
             x.append(w["location"][0])
             y.append(w["location"][1])
             
@@ -86,7 +86,8 @@ def plots(schools, warehouses, central):
                               hoverinfo='text',
                               opacity=0.8
                               )
-
+    
+    
     plot_c = go.Scatter(x=[central[0]],                      
                                 y=[central[1]],
                                 mode='markers',
@@ -187,41 +188,42 @@ def plot_arr(start,end,distance, color, quantity):
 
 
 
-def visu(problem, TITLE, I_s, I_w, km, routes1,X, q, Q2):
+def visu(schools, warehouses, TITLE, I_s, I_w, km, routes1,X, q, Q2, D):
 
-    N,T =len(problem.Warehouses),len(I_s)
-    routes = [[[ [routes1[t][n][k][m]-N for m in range(len(routes1[t][n][k]))] for k in range(problem.K)] for n in range(N)] for t in range(T)]
+    N,T =len(warehouses),len(I_s)
+    routes = [[[ [routes1[t][n][k][m]-N for m in range(len(routes1[t][n][k]))] for k in range(len(routes1[t][n]))] for n in range(N)] for t in range(T)]
     
 
 
-    title = TITLE + "   Truck 1 capacity : {}   Truck 2 capacity : {} ".format(problem.Q1,problem.Q2)
+    #title = TITLE + "   Truck 1 capacity : {}   Truck 2 capacity : {} ".format(problem.Q1,problem.Q2)
     title = TITLE 
 
-    pos_s = [s["location"] for s in problem.Schools]
-    pos_w = [w["location"] for w in problem.Warehouses]
+    pos_s = [s["location"] for s in schools]
+    pos_w = [w["location"] for w in warehouses]
+    central = warehouses[0]["location"]
 
-    data = plots(problem.Schools, problem.Warehouses, problem.central)
-    layout = make_layout(title,problem.central,pos_s,pos_w,I_s[0],I_w[0])
+    data = plots(schools, warehouses, central)
+    layout = make_layout(title,central,pos_s,pos_w,I_s[0],I_w[0])
 
 
     arrows, indices_step = build_arrows(routes, q) #  arrows is the list of arrows : (i1,i2) with i negative if it represents a warehouse, and indices_step is the list (T,#edges) of indices of arrows  
     Narr = len(arrows)-1
     arrows.extend( [(-n-1, -1,-1,Q2) for n in range(1,N) ])
-    for t in range(problem.T):
+    for t in range(T):
         for n in range(1,N):
             if X[t,n]: indices_step[t].append(Narr+n)
 
 
     def i_to_dict(i):
-        if i>=0 : return(problem.Schools[i], i+N)
-        else    : return(problem.Warehouses[-i-1], -i-1)
+        if i>=0 : return(schools[i], i+N)
+        else    : return(warehouses[-i-1], -i-1)
 
     for arr in arrows : 
         i1,i2,vehicule, quantity = arr 
         start,ind1 = i_to_dict(i1)
         end,ind2   = i_to_dict(i2) 
         color = COLORS["road"][vehicule]
-        data.append(plot_arr(start["location"],end["location"],problem.D[ind1,ind2], color, quantity))
+        data.append(plot_arr(start["location"],end["location"],D[ind1,ind2], color, quantity))
 
 
     L = []

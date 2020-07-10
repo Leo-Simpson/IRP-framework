@@ -625,8 +625,9 @@ class Solution :
     
     def visualization(self,filename):
         t0 = time()
+        schools,warehouses = self.problem.Schools, self.problem.Warehouses
         km = np.sum(self.dist, axis = (1,2))
-        visual = visu(self.problem,"WFP Inventory problem", self.I_s,self.I_w, km, self.r, self.X, self.q*self.problem.Q1[np.newaxis,:,:,np.newaxis],self.problem.Q2)
+        visual = visu(schools,warehouses, "WFP Inventory problem", self.I_s,self.I_w, km, self.r, self.X, self.q*self.problem.Q1[np.newaxis,:,:,np.newaxis],self.problem.Q2, self.problem.D)
         fig = go.Figure(visual)
         offline.plot(fig, filename= filename, auto_open = False)
         self.running_time["visualisation"] = time()-t0
@@ -794,7 +795,7 @@ class Matheuristic :
             op['number_used'] = 0
         
 
-    def algo2(self, info = False, plot = False, file = "solution.html"):
+    def algo2(self, info = False, plot = False,plot_final = True, file = "solution.html"):
         # modified algo :  we don't do line 20, 23, 24
         t0 = time()
         param = self.param
@@ -860,7 +861,7 @@ class Matheuristic :
             print("Step : ", iterations,"Tau : ",round(tau,2), "Current cost is : ",round(self.solution.cost,1) , "Current best cost is : ", round(self.solution_best.cost,1), "Running time : ",round(dt,2) )
         
         t1 = time()
-        self.solution_best.visualization(file).show()
+        if plot_final : self.solution_best.visualization(file).show()
         t2 = time()
         print(" Total algorithm time = {} \n Final visualisation time = {} ".format(round(t1-t0,2),round(t2-t1,2)))
 
@@ -924,3 +925,28 @@ def random_problem(T,N,M,K = None, H = None, seed = None):
     problem = Problem(Schools = Schools, Warehouses = Warehouses,T = T,K = K, Q1 = Q1, Q2 = Q2, v = 50, t_load = 0.5, c_per_km = 0.1, Tmax = 100, H = H, V_number = V_number)
     
     return problem
+
+
+def cluster_fusing(solutions, problem_global):
+    if solutions : 
+        
+        solution = Solution(problem_global)
+        Rs, Xs, qs, Sch_names, Wh_names = [],[],[], [], []
+        for i in range(len(solutions)):
+            Rs.append(solutions[i].r)
+            Xs.append(solutions[i].X)
+            qs.append(solutions[i].q)
+            Sch_names.append([s["name"] for s in solutions[i].problem.Schools])
+            Wh_names.append([w["name"] for w in solutions[i].problem.Warehouses])
+            
+
+        
+        #solution.r = 
+        #solution.X = 
+        #solution.q = 
+        #solution.compute_dist()
+        #solution.compute_inventory()
+        return solution 
+    
+    else : 
+        raise ValueError("List of solutions is empty")
