@@ -88,7 +88,6 @@ class Window(QtWidgets.QMainWindow):
             
         df_v = pd.read_excel(io=p, sheet_name='VehicleFleet')
         self.vehicles = df_v.to_dict('records') # list of dictionaries of the form {'Warehouse':...,'Plate Nr':....,'Make':...,'Model':....,'Capacity in MT':....}
-        
 
         
         i = 0
@@ -103,13 +102,14 @@ class Window(QtWidgets.QMainWindow):
                     self.vehicle_list[i].append(v2)
                     del self.vehicle_list[i][-1]['Make'], self.vehicle_list[i][-1]['Model']    
             i+=1 
-        
+
         self.V_number_input = np.array([len(self.vehicle_list[j]) for j in range(len(self.warehouses))])
         self.K_max = max(self.V_number_input)
         self.Q1_arr = np.zeros((len(self.warehouses), self.K_max))
         for n in range(len(self.warehouses)):
             for k in range(self.V_number_input[n]):
                 self.Q1_arr[n,k] = self.vehicle_list[n][k]['Capacity in MT']
+
 
         
         
@@ -219,11 +219,12 @@ class Window(QtWidgets.QMainWindow):
                                 t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, V_number = self.V_number,
                                 central = self.central)
             
-            print('Use central in excel: ' + str(self.ui.checkBox_central.isChecked()))
-            print('Use vehicle fleet: ' + str(self.ui.checkBox_vehiclefleet.isChecked()))
-            print('Q1: ' + str(self.Q1))
-            print('K: ' + str(self.K))
-            print('V_number: ' + str(self.V_number))
+            # print('Use central in excel: ' + str(self.ui.checkBox_central.isChecked()))
+            # print('Use vehicle fleet: ' + str(self.ui.checkBox_vehiclefleet.isChecked()))
+            # print('problem.Q1: ' + str(problem.Q1))
+            # print('self.Q1: ' + str(self.Q1_arr))
+            # print('K: ' + str(problem.K))
+            # print('V_number: ' + str(problem.V_number))
             
             heuristic = Matheuristic(problem)
             heuristic.param.tau_start = 3

@@ -172,7 +172,7 @@ def build_arrows(routes, q):
 def plot_arr(start,end,distance, color, quantity):
 
     # arrows is the list of arrows : ([x1,y1],[x2,y2],distance)
-    text = "distance = {}".format(round(distance)) + " <br> " + "quantity for next school = {}".format(round(quantity)) 
+    text = "distance = {}".format(round(distance,2)) + " <br> " + "quantity for next school = {}".format(round(quantity)) 
 
     x1,y1,x2,y2 = start[0], start[1], end[0], end[1]
 

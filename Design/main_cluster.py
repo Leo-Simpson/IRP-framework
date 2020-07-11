@@ -216,7 +216,8 @@ class Window(QtWidgets.QMainWindow):
                                 T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v,
                                 t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, V_number = self.V_number,
                                 central = self.central)
-             
+            
+           
             problems = problem_global.clustering()
             param = Meta_param(seed=1)
             param.tau_start = 3.
@@ -225,7 +226,7 @@ class Window(QtWidgets.QMainWindow):
             solutions = []
             for counter, pr in enumerate(problems):
                 heuristic = Matheuristic(pr,param=param)
-                heuristic.algo2(plot_final=True, file = "solution/cluster %i" % (counter+1) )
+                heuristic.algo2(plot_final=True, file = "solution/cluster %i.html" % (counter+1) )
                 solutions.append(heuristic.solution_best)
                 print('Cluster {} of {} computed!'.format(counter + 1, len(problems)))
             
