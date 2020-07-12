@@ -150,7 +150,7 @@ class Window(QtWidgets.QMainWindow):
             self.K = None
             if self.ui.checkBox_central.isChecked():
                 self.V_number = deepcopy(self.V_number_input)
-                self.central = self.warehouses[0]
+                self.central = None
                 self.Q1 = self.Q1_arr
                 
             else: 
@@ -174,7 +174,7 @@ class Window(QtWidgets.QMainWindow):
               
         else: 
             if self.ui.checkBox_central.isChecked():
-                self.central = self.warehouses[0]
+                self.central = None
                 self.K = self.ui.spinBox_vehicles_wh.value()
                 self.Q1 = self.ui.spinBox_Q1.value()
                 self.V_number = None
@@ -216,8 +216,8 @@ class Window(QtWidgets.QMainWindow):
                                 T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v,
                                 t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, V_number = self.V_number,
                                 central = self.central)
-            
-           
+
+ 
             problems = problem_global.clustering()
             param = Meta_param(seed=1)
             param.tau_start = 3.
@@ -225,14 +225,18 @@ class Window(QtWidgets.QMainWindow):
             param.cooling = 0.8
             solutions = []
             for counter, pr in enumerate(problems):
+ 
+
                 heuristic = Matheuristic(pr,param=param)
-                heuristic.algo2(plot_final=True, file = "solution/cluster %i.html" % (counter+1) )
+                heuristic.algo2(plot_final=False, file = "solution/cluster %i.html" % (counter+1) )
                 solutions.append(heuristic.solution_best)
                 print('Cluster {} of {} computed!'.format(counter + 1, len(problems)))
             
             solution = cluster_fusing(solutions,problem_global)
+            solution.file = "solution/global.html"
+            print(solution)
             
-            #solution.visualization("solution/global.html")
+            
 
 
 

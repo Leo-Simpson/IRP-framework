@@ -37,7 +37,7 @@ def annotations_inventory(pos_s, pos_w, I_s, I_w):
     return annotations
 
 
-def plots(schools, warehouses,central):
+def plots(schools, warehouses,central,central_name):
     x, y, text = [],[],[]
     for s in schools:
         
@@ -96,7 +96,7 @@ def plots(schools, warehouses,central):
                                                 size=SIZES["central"],
                                                 color=COLORS["central"]
                                                 ),
-                                text=["Central warehouse"],
+                                text=[central_name],
                                 hoverinfo='text',
                                 opacity=0.8
                                 )
@@ -194,15 +194,15 @@ def visu(schools, warehouses, TITLE, I_s, I_w, km, routes1,X, q, Q2, D):
     routes = [[[ [routes1[t][n][k][m]-N for m in range(len(routes1[t][n][k]))] for k in range(len(routes1[t][n]))] for n in range(N)] for t in range(T)]
     
 
-
     #title = TITLE + "   Truck 1 capacity : {}   Truck 2 capacity : {} ".format(problem.Q1,problem.Q2)
     title = TITLE 
 
     pos_s = [s["location"] for s in schools]
     pos_w = [w["location"] for w in warehouses]
     central = warehouses[0]["location"]
+    central_name = warehouses[0]["name"]
 
-    data = plots(schools, warehouses, central)
+    data = plots(schools, warehouses, central, central_name)
     layout = make_layout(title,central,pos_s,pos_w,I_s[0],I_w[0])
 
 

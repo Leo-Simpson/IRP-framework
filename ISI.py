@@ -18,25 +18,25 @@ from visu import visu
 
 class Problem :
     #this is the class that contains the data of the problem
-    def __init__(self,Warehouses,Schools,T, Q1, Q2, v, t_load, c_per_km, Tmax, K = None, V_number = None, central = None, D = None, H= None):
+    def __init__(self,Warehouses,Schools,T, Q1, Q2, v, t_load, c_per_km, Tmax, K = None, V_number = None, central = None, central_name = None, D = None, H= None):
         
         inf = 10000
+        if central_name is None : central_name = "CENTRAL"
 
         if type(central) is np.ndarray :
-            self.central = central
-            central_w = {"capacity": inf, "lower":-inf, "dist_central":0, "fixed_cost":0, "initial": 0, "name": "CENTRAL" , "location": self.central}
-            self.Warehouses = [central_w] + Warehouses 
+            central_w = {"capacity": inf, "lower":-inf, "dist_central":0, "fixed_cost":0, "initial": 0, "name": central_name , "location": central}
+            Warehouses = [central_w] + Warehouses 
         
-        else : 
-            if type(central) is dict and 'location' in central.keys() and type(central['location']) is np.ndarray: self.central = central['location']  
-            else : self.central = Warehouses[0]['location']
-            Warehouses[0]['capacity'] = inf
-            Warehouses[0]['lower'] = -inf
-            Warehouses[0]['intial'] = 0
-            Warehouses[0]['fixed_cost'] = 0
-            self.Warehouses = Warehouses
+        elif type(central) is dict : Warehouses = [central] + Warehouses 
+
+ 
            
-          
+        self.central = Warehouses[0]['location']
+        Warehouses[0]['capacity'] = inf
+        Warehouses[0]['lower'] = -inf
+        Warehouses[0]['initial'] = 0
+        Warehouses[0]['fixed_cost'] = 0
+        self.Warehouses = Warehouses
             
 
         N = len(self.Warehouses)
@@ -51,21 +51,42 @@ class Problem :
             else : 
                 if type(V_number) is np.ndarray : 
                     if V_number.shape == (N,) : 
-                        if V_number.dtype == 'int': self.K,self.V_number = max(V_number),V_number
-                        
-                        else : raise ValueError("V_number should be integers not {}".format(V_number.dtype))
-                    else : raise ValueError("V_number should be have a shape of {}, not {}".format((N,),V_number.shape))
-                else : raise ValueError("V_number should be an array")
+                        if V_number.dtype == 'int': 
+                            self.V_number = V_number
+                            if type(Q1) is np.ndarray : 
+                                self.Q1 = Q1
+                                self.K = Q1.shape[1]
+                                if max(V_number) > self.K : raise ValueError("The second dimension of Q1 is {} whereas K is {} (higher)".format(Q1.shape[1],self.K))
+                            elif type(Q1) is int : 
+                                self.K = max(V_number)
+                                self.Q1 = np.ones((N,self.K),dtype=float)*Q1
 
+                        else : raise ValueError("V_number should be integers not {}".format(V_number.dtype))
+                    else : raise ValueError("V_number should have a shape of {}, not {}".format((N,),V_number.shape))
+                else : raise ValueError("V_number should be an array")
+        
         elif type(K) is int :
-            if V_number is None : self.K, self.V_number = K, np.ones(N,dtype=int)*K  
-            else                : raise ValueError("Please choose between entering K and V_number")
-        else : 
-            raise ValueError("K should be an integer, and not a {}".format(type(K)))
+            if V_number is None : 
+                self.K, self.V_number = K, np.ones(N,dtype=int)*K  
+                if type(Q1) is np.ndarray : 
+                    self.Q1 = Q1
+                    if Q1.shape[1] != self.K : raise ValueError("The second dimension of Q1 is {} whereas K is {} ".format(Q1.shape[1],self.K))
+                elif type(Q1) is int : 
+                    self.Q1 = np.ones((N,self.K),dtype=float)*Q1
+
+            else : raise ValueError("Please choose between entering K and V_number")
+        
+        else : raise ValueError("K should be an integer, and not a {}".format(type(K)))
         
         
         if type(Q1) is int : self.Q1 = np.ones((N,K),dtype=float)*Q1 # capacity of the trucks for school deliveries    / array of size NxK with different capacities 
-        elif type(Q1) is np.ndarray : self.Q1 = Q1
+        elif type(Q1) is np.ndarray : 
+            self.Q1 = Q1
+            if Q1.shape[1]>=self.K :
+                self.K =  Q1.shape[1]
+                self.V_number = np.minimum(self.K,self.V_number)
+            else : raise ValueError("The second dimension of Q1 is {} whereas K is {} (higher)".format(Q1.shape[1],self.K))
+
         else : raise ValueError("Wrong Q1 entered")
         
         self.Q2 = Q2 # capacity of the trucks for warehouses deliveries
@@ -83,6 +104,8 @@ class Problem :
 
         for i,w in enumerate(self.Warehouses) : 
             w["dist_central"] = self.D[0,i]
+
+
        
     def define_arrays(self):
         self.I_s_init  =  np.array([s["initial"] for s in self.Schools])                 # initial inventory of school
@@ -138,12 +161,12 @@ class Problem :
 
     def clustering(self):
         
-        central = self.central
+        central_name = self.Warehouses[0]["name"]
         warehouses = self.Warehouses[1:]
         schools = self.Schools
         X = np.array([s['location'] for s in schools])
         
-        N = len(warehouses)     #determine best amount of clusters
+        N = len(self.Warehouses)-1     #determine best amount of clusters
         best_score = 0
         for k_temp in range(np.max(2,N-3),N+4):
             gmm_class = GaussianMixture(k_temp)     #compute clustering
@@ -164,25 +187,30 @@ class Problem :
         wh_div = [[] for i in range(k)]            #assign nearest warehouse(s) to every cluster
         v_num_div = [[] for i in range(k)]
         q1_div = [[] for i in range(k)]
+        central_in = [False]*k
         for counter, c in enumerate(centers):
-            dist = np.array([np.linalg.norm(c - wh['location']) for wh in warehouses])
+            dist = np.array([np.linalg.norm(c - wh['location']) for wh in self.Warehouses])
             min_dist = np.min(dist)
             wh_near = np.where(dist <= 1.1*min_dist)[0]
             for i in wh_near:
-                wh_div[counter].append(warehouses[i])
-                v_num_div[counter].append(self.V_number[i+1])
-                q1_div[counter].append(self.Q1[i+1,:].copy())
+                if i == 0 : central_in[counter]=True
+                wh_div[counter].append(self.Warehouses[i])
+                v_num_div[counter].append(self.V_number[i])
+                q1_div[counter].append(self.Q1[i])
         
+        problems = []
         for i in range(k):
-            v_num_div[i].insert(0,self.V_number[0])
-            q1_div[i].insert(0,self.Q1[0,:].copy())
-            v_num_div[i] = np.array(v_num_div[i])
-            q1_div[i] = np.array(q1_div[i])
+            if central_in[i]:
+                central = None
+            else :
+                central = self.Warehouses[0]["location"]
+                v_num_div[i].insert(0,0)     # central has no vehicule if it is not "in"
+                q1_div[i].insert(0,self.Q1[0])
     
+            problems.append(  Problem(wh_div[i], schools_div[i],
+                                         self.T, np.array(q1_div[i]), self.Q2, self.v, self.t_load, self.c_per_km, self.Tmax, 
+                                         V_number = np.array(v_num_div[i]),central=central,central_name=central_name, H =self.H )   )
                 
-        problems = [
-            Problem(wh_div[i], schools_div[i], self.T, q1_div[i], self.Q2, self.v, self.t_load, self.c_per_km, self.Tmax, V_number = v_num_div[i], central = central, H =self.H )
-            for i in range(k)]
       
         return problems 
 
@@ -228,6 +256,7 @@ class Solution :
 
         self.build_Cl(radfactor)
         self.compute_costs()
+        self.file = 'visu.html'
         
         
     def Cl_shaped_like_Y(self):
@@ -343,7 +372,7 @@ class Solution :
         add = np.sum([self.problem.h_s[m] * self.I_s[t,m] for t in range(1,self.T+1) for m in range(self.M)]) + self.problem.c_per_km * np.sum( self.problem.to_central[n] * self.X[t,n] for t in range(1,self.T) for n in range(self.N) ) * 2
 
         self.cost = self.problem.c_per_km * np.sum(self.dist) + add
-        self.cost = self.cost
+        
 
     def compute_route_dist(self, tour_schools, warehouse : int):
         tour_complete   = [warehouse]+tour_schools+[warehouse]
@@ -390,6 +419,7 @@ class Solution :
         problem = self.problem
         T,N,K,M = self.T, self.N, self.K, self.M
 
+        
         self.compute_a_and_b()
         self.compute_time_adding()
         vehicle_used =  np.any(self.Y, axis=3)
@@ -399,7 +429,7 @@ class Solution :
         # delta(t,n,k,m): binary variable, equals 1 if school n is removed from tour performed by truck k from warehouse m at time t, 0 else
         # omega(t,n,k,m): binary variable, equals 1 if school n is inserted into route by truck k from warehouse m at time t, 0 else
 
-        set_q     = [ (t,n,k,m) for t in range(1,T+1) for n in range(N) for k in range(K) for m in range(M) if (self.Cl[n,m] and k< self.V_number[n])  ]
+        set_q     = [ (t,n,k,m) for t in range(1,T+1) for n in range(N) for k in range(self.V_number[n]) for m in range(M) if self.Cl[n,m] ]
         set_delta = [ (t,n,k,m) for (t,n,k,m) in set_q if self.Y[t,n,k,m]  ]
         set_omega = [ (t,n,k,m) for (t,n,k,m) in set_q if not self.Y[t,n,k,m] ]
 
@@ -623,18 +653,19 @@ class Solution :
     
     
     
-    def visualization(self,filename):
+    def visualization(self):
         t0 = time()
         schools,warehouses = self.problem.Schools, self.problem.Warehouses
         km = np.sum(self.dist, axis = (1,2))
         visual = visu(schools,warehouses, "WFP Inventory problem", self.I_s,self.I_w, km, self.r, self.X, self.q*self.problem.Q1[np.newaxis,:,:,np.newaxis],self.problem.Q2, self.problem.D)
         fig = go.Figure(visual)
-        offline.plot(fig, filename= filename, auto_open = False)
+        offline.plot(fig, filename= self.file, auto_open = False)
         self.running_time["visualisation"] = time()-t0
         return fig
         
 
     def informations(self):
+        self.verify_feasibility()
         string_running_time = "Running time : \n  "
         string_f = "Constraints fulfilled : \n  "
         for name, t in self.running_time.items():
@@ -643,13 +674,13 @@ class Solution :
         for name, boole in self.feasibility.items():
             string_f += name +"  :  " + str(boole) + "\n  "
 
-        return("Solution with a total cost of {} ".format(round(self.cost),3)
+        return("Solution with a total cost of {} ".format(round(self.cost,3))
                 + " \n "  + string_f
                 + "\n "+ string_running_time)
 
 
     def __repr__(self):
-        self.visualization('visu.html').show()
+        self.visualization().show()
         return self.informations()
         
 
@@ -762,7 +793,7 @@ class Matheuristic :
             print("Step %i is finished !!" %iterations)
             print("Current cost is : ", self.solution_best.cost )
         t1 = time()
-        visualization(self.solution_best, "solution.html")
+        visualization(self.solution_best)
         t2 = time()
         print('Total algorithm time = {} <br> Final visualisation time = {} '.format(round(t1-t0,2),round(t2-t1,2)))
 
@@ -861,15 +892,22 @@ class Matheuristic :
             print("Step : ", iterations,"Tau : ",round(tau,2), "Current cost is : ",round(self.solution.cost,1) , "Current best cost is : ", round(self.solution_best.cost,1), "Running time : ",round(dt,2) )
         
         t1 = time()
-        if plot_final : self.solution_best.visualization(file).show()
-        t2 = time()
-        print(" Total algorithm time = {} \n Final visualisation time = {} ".format(round(t1-t0,2),round(t2-t1,2)))
+        print(" Total algorithm time = {} ".format(round(t1-t0,2)))
+        self.solution_best.file = file
+        if plot_final : 
+            self.solution_best.visualization().show()
+            t2 = time()
+            print("Final visualisation time = {} ".format(round(t2-t1,2)))
+            
+        
+        
 
         string_running_time ="Total ISI running times : \n  "
         for name, t in self.running_time.items():
             string_running_time += name +"  :  " + str(round(t,2)) + "\n  "
 
         print(string_running_time )
+        print(self.solution_best.informations())
 
 
 
@@ -929,23 +967,34 @@ def random_problem(T,N,M,K = None, H = None, seed = None):
 
 def cluster_fusing(solutions, problem_global):
     if solutions : 
-        
-        solution = Solution(problem_global)
-        Rs, Xs, qs, Sch_names, Wh_names = [],[],[], [], []
-        for i in range(len(solutions)):
-            Rs.append(solutions[i].r)
-            Xs.append(solutions[i].X)
-            qs.append(solutions[i].q)
-            Sch_names.append([s["name"] for s in solutions[i].problem.Schools])
-            Wh_names.append([w["name"] for w in solutions[i].problem.Warehouses])
-            
+        S_names = [s["name"] for s in problem_global.Schools]
+        Wh_names = [w["name"] for w in problem_global.Warehouses]
 
-        
-        #solution.r = 
-        #solution.X = 
-        #solution.q = 
-        #solution.compute_dist()
-        #solution.compute_inventory()
+
+        solution = Solution(problem_global)
+        for sol in solutions:
+            S_ind = [S_names.index(s["name"]) for s in sol.problem.Schools]
+            Wh_ind = [Wh_names.index(w["name"]) for w in sol.problem.Warehouses]
+
+            solution.X[:,Wh_ind] += sol.X
+
+            q = solution.q[:,Wh_ind]
+            Y = solution.Y[:,Wh_ind]
+            q[:,:,:,S_ind] = sol.q
+            Y[:,:,:,S_ind] = sol.Y
+
+            solution.q[:,Wh_ind] += q
+            solution.Y[:,Wh_ind] += Y
+                
+
+        solution.compute_r()
+        solution.compute_costs()      # contains compute_inventory() and compute_dist()
+        solution.verify_feasibility() # contains compute_inventory()
+
+        for name,t in solution.running_time.items():
+            solution.running_time = sum( sol.running_time[name] for sol in solutions )
+
+
         return solution 
     
     else : 
