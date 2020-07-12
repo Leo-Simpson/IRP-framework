@@ -212,6 +212,7 @@ class Window(QtWidgets.QMainWindow):
             print('No file inserted. Could not optimize!')
         else:
             # and here we set up our model
+
             problem_global = Problem(Schools = self.schools, Warehouses = self.warehouses,
                                 T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v,
                                 t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, V_number = self.V_number,

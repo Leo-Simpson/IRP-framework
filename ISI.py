@@ -10,6 +10,7 @@ from time import time
 from math import *  # for ceil
 from sklearn.mixture import GaussianMixture
 from sklearn.metrics import silhouette_score
+from copy import deepcopy
 
 import plotly.graph_objects as go 
 from plotly import offline
@@ -18,7 +19,7 @@ from visu import visu
 
 class Problem :
     #this is the class that contains the data of the problem
-    def __init__(self,Warehouses,Schools,T, Q1, Q2, v, t_load, c_per_km, Tmax, K = None, V_number = None, central = None, central_name = None, D = None, H= None):
+    def __init__(self,Warehouses,Schools,T, Q1, Q2, v, t_load, c_per_km, Tmax, K = None, V_number = None, central = None, central_name = None, D = None, H= None, makes=None):
         
         inf = 10000
         if central_name is None : central_name = "CENTRAL"
@@ -78,16 +79,8 @@ class Problem :
         
         else : raise ValueError("K should be an integer, and not a {}".format(type(K)))
         
-        
-        if type(Q1) is int : self.Q1 = np.ones((N,K),dtype=float)*Q1 # capacity of the trucks for school deliveries    / array of size NxK with different capacities 
-        elif type(Q1) is np.ndarray : 
-            self.Q1 = Q1
-            if Q1.shape[1]>=self.K :
-                self.K =  Q1.shape[1]
-                self.V_number = np.minimum(self.K,self.V_number)
-            else : raise ValueError("The second dimension of Q1 is {} whereas K is {} (higher)".format(Q1.shape[1],self.K))
-
-        else : raise ValueError("Wrong Q1 entered")
+        if makes is None : self.makes = np.array([["No name"]*self.K]*N)
+        else :self.makes = makes # name of the vehicles
         
         self.Q2 = Q2 # capacity of the trucks for warehouses deliveries
         self.v = v # average speed of trucks in km/h
@@ -106,6 +99,7 @@ class Problem :
             w["dist_central"] = self.D[0,i]
 
 
+
        
     def define_arrays(self):
         self.I_s_init  =  np.array([s["initial"] for s in self.Schools])                 # initial inventory of school
@@ -121,7 +115,7 @@ class Problem :
         self.to_central=  np.array([w["dist_central"] for w in self.Warehouses])         # distance between the warehouses and the central
 
     def copy(self):
-        problem = Problem(self.Warehouses.copy(),Schools.copy(),self.T,self.Q1,self.Q2,self.v,self.t_load, self.c_per_km,self.Tmax,self.K, self.V_number.copy(), self.central,self.D, self.H)
+        problem = Problem(deepcopy(self.Warehouses.copy()),deepcopy(self.Schools),self.T,self.Q1,self.Q2,self.v,self.t_load, self.c_per_km,self.Tmax,V_number= self.V_number.copy(),D=self.D, H=self.H, makes = self.makes)
         problem.define_arrays()
         return problem
 
@@ -152,7 +146,7 @@ class Problem :
         # then change the consumption and the prices 
         for s in problem.Schools : 
             s['consumption']  =  s['consumption'] / time_step
-            s['storage_cost'] = s['storage_cost'] / time_step
+            s['storage_cost'] =  s['storage_cost'] / time_step
 
         # then redifine the arrays 
         problem.define_arrays()
@@ -187,6 +181,7 @@ class Problem :
         wh_div = [[] for i in range(k)]            #assign nearest warehouse(s) to every cluster
         v_num_div = [[] for i in range(k)]
         q1_div = [[] for i in range(k)]
+        makes_div = [[] for i in range(k)]
         central_in = [False]*k
         for counter, c in enumerate(centers):
             dist = np.array([np.linalg.norm(c - wh['location']) for wh in self.Warehouses])
@@ -197,6 +192,7 @@ class Problem :
                 wh_div[counter].append(self.Warehouses[i])
                 v_num_div[counter].append(self.V_number[i])
                 q1_div[counter].append(self.Q1[i])
+                makes_div[counter].append(self.makes[i])
         
         problems = []
         for i in range(k):
@@ -206,10 +202,12 @@ class Problem :
                 central = self.Warehouses[0]["location"]
                 v_num_div[i].insert(0,0)     # central has no vehicule if it is not "in"
                 q1_div[i].insert(0,self.Q1[0])
+                makes_div[i].insert(0,self.makes[0])
+
     
             problems.append(  Problem(wh_div[i], schools_div[i],
                                          self.T, np.array(q1_div[i]), self.Q2, self.v, self.t_load, self.c_per_km, self.Tmax, 
-                                         V_number = np.array(v_num_div[i]),central=central,central_name=central_name, H =self.H )   )
+                                         V_number = np.array(v_num_div[i]),makes = np.array(makes_div[i]),central=central,central_name=central_name, H =self.H )   )
                 
       
         return problems 
@@ -408,7 +406,9 @@ class Solution :
                 "I_s constraint" : np.all( [ np.all(self.I_s[t]<= self.problem.U_s + tol) and np.all(self.I_s[t]>= self.problem.L_s - tol) for t in range(self.T)]),
                 "I_w constraint" : np.all( [ np.all(self.I_w[t]<= self.problem.U_w + tol) and np.all(self.I_w[t]>= self.problem.L_w - tol) for t in range(self.T)])
         }
-        self.feasible = self.feasibility["Truck constraint"] and self.feasibility["I_s constraint"] and self.feasibility["I_s constraint"] and self.feasibility["I_w constraint"]
+        #self.feasible = self.feasibility["Truck constraint"] and self.feasibility["I_s constraint"] and self.feasibility["I_s constraint"] and self.feasibility["I_w constraint"]
+
+        self.feasible = np.all( [b for name,b in self.feasibility.items()])
                     
 
 
@@ -600,21 +600,22 @@ class Solution :
 
 
     def multi_ISI(self,G,solver="CBC", plot = False ,info=True,total_running_time=None):
-        itera = 10
+        itera = 5
         for p in range(1,itera+1):
             penalization = 2*self.cost * p / itera
             self.ISI(G, penalization=penalization,solver = solver, plot = plot, info=info, total_running_time=total_running_time)
-            if not self.feasible : 
+            
+            if not self.feasibility["Duration constraint"] : 
+                continue
+            elif not self.feasible : 
                 print(self)
                 raise ValueError("Problem looks infeasible")
-            elif not self.feasibility["Duration constraint"] : 
-                continue
             else : 
                 break
         
         if not self.feasibility["Duration constraint"] : 
-            print(self)
-            raise ValueError("Duration constraint looks infeasible")
+            #raise ValueError("Duration constraint looks infeasible")
+            print("Duration constraint looks infeasible")
 
 
     def ISI_multi_time(self, G,solver="CBC", plot = False ,info=True,total_running_time=None):
@@ -638,6 +639,7 @@ class Solution :
         self.Y[1:] = np.concatenate( [sol.Y[1:] for sol in solutions], axis=0  )
         self.r[1:] = sum( [sol.r[1:] for sol in solutions], [])
         self.compute_costs()
+        self.verify_feasibility()
         
         
 
@@ -657,7 +659,7 @@ class Solution :
         t0 = time()
         schools,warehouses = self.problem.Schools, self.problem.Warehouses
         km = np.sum(self.dist, axis = (1,2))
-        visual = visu(schools,warehouses, "WFP Inventory problem", self.I_s,self.I_w, km, self.r, self.X, self.q*self.problem.Q1[np.newaxis,:,:,np.newaxis],self.problem.Q2, self.problem.D)
+        visual = visu(schools,warehouses, "WFP Inventory problem", self.I_s,self.I_w, km, self.r, self.X, self.q*self.problem.Q1[np.newaxis,:,:,np.newaxis],self.problem.Q2, self.problem.D, self.problem.makes)
         fig = go.Figure(visual)
         offline.plot(fig, filename= self.file, auto_open = False)
         self.running_time["visualisation"] = time()-t0
@@ -826,7 +828,7 @@ class Matheuristic :
             op['number_used'] = 0
         
 
-    def algo2(self, info = False, plot = False,plot_final = True, file = "solution.html"):
+    def algo2(self, info = False, plot = False,plot_final = True, file = "solution.html",penal=10):
         # modified algo :  we don't do line 20, 23, 24
         t0 = time()
         param = self.param
@@ -838,6 +840,7 @@ class Matheuristic :
         
         self.solution.ISI_multi_time(G = N, solver=param.solver, info=info, total_running_time=self.running_time, plot=plot)
         typical_cost = self.solution.cost
+        self.solution.cost += penal*(1-self.solution.feasible)
         self.solution_best = self.solution.copy()
 
 
@@ -851,7 +854,7 @@ class Matheuristic :
             operator(self.solution_prime, param.rho)
             G = N
             self.solution_prime.ISI_multi_time(G=G, solver=param.solver, info=info, total_running_time=self.running_time, plot=plot)
-            
+            self.solution_prime.cost += penal*(1-self.solution.feasible)
 
             amelioration, finish = False, False
             while ( self.solution_prime.cost < (1+epsilon)*self.solution.cost ):
@@ -865,6 +868,7 @@ class Matheuristic :
                     finish = True
 
                 self.solution_prime.ISI_multi_time(G=G, solver=param.solver, info=info,total_running_time=self.running_time, plot=plot)
+                self.solution_prime.cost += penal*(1-self.solution.feasible)
 
             
             if self.solution.cost < self.solution_best.cost : 
@@ -908,6 +912,7 @@ class Matheuristic :
 
         print(string_running_time )
         print(self.solution_best.informations())
+
 
 
 
@@ -971,20 +976,27 @@ def cluster_fusing(solutions, problem_global):
         Wh_names = [w["name"] for w in problem_global.Warehouses]
 
 
+
         solution = Solution(problem_global)
+
+        
+
         for sol in solutions:
             S_ind = [S_names.index(s["name"]) for s in sol.problem.Schools]
             Wh_ind = [Wh_names.index(w["name"]) for w in sol.problem.Warehouses]
 
-            solution.X[:,Wh_ind] += sol.X
+            
 
+
+
+            solution.X[:,Wh_ind] += sol.X
             q = solution.q[:,Wh_ind]
             Y = solution.Y[:,Wh_ind]
-            q[:,:,:,S_ind] = sol.q
-            Y[:,:,:,S_ind] = sol.Y
+            q[:,:,:,S_ind] += sol.q
+            Y[:,:,:,S_ind] += sol.Y
 
-            solution.q[:,Wh_ind] += q
-            solution.Y[:,Wh_ind] += Y
+            solution.q[:,Wh_ind] = q
+            solution.Y[:,Wh_ind] = Y
                 
 
         solution.compute_r()
@@ -999,3 +1011,67 @@ def cluster_fusing(solutions, problem_global):
     
     else : 
         raise ValueError("List of solutions is empty")
+
+
+
+
+def excel_to_pb(path,nbr_tours=1):
+        p = path
+        df_w = pd.read_excel(io=p, sheet_name='Warehouses')         #reads the excel table Warehouses
+        warehouses = df_w.to_dict('records')                   #and transforms it into a Panda dataframe
+        for w in warehouses:                                   #puts longitude and latitude together in a numpy array 'location'
+            location = np.array([w['Latitude'],w['Longitude']])
+            del w['Latitude'], w['Longitude']
+            w['location']=location
+            w['name'] = w.pop('Name')
+            w['capacity'] = w.pop('Capacity')
+            w['lower'] = w.pop('Lower')
+            w['initial'] = w.pop('Initial')
+            w['fixed_cost'] = w.pop('Fixed Cost')
+            
+    
+        df_s = pd.read_excel(io=p, sheet_name='Schools')
+        schools = df_s.to_dict('records')
+        for m,s in enumerate(schools):                                      #puts longitude and latitude together in a numpy array 'location'
+            location = np.array([s['Latitude'],s['Longitude']])
+            del s['Latitude'], s['Longitude']
+            s['location']=location
+            s['name'] = s.pop('Name_ID') + ' ' + str(m)
+            s['lower'] = s.pop('Lower')
+            s['initial'] = s.pop('Initial')
+            s['consumption'] = s.pop('Consumption per week in mt')
+            s['storage_cost'] = s.pop('Storage Cost')
+            s['capacity'] = s.pop('Capacity')
+            del s['Total Sum of Beneficiaries']
+            del s['Total Sum of Commodities']
+            del s['Consumption per day in mt']
+            
+        df_v = pd.read_excel(io=p, sheet_name='VehicleFleet')
+        vehicles = df_v.to_dict('records') # list of dictionaries of the form {'Warehouse':...,'Plate Nr':....,'Make':...,'Model':....,'Capacity in MT':....}
+        
+
+        
+        i = 0
+        # list with N entries, which contain the list of dictionaries {'Warehouse':...., 'Plate Nr':....., 'Capacity in MT':...} per Warehouse
+        # self.vehicle_list[i] gives you the list of vehicles(dictionaries) of warehouse i
+        vehicle_list=[ [] for w in warehouses ]
+        Wh_names = [w['name'] for w in warehouses]
+        
+
+        for v in vehicles:
+            i = Wh_names.index(v['Warehouse'])
+            del v['Model']
+            for j in range(nbr_tours):
+                vehicle_list[i].append(v)
+                    
+
+        V_number = np.array([len(vehicle_list[j]) for j in range(len(warehouses))])
+        Q1 = np.zeros((len(warehouses), max(V_number)))
+        makes = np.array([["No name        "]*max(V_number)]*len(warehouses))
+        for n in range(len(warehouses)):
+            for k in range(V_number[n]):
+                Q1[n,k] = vehicle_list[n][k]['Capacity in MT']
+                makes[n,k] = vehicle_list[n][k]['Make']
+
+        return schools, warehouses, Q1, V_number, makes
+        
