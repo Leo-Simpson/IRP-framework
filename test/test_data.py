@@ -20,8 +20,7 @@ param.cooling = cooling
 
 
 
-file = ospath("~/Desktop/GitHub/IRP-framework/Data/Burundi final v2.xlsx")   # leo
-file = ospath("~/Desktop/GitHub/IRP-framework/Data/Burundi final v2.xlsx")   # chris
+file = "../Data/Burundi final v2.xlsx"
 
 schools, warehouses, Q1, V_number, makes = excel_to_pb(file,nbr_tours=1)
 
