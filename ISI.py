@@ -1073,6 +1073,8 @@ def excel_to_pb(path,nbr_tours=1):
             
         df_v = pd.read_excel(io=p, sheet_name='VehicleFleet')
         vehicles = df_v.to_dict('records') # list of dictionaries of the form {'Warehouse':...,'Plate Nr':....,'Make':...,'Model':....,'Capacity in MT':....}
+        order = np.argsort(-np.array([v['Capacity in MT'] for v in vehicles]))
+        vehicles.sort(key = order)
         
 
         
