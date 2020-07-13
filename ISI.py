@@ -19,7 +19,7 @@ from visu import visu
 
 class Problem :
     #this is the class that contains the data of the problem
-    def __init__(self,Warehouses,Schools,T, Q1, Q2, v, t_load, c_per_km, Tmax, K = None, V_number = None, central = None, central_name = None, D = None, H= None, makes=None):
+    def __init__(self,Warehouses,Schools,T, Q1, Q2, v, t_load, c_per_km, Tmax, K = None, V_number = None, central = None, central_name = None, D = None, H= None, makes=None, t_virt=None):
         
         inf = 10000
         if central_name is None : central_name = "CENTRAL"
@@ -46,6 +46,9 @@ class Problem :
         
         if H is None : self.H = T
         else : self.H = H
+
+        if t_virt is None : self.t_virt = 1
+        else : self.t_virt = t_virt
         
         if K is None : 
             if V_number is None : raise ValueError("Please put in K or V_number.")
@@ -98,8 +101,6 @@ class Problem :
         for i,w in enumerate(self.Warehouses) : 
             w["dist_central"] = self.D[0,i]
 
-
-
        
     def define_arrays(self):
         self.I_s_init  =  np.array([s["initial"] for s in self.Schools])                 # initial inventory of school
@@ -125,6 +126,7 @@ class Problem :
 
         # then change time horizon : 
         problem.T = ceil(problem.T/time_step)
+        problem.H = ceil(problem.H/time_step)
 
         # then change the consumption and the prices 
         for s in problem.Schools : 
@@ -142,6 +144,8 @@ class Problem :
 
         # then change time horizon : 
         problem.T = ceil(problem.T*time_step)
+        problem.H = ceil(problem.H*time_step)
+
 
         # then change the consumption and the prices 
         for s in problem.Schools : 
@@ -156,13 +160,12 @@ class Problem :
     def clustering(self):
         
         central_name = self.Warehouses[0]["name"]
-        warehouses = self.Warehouses[1:]
         schools = self.Schools
         X = np.array([s['location'] for s in schools])
         
         N = len(self.Warehouses)-1     #determine best amount of clusters
         best_score = 0
-        for k_temp in range(np.max(2,N-3),N+4):
+        for k_temp in range(max(2,N-3),N+4):
             gmm_class = GaussianMixture(k_temp)     #compute clustering
             gmm_class.fit(X)
             pred = gmm_class.predict(X)
@@ -381,8 +384,8 @@ class Solution :
     def compute_time_adding(self):
         problem  = self.problem
         self.compute_dist()
-        self.time_route     = self.dist / problem.v + problem.t_load*np.sum(self.Y, axis = 3)
-        self.time_adding    = self.b / problem.v + problem.t_load    # to change : t_load can depends on the schools ! 
+        self.time_route     = self.dist / problem.v + problem.t_load*np.sum(self.Y, axis = 3)   # to change : t_load can depends on the schools ! 
+        self.time_adding    = self.b / problem.v + problem.t_load    
         self.time_substract = self.a / problem.v + problem.t_load
 
     def compute_inventory(self):
@@ -514,13 +517,18 @@ class Solution :
             for n in range(N):
                 for k in range(K):
                     # Constraint on the time spending in one tour
-                    #sum( omega*self.time_adding, axis  = 3 ) + self.time_route - sum( delta*self.time_substracting, axis  = 3 )  < Tmax
-                    expression = self.time_route[t,n,k]
-                    expression = expression + plp.lpSum(omega_vars[t,n,k,m] * self.time_adding[t,n,k,m] for m in range(M) if (t,n,k,m) in set_omega )
-                    expression = expression - plp.lpSum(delta_vars[t,n,k,m] * self.time_substract[t,n,k,m] for m in range(M) if (t,n,k,m) in set_delta)
+                    # sum( omega*self.time_adding, axis  = 3 ) + self.time_route - sum( delta*self.time_substracting, axis  = 3 )  < Tmax
+                    # expression1 is the upper bound of the tour duration
+                    # expression2 is the lower bound of the tour duration
+                    expression1 = self.time_route[t,n,k]
+                    expression1 = expression1 - plp.lpSum(delta_vars[t,n,k,m] * self.time_substract[t,n,k,m] for m in range(M) if (t,n,k,m) in set_delta)
+                    expression2 = expression1 + plp.lpSum(omega_vars[t,n,k,m] for m in range(M) if (t,n,k,m) in set_omega ) * problem.t_load        # to change if t_load depends on the schools
+                    expression1 = expression1 + plp.lpSum(omega_vars[t,n,k,m] * self.time_adding[t,n,k,m] for m in range(M) if (t,n,k,m) in set_omega )
                     
-                    ISI_model += expression <= problem.Tmax + violation_vars[t,n,k]* (sum(self.time_adding[t,n,k])+self.time_route[t,n,k] )
-                    #ISI_model += expression <= problem.Tmax
+                    
+                    
+                    ISI_model += expression1 <= problem.Tmax + violation_vars[t,n,k]* (sum(self.time_adding[t,n,k])+self.time_route[t,n,k] )
+                    ISI_model += expression2 <= problem.Tmax
 
 
             for n in range(N):
@@ -605,11 +613,11 @@ class Solution :
             penalization = 2*self.cost * p / itera
             self.ISI(G, penalization=penalization,solver = solver, plot = plot, info=info, total_running_time=total_running_time)
             
-            if not self.feasibility["Duration constraint"] : 
-                continue
-            elif not self.feasible : 
+            if not (self.feasibility["Truck constraint"] and self.feasibility["I_s constraint"] and self.feasibility["I_w constraint"]):
                 print(self)
                 raise ValueError("Problem looks infeasible")
+            elif not self.feasibility["Duration constraint"] : 
+                continue
             else : 
                 break
         
@@ -619,38 +627,53 @@ class Solution :
 
 
     def ISI_multi_time(self, G,solver="CBC", plot = False ,info=True,total_running_time=None):
-        solutions = []
         H = self.problem.H
+        t_virt = self.problem.t_virt
         L = ceil( self.T/H)
         I_w_init = self.problem.I_w_init
         I_s_init = self.problem.I_s_init
-        Tmin, Tmax = 0, min(H,self.T)
+        Tmin, Tmax = 0, H+t_virt
+
+        solutions = []
         for l in range(L) : 
             sol = self.copy()
-            sol.time_cut(Tmin,Tmax)
+            sol.time_cut(Tmin,Tmax, self.T)
             sol.problem.I_w_init, sol.problem.I_s_init = I_w_init, I_s_init
             sol.multi_ISI(G,solver = solver, plot = plot, info = info, total_running_time= total_running_time)
+            
+            I_w_init, I_s_init = sol.I_w[-1-t_virt], sol.I_s[-1-t_virt]
+            
             solutions.append(sol)
-            I_w_init, I_s_init = sol.I_w[-1], sol.I_s[-1]
-            Tmin, Tmax = Tmax, min(Tmax+H,self.T)
-             
-        self.q[1:] = np.concatenate( [sol.q[1:] for sol in solutions], axis=0  )
-        self.X[1:] = np.concatenate( [sol.X[1:] for sol in solutions], axis=0  )
-        self.Y[1:] = np.concatenate( [sol.Y[1:] for sol in solutions], axis=0  )
-        self.r[1:] = sum( [sol.r[1:] for sol in solutions], [])
+            
+            Tmin, Tmax = Tmax - t_virt, Tmax+H+t_virt
+
+        
+
+
+        if t_virt == 0 : 
+            self.q[1:] = np.concatenate( [sol.q[1:] for sol in solutions], axis=0  )
+            self.X[1:] = np.concatenate( [sol.X[1:] for sol in solutions], axis=0  )
+            self.Y[1:] = np.concatenate( [sol.Y[1:] for sol in solutions], axis=0  )
+            self.r[1:] = sum(            [sol.r[1:] for sol in solutions], [])
+        else :
+            self.q[1:] = np.concatenate( [sol.q[1:-t_virt] for sol in solutions]+[solutions[-1].q[-t_virt:]], axis=0  )
+            self.X[1:] = np.concatenate( [sol.X[1:-t_virt] for sol in solutions]+[solutions[-1].X[-t_virt:]], axis=0  )
+            self.Y[1:] = np.concatenate( [sol.Y[1:-t_virt] for sol in solutions]+[solutions[-1].Y[-t_virt:]], axis=0  )
+            self.r[1:] = sum(            [sol.r[1:-t_virt] for sol in solutions]+[solutions[-1].r[-t_virt:]], [])
         self.compute_costs()
         self.verify_feasibility()
         
         
 
-    def time_cut(self,Tmin,Tmax):
-        self.T = Tmax - Tmin 
-        self.dt = self.dt[Tmin:Tmax+1]
+    def time_cut(self,Tmin,Tmax, T_total):
+        Tmax2 = min(Tmax, T_total)
+        self.T = Tmax2 - Tmin 
+        self.dt = self.dt[Tmin:Tmax2+1]
 
-        self.q = self.q[Tmin:Tmax+1]
-        self.X = self.X[Tmin:Tmax+1]
-        self.Y = self.Y[Tmin:Tmax+1]
-        self.r = self.r[Tmin:Tmax+1]
+        self.q = self.q[Tmin:Tmax2+1]
+        self.X = self.X[Tmin:Tmax2+1]
+        self.Y = self.Y[Tmin:Tmax2+1]
+        self.r = self.r[Tmin:Tmax2+1]
         
     
     
@@ -838,7 +861,7 @@ class Matheuristic :
 
         M,N,K,T,p= self.solution.M, self.solution.N, self.solution.K, self.solution.T, 0
         
-        self.solution.ISI_multi_time(G = N, solver=param.solver, info=info, total_running_time=self.running_time, plot=plot)
+        self.solution.ISI_multi_time(G = M, solver=param.solver, info=info, total_running_time=self.running_time, plot=plot)
         typical_cost = self.solution.cost
         self.solution.cost += penal*(1-self.solution.feasible)
         self.solution_best = self.solution.copy()
@@ -852,7 +875,7 @@ class Matheuristic :
             self.operators[i]['number_used'] += 1
             self.solution_prime = self.solution.copy()
             operator(self.solution_prime, param.rho)
-            G = N
+            G = M
             self.solution_prime.ISI_multi_time(G=G, solver=param.solver, info=info, total_running_time=self.running_time, plot=plot)
             self.solution_prime.cost += penal*(1-self.solution.feasible)
 

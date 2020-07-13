@@ -12,7 +12,7 @@ schools, warehouses, Q1, V_number, makes = excel_to_pb(file,nbr_tours=1)
 problem_global = Problem(Schools = schools, Warehouses = warehouses,
                                 T = 2, Q1 = Q1, Q2 = 20, v = 40,
                                 t_load = 0.5, c_per_km = 1, Tmax = 10, V_number = V_number,
-                                central = None, makes = makes)
+                                central = None, makes = makes, H=1)
 
 problem_global = problem_global.time_defuse(2)
 problems = problem_global.clustering()
