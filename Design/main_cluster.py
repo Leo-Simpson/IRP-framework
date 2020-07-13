@@ -229,11 +229,11 @@ class Window(QtWidgets.QMainWindow):
             solutions = []
             for counter, pr in enumerate(problems):
                 
-                
+                print('Starting to compute cluster {} of {}! (Belonging to WH {})'.format(counter + 1, len(problems), pr.Warehouses[-1]['name']))
                 heuristic = Matheuristic(pr,param=param)
                 heuristic.algo2(plot_final=False, file = "solution/cluster %i.html" % (counter+1) )
                 solutions.append(heuristic.solution_best)
-                print('Cluster {} of {} computed!'.format(counter + 1, len(problems)))
+                print('Cluster {} of {} computed! (Belonging to WH {})'.format(counter + 1, len(problems), pr.Warehouses[-1]['name']))
             
             solution = cluster_fusing(solutions,problem_global)
             solution.file = "solution/global.html"
