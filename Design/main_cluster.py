@@ -92,7 +92,6 @@ class Window(QtWidgets.QMainWindow):
         self.vehicles = df_v.to_dict('records') # list of dictionaries of the form {'Warehouse':...,'Plate Nr':....,'Make':...,'Model':....,'Capacity in MT':....}
         
 
-        
         i = 0
         # list with N entries, which contain the list of dictionaries {'Warehouse':...., 'Plate Nr':....., 'Capacity in MT':...} per Warehouse
         # self.vehicle_list[i] gives you the list of vehicles(dictionaries) of warehouse i
@@ -105,6 +104,7 @@ class Window(QtWidgets.QMainWindow):
                     self.vehicle_list[i].append(v2)
                     del self.vehicle_list[i][-1]['Make'], self.vehicle_list[i][-1]['Model']
             i+=1
+            
         self.V_number_input = np.array([len(self.vehicle_list[j]) for j in range(len(self.warehouses))])
         self.K_max = max(self.V_number_input)
         self.Q1_arr = np.zeros((len(self.warehouses), self.K_max))
@@ -139,6 +139,9 @@ class Window(QtWidgets.QMainWindow):
 
     
     def get_parameters(self):
+        self.step_duration = self.ui.horizontalSlider_timeinterval.value()
+        if self.step_duration == 0: self.step_duration = 0.5
+        self.number_vehicles_used = self.ui.spinBox_veh_used.value()
         self.time_horizon = self.ui.spinBox_TimeHorizon.value()
         self.Q2 = self.ui.spinBox_Q2.value()
         self.v = self.ui.doubleSpinBox_avgspeed.value()
@@ -218,24 +221,23 @@ class Window(QtWidgets.QMainWindow):
                                 t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, V_number = self.V_number,
                                 central = self.central)
 
- 
-            problems = problem_global.clustering()
-            param = Meta_param(seed=1)
-            param.tau_start = 3.
-            param.tau_end = 1.
-            param.cooling = 0.8
-            solutions = []
-            for counter, pr in enumerate(problems):
+            # problems = problem_global.clustering()
+            # param = Meta_param(seed=1)
+            # param.tau_start = 3.
+            # param.tau_end = 1.
+            # param.cooling = 0.8
+            # solutions = []
+            # for counter, pr in enumerate(problems):
  
 
-                heuristic = Matheuristic(pr,param=param)
-                heuristic.algo2(plot_final=False, file = "solution/cluster %i.html" % (counter+1) )
-                solutions.append(heuristic.solution_best)
-                print('Cluster {} of {} computed!'.format(counter + 1, len(problems)))
+            #     heuristic = Matheuristic(pr,param=param)
+            #     heuristic.algo2(plot_final=False, file = "solution/cluster %i.html" % (counter+1) )
+            #     solutions.append(heuristic.solution_best)
+            #     print('Cluster {} of {} computed!'.format(counter + 1, len(problems)))
             
-            solution = cluster_fusing(solutions,problem_global)
-            solution.file = "solution/global.html"
-            print(solution)
+            # solution = cluster_fusing(solutions,problem_global)
+            # solution.file = "solution/global.html"
+            # print(solution)
             
             
 

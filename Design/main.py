@@ -144,6 +144,7 @@ class Window(QtWidgets.QMainWindow):
         self.t_load = self.ui.doubleSpinBox_loadingtime.value()
         self.c_per_km = self.ui.doubleSpinBox_costsperkm.value()
         self.Tmax = self.ui.doubleSpinBox_maxtime.value()
+        self.step_duration = self.ui.horizontalSlider_timeinterval.value()
         
         
             
@@ -218,7 +219,7 @@ class Window(QtWidgets.QMainWindow):
                                 T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v, 
                                 t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, V_number = self.V_number,
                                 central = self.central)
-            
+            print(self.step_duration)
             # print('Use central in excel: ' + str(self.ui.checkBox_central.isChecked()))
             # print('Use vehicle fleet: ' + str(self.ui.checkBox_vehiclefleet.isChecked()))
             # print('problem.Q1: ' + str(problem.Q1))
@@ -226,10 +227,10 @@ class Window(QtWidgets.QMainWindow):
             # print('K: ' + str(problem.K))
             # print('V_number: ' + str(problem.V_number))
             
-            heuristic = Matheuristic(problem)
-            heuristic.param.tau_start = 3
-            heuristic.param.tau_end = 1.
-            heuristic.algo2(info = True)  
+            # heuristic = Matheuristic(problem)
+            # heuristic.param.tau_start = 3
+            # heuristic.param.tau_end = 1.
+            # heuristic.algo2(info = True)  
 
 
 
