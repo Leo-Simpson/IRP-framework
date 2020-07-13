@@ -228,7 +228,7 @@ class Problem :
             solutions.append(heuristic.solution_best)
             print('Cluster {} of {} computed!'.format(counter + 1, len(problems)))
 
-        solution = cluster_fusing(solutions,problem_global)
+        solution = cluster_fusing(solutions,self)
         solution.file = folder+"/global.html"
         print(solution)
 
@@ -283,6 +283,7 @@ class Solution :
         return Cl_shape_Y
     
     def V_num_array(self, shape_Y = False):
+        
         V_num_array = np.array([[i for i in range(self.K)] for j in range(self.N)]) < self.V_number.reshape(self.N,1)
         if shape_Y:
             V_num_shaped_Y = np.zeros(self.Y.shape, dtype = bool)
@@ -642,7 +643,7 @@ class Solution :
 
     def ISI_multi_time(self, G,solver="CBC", plot = False ,info=True,total_running_time=None):
         H = self.problem.H
-        t_virt = self.problem.t_virt
+        t_virt = ceil(self.problem.t_virt)
         L = ceil( self.T/H)
         I_w_init = self.problem.I_w_init
         I_s_init = self.problem.I_s_init
@@ -660,8 +661,6 @@ class Solution :
             solutions.append(sol)
             
             Tmin, Tmax = Tmax - t_virt, Tmax+H+t_virt
-
-        
 
 
         if t_virt == 0 : 
@@ -900,7 +899,7 @@ class Matheuristic :
                     G = max(G-1,1) 
                     amelioration,finish = True, False                                         
                 else : 
-                    G = max(int(param.ksi*N),1)   
+                    G = max(int(param.ksi*M),1)   
                     if finish : break
                     finish = True
 

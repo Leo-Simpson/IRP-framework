@@ -5,11 +5,11 @@ from ISI import excel_to_pb, Matheuristic, Meta_param, Problem, cluster_fusing
 from os.path import expanduser as ospath
 
 
-t_load = 0.2
-time_step = 2
-cooling = 0.2
-T = 4
-H = 2
+t_load = 0.5
+time_step = 0.25
+cooling = 0.8
+T = 1
+H = None
 t_virt = 1
 
 param = Meta_param(seed=1)
