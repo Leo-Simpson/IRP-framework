@@ -20,7 +20,7 @@ from copy import deepcopy
 sys.path.append('../')
 
 from Design.DesignDT_testing2 import Ui_MainWindow
-from ISI import Problem, Matheuristic, Meta_param, cluster_fusing
+from ISI import Problem, Matheuristic, Meta_param, cluster_fusing, excel_to_pb
 
 
 class Window(QtWidgets.QMainWindow):
@@ -34,7 +34,8 @@ class Window(QtWidgets.QMainWindow):
         self.ui.pushButton_opt.clicked.connect(self.pushButton_handler_opt)
         
     def pushButton_handler_main(self):
-        self.write_path_main()
+        self.p = self.get_path()
+        self.ui.lineEdit_main.setText(self.p)             # writes path into the lineEdit
     
     
     # def pushButton_handler_capac(self):
@@ -46,71 +47,17 @@ class Window(QtWidgets.QMainWindow):
     
         
     def pushButton_handler_opt(self):
-        self.optimize()
+        self.read_from_excel(self.p)
+        self.get_parameters()
+        self.solveModel()
         # put this in if window should be closed after clicking opt button
         # self.close()
         
         
-    def write_path_main(self):
-        p = self.get_path()
-        self.ui.lineEdit_main.setText(p)             # writes path into the lineEdit
-        self.read_from_excel(p)
-        
         
     def read_from_excel(self, path):
-        p = path
-        df_w = pd.read_excel(io=p, sheet_name='Warehouses')         #reads the excel table Warehouses
-        self.warehouses = df_w.to_dict('records')                   #and transforms it into a Panda dataframe
-        for w in self.warehouses:                                   #puts longitude and latitude together in a numpy array 'location'
-            location = np.array([w['Latitude'],w['Longitude']])
-            del w['Latitude'], w['Longitude']
-            w['location']=location
-            w['name'] = w.pop('Name')
-            w['capacity'] = w.pop('Capacity')
-            w['lower'] = w.pop('Lower')
-            w['initial'] = w.pop('Initial')
-            w['fixed_cost'] = w.pop('Fixed Cost')
-            
-    
-        df_s = pd.read_excel(io=p, sheet_name='Schools')
-        self.schools = df_s.to_dict('records')
-        for s in self.schools:                                      #puts longitude and latitude together in a numpy array 'location'
-            location = np.array([s['Latitude'],s['Longitude']])
-            del s['Latitude'], s['Longitude']
-            s['location']=location
-            s['name'] = s.pop('Name_ID')
-            s['lower'] = s.pop('Lower')
-            s['initial'] = s.pop('Initial')
-            s['consumption'] = s.pop('Consumption per week in mt')
-            s['storage_cost'] = s.pop('Storage Cost')
-            s['capacity'] = s.pop('Capacity')
-            del s['Total Sum of Beneficiaries']
-            del s['Total Sum of Commodities']
-            del s['Consumption per day in mt']
-            
-        df_v = pd.read_excel(io=p, sheet_name='VehicleFleet')
-        self.vehicles = df_v.to_dict('records') # list of dictionaries of the form {'Warehouse':...,'Plate Nr':....,'Make':...,'Model':....,'Capacity in MT':....}
-        
-
-        i = 0
-        # list with N entries, which contain the list of dictionaries {'Warehouse':...., 'Plate Nr':....., 'Capacity in MT':...} per Warehouse
-        # self.vehicle_list[i] gives you the list of vehicles(dictionaries) of warehouse i
-        self.vehicle_list=[[] for j in range(len(self.warehouses))]
-        
-        for w in self.warehouses:
-            for v in self.vehicles:
-                if w['name'] == v['Warehouse']:
-                    v2 = deepcopy(v)
-                    self.vehicle_list[i].append(v2)
-                    del self.vehicle_list[i][-1]['Make'], self.vehicle_list[i][-1]['Model']
-            i+=1
-            
-        self.V_number_input = np.array([len(self.vehicle_list[j]) for j in range(len(self.warehouses))])
-        self.K_max = max(self.V_number_input)
-        self.Q1_arr = np.zeros((len(self.warehouses), self.K_max))
-        for n in range(len(self.warehouses)):
-            for k in range(self.V_number_input[n]):
-                self.Q1_arr[n,k] = self.vehicle_list[n][k]['Capacity in MT']
+        self.number_vehicles_used = self.ui.spinBox_veh_used.value()
+        self.schools, self.warehouses, self.V_number_input , self.K_max, self.Q1_arr, self.makes = excel_to_pb(self.p, nbr_tours=self.number_vehicles_used)
 
         
         
@@ -141,7 +88,6 @@ class Window(QtWidgets.QMainWindow):
     def get_parameters(self):
         self.step_duration = self.ui.horizontalSlider_timeinterval.value()
         if self.step_duration == 0: self.step_duration = 0.5
-        self.number_vehicles_used = self.ui.spinBox_veh_used.value()
         self.time_horizon = self.ui.spinBox_TimeHorizon.value()
         self.Q2 = self.ui.spinBox_Q2.value()
         self.v = self.ui.doubleSpinBox_avgspeed.value()
@@ -204,13 +150,10 @@ class Window(QtWidgets.QMainWindow):
         
         
         
-    def optimize(self):
-        self.get_parameters()
-        self.solveModel()
         
     
     def solveModel(self):
-    # connects the inputs with our ISI model
+        # connects the inputs with our ISI model
         if self.ui.lineEdit_main.text()=='':
             print('No file inserted. Could not optimize!')
         else:
@@ -219,8 +162,10 @@ class Window(QtWidgets.QMainWindow):
             problem_global = Problem(Schools = self.schools, Warehouses = self.warehouses,
                                 T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v,
                                 t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, V_number = self.V_number,
-                                central = self.central)
+                                central = self.central, makes = self.makes)
 
+            problem_global = problem_global.time_fuse(self.step_duration)
+            
             problems = problem_global.clustering()
             param = Meta_param(seed=1)
             param.tau_start = 3.
@@ -255,3 +200,59 @@ if __name__ == '__main__':
 
 
 
+
+
+'''
+        df_w = pd.read_excel(io=p, sheet_name='Warehouses')         #reads the excel table Warehouses
+        self.warehouses = df_w.to_dict('records')                   #and transforms it into a Panda dataframe
+        for w in self.warehouses:                                   #puts longitude and latitude together in a numpy array 'location'
+            location = np.array([w['Latitude'],w['Longitude']])
+            del w['Latitude'], w['Longitude']
+            w['location']=location
+            w['name'] = w.pop('Name')
+            w['capacity'] = w.pop('Capacity')
+            w['lower'] = w.pop('Lower')
+            w['initial'] = w.pop('Initial')
+            w['fixed_cost'] = w.pop('Fixed Cost')
+            
+    
+        df_s = pd.read_excel(io=p, sheet_name='Schools')
+        self.schools = df_s.to_dict('records')
+        for s in self.schools:                                      #puts longitude and latitude together in a numpy array 'location'
+            location = np.array([s['Latitude'],s['Longitude']])
+            del s['Latitude'], s['Longitude']
+            s['location']=location
+            s['name'] = s.pop('Name_ID')
+            s['lower'] = s.pop('Lower')
+            s['initial'] = s.pop('Initial')
+            s['consumption'] = s.pop('Consumption per week in mt')
+            s['storage_cost'] = s.pop('Storage Cost')
+            s['capacity'] = s.pop('Capacity')
+            del s['Total Sum of Beneficiaries']
+            del s['Total Sum of Commodities']
+            del s['Consumption per day in mt']
+            
+        df_v = pd.read_excel(io=p, sheet_name='VehicleFleet')
+        self.vehicles = df_v.to_dict('records') # list of dictionaries of the form {'Warehouse':...,'Plate Nr':....,'Make':...,'Model':....,'Capacity in MT':....}
+        
+
+        i = 0
+        # list with N entries, which contain the list of dictionaries {'Warehouse':...., 'Plate Nr':....., 'Capacity in MT':...} per Warehouse
+        # self.vehicle_list[i] gives you the list of vehicles(dictionaries) of warehouse i
+        self.vehicle_list=[[] for j in range(len(self.warehouses))]
+        
+        for w in self.warehouses:
+            for v in self.vehicles:
+                if w['name'] == v['Warehouse']:
+                    v2 = deepcopy(v)
+                    self.vehicle_list[i].append(v2)
+                    del self.vehicle_list[i][-1]['Make'], self.vehicle_list[i][-1]['Model']
+            i+=1
+            
+        self.V_number_input = np.array([len(self.vehicle_list[j]) for j in range(len(self.warehouses))])
+        self.K_max = max(self.V_number_input)
+        self.Q1_arr = np.zeros((len(self.warehouses), self.K_max))
+        for n in range(len(self.warehouses)):
+            for k in range(self.V_number_input[n]):
+                self.Q1_arr[n,k] = self.vehicle_list[n][k]['Capacity in MT']
+'''
