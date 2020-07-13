@@ -57,8 +57,7 @@ class Window(QtWidgets.QMainWindow):
         
     def read_from_excel(self, path):
         self.number_vehicles_used = self.ui.spinBox_veh_used.value()
-        self.schools, self.warehouses, self.V_number_input , self.K_max, self.Q1_arr, self.makes = excel_to_pb(self.p, nbr_tours=self.number_vehicles_used)
-
+        self.schools, self.warehouses,self.Q1_arr, self.V_number_input, self.makes = excel_to_pb(self.p, nbr_tours=self.number_vehicles_used)
         
         
     

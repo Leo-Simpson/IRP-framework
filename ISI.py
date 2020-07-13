@@ -1041,8 +1041,7 @@ def cluster_fusing(solutions, problem_global):
 
 
 def excel_to_pb(path,nbr_tours=1):
-        p = path
-        df_w = pd.read_excel(io=p, sheet_name='Warehouses')         #reads the excel table Warehouses
+        df_w = pd.read_excel(io=path, sheet_name='Warehouses')         #reads the excel table Warehouses
         warehouses = df_w.to_dict('records')                   #and transforms it into a Panda dataframe
         for w in warehouses:                                   #puts longitude and latitude together in a numpy array 'location'
             location = np.array([w['Latitude'],w['Longitude']])
@@ -1055,7 +1054,7 @@ def excel_to_pb(path,nbr_tours=1):
             w['fixed_cost'] = w.pop('Fixed Cost')
             
     
-        df_s = pd.read_excel(io=p, sheet_name='Schools')
+        df_s = pd.read_excel(io=path, sheet_name='Schools')
         schools = df_s.to_dict('records')
         for m,s in enumerate(schools):                                      #puts longitude and latitude together in a numpy array 'location'
             location = np.array([s['Latitude'],s['Longitude']])
@@ -1071,10 +1070,9 @@ def excel_to_pb(path,nbr_tours=1):
             del s['Total Sum of Commodities']
             del s['Consumption per day in mt']
             
-        df_v = pd.read_excel(io=p, sheet_name='VehicleFleet')
+        df_v = pd.read_excel(io=path, sheet_name='VehicleFleet')
         vehicles = df_v.to_dict('records') # list of dictionaries of the form {'Warehouse':...,'Plate Nr':....,'Make':...,'Model':....,'Capacity in MT':....}
-        order = np.argsort(-np.array([v['Capacity in MT'] for v in vehicles]))
-        vehicles.sort(key = order)
+        vehicles.sort(key = lambda v : v['Capacity in MT'],reverse = True)
         
 
         
