@@ -2,24 +2,36 @@
 import sys
 sys.path.append('../')
 from ISI import excel_to_pb, Matheuristic, Meta_param, Problem, cluster_fusing
-
 from os.path import expanduser as ospath
 
-file = ospath("~/Desktop/GitHub/IRP-framework/Data/Burundi final v2.xlsx")
+
+t_load = 0.5
+time_step = 2
+cooling = 0.2
+T = 4
+H = 2
+t_virt = 1
+
+param = Meta_param(seed=1)
+param.tau_start = 3.
+param.tau_end = 1.
+param.cooling = cooling
+
+
+
+
+file = ospath("~/Desktop/GitHub/IRP-framework/Data/Burundi final v2.xlsx")   # leo
+file = ospath("~/Desktop/GitHub/IRP-framework/Data/Burundi final v2.xlsx")   # chris
 
 schools, warehouses, Q1, V_number, makes = excel_to_pb(file,nbr_tours=1)
 
 problem_global = Problem(Schools = schools, Warehouses = warehouses,
-                                T = 4, Q1 = Q1, Q2 = 20, v = 40,
-                                t_load = 0.5, c_per_km = 1, Tmax = 10, V_number = V_number,
-                                central = None, makes = makes, H=2, t_virt = 1)
+                                T = T, Q1 = Q1, Q2 = 20, v = 40,
+                                t_load = t_load, c_per_km = 1, Tmax = 10, V_number = V_number,
+                                central = None, makes = makes, H=H, t_virt = t_virt)
 
-problem_global = problem_global.time_defuse(2)
+problem_global = problem_global.time_defuse(time_step)
 problems = problem_global.clustering()
-param = Meta_param(seed=1)
-param.tau_start = 3.
-param.tau_end = 1.
-param.cooling = 0.2
 solutions = []
 for counter, pr in enumerate(problems):
     heuristic = Matheuristic(pr,param=param)

@@ -217,8 +217,20 @@ class Problem :
       
         return problems 
 
-    
+    def final_solver(self, time_step, plot_cluster = True, info = False, folder="solution"):
+        self = self.time_defuse(time_step)
+        problems = self.clustering()
+        solutions = []
+        for counter, pr in enumerate(problems):
+            print('Starting to compute cluster {} of {}! (Belonging to WH {})'.format(counter + 1, len(problems), pr.Warehouses[-1]['name']))
+            heuristic = Matheuristic(pr,param=param)
+            heuristic.algo2(plot_final=plot_cluster,info=info, file = folder+"/cluster %i.html" % (counter+1) )
+            solutions.append(heuristic.solution_best)
+            print('Cluster {} of {} computed!'.format(counter + 1, len(problems)))
 
+        solution = cluster_fusing(solutions,problem_global)
+        solution.file = folder+"/global.html"
+        print(solution)
 
 
 
@@ -1001,7 +1013,6 @@ def cluster_fusing(solutions, problem_global):
         Wh_names = [w["name"] for w in problem_global.Warehouses]
 
 
-
         solution = Solution(problem_global)
 
         
@@ -1009,10 +1020,6 @@ def cluster_fusing(solutions, problem_global):
         for sol in solutions:
             S_ind = [S_names.index(s["name"]) for s in sol.problem.Schools]
             Wh_ind = [Wh_names.index(w["name"]) for w in sol.problem.Warehouses]
-
-            
-
-
 
             solution.X[:,Wh_ind] += sol.X
             q = solution.q[:,Wh_ind]
@@ -1100,3 +1107,5 @@ def excel_to_pb(path,nbr_tours=1):
 
         return schools, warehouses, Q1, V_number, makes
         
+
+
