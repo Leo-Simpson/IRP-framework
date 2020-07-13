@@ -5,7 +5,7 @@ from ISI import excel_to_pb, Matheuristic, Meta_param, Problem, cluster_fusing
 from os.path import expanduser as ospath
 
 
-t_load = 0.5
+t_load = 0.2
 time_step = 2
 cooling = 0.2
 T = 4
