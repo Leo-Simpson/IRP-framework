@@ -217,7 +217,7 @@ class Problem :
       
         return problems 
 
-    def final_solver(self, time_step, plot_cluster = True, info = False, folder="solution"):
+    def final_solver(self, param, time_step=1, plot_cluster = True, info = False, folder="solution"):
         self = self.time_defuse(time_step)
         problems = self.clustering()
         solutions = []

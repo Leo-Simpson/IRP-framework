@@ -18,8 +18,6 @@ param.tau_end = 1.
 param.cooling = cooling
 
 
-
-
 file = "../Data/Burundi final v2.xlsx"
 
 schools, warehouses, Q1, V_number, makes = excel_to_pb(file,nbr_tours=1)
@@ -29,16 +27,5 @@ problem_global = Problem(Schools = schools, Warehouses = warehouses,
                                 t_load = t_load, c_per_km = 1, Tmax = 10, V_number = V_number,
                                 central = None, makes = makes, H=H, t_virt = t_virt)
 
-problem_global = problem_global.time_defuse(time_step)
-problems = problem_global.clustering()
-solutions = []
-for counter, pr in enumerate(problems):
-    heuristic = Matheuristic(pr,param=param)
-    heuristic.algo2(plot_final=True, file = "solution/cluster %i.html" % (counter+1) )
-    solutions.append(heuristic.solution_best)
-    print('Cluster {} of {} computed!'.format(counter + 1, len(problems)))
-
-solution = cluster_fusing(solutions,problem_global)
-solution.file = "solution/global.html"
-print(solution)
+problem_global.final_solver(param,time_step=time_step)
             
