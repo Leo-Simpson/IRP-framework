@@ -10,9 +10,9 @@ file = ospath("~/Desktop/GitHub/IRP-framework/Data/Burundi final v2.xlsx")
 schools, warehouses, Q1, V_number, makes = excel_to_pb(file,nbr_tours=1)
 
 problem_global = Problem(Schools = schools, Warehouses = warehouses,
-                                T = 2, Q1 = Q1, Q2 = 20, v = 40,
+                                T = 4, Q1 = Q1, Q2 = 20, v = 40,
                                 t_load = 0.5, c_per_km = 1, Tmax = 10, V_number = V_number,
-                                central = None, makes = makes, H=1)
+                                central = None, makes = makes, H=2, t_virt = 1)
 
 problem_global = problem_global.time_defuse(2)
 problems = problem_global.clustering()

@@ -127,6 +127,7 @@ class Problem :
         # then change time horizon : 
         problem.T = ceil(problem.T/time_step)
         problem.H = ceil(problem.H/time_step)
+        problem.t_virt = ceil(problem.t_virt/time_step)
 
         # then change the consumption and the prices 
         for s in problem.Schools : 
@@ -145,6 +146,7 @@ class Problem :
         # then change time horizon : 
         problem.T = ceil(problem.T*time_step)
         problem.H = ceil(problem.H*time_step)
+        problem.t_virt = ceil(problem.t_virt*time_step)
 
 
         # then change the consumption and the prices 
