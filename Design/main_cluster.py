@@ -12,7 +12,6 @@ import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import *
 import pandas as pd
-#from scipy.spatial import distance_matrix, distance
 import numpy as np
 from copy import deepcopy
 
@@ -29,22 +28,13 @@ class Window(QtWidgets.QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.ui.browseButton_main.clicked.connect(self.pushButton_handler_main)
-        # self.ui.browseButton_capac.clicked.connect(self.pushButton_handler_capac)
-        # self.ui.browseButton_cons.clicked.connect(self.pushButton_handler_cons)
         self.ui.pushButton_opt.clicked.connect(self.pushButton_handler_opt)
+        
         
     def pushButton_handler_main(self):
         self.p = self.get_path()
-        self.ui.lineEdit_main.setText(self.p)             # writes path into the lineEdit
-    
-    
-    # def pushButton_handler_capac(self):
-    #     self.write_path_capac()
-    
-    
-    # def pushButton_handler_cons(self):
-    #     self.write_path_cons()
-    
+        self.ui.lineEdit_main.setText(self.p)             # writes path into the lineEdit    
+        
         
     def pushButton_handler_opt(self):
         self.read_from_excel(self.p)
@@ -54,29 +44,11 @@ class Window(QtWidgets.QMainWindow):
         # self.close()
         
         
-        
     def read_from_excel(self, path):
         self.number_vehicles_used = self.ui.spinBox_veh_used.value()
         self.schools, self.warehouses,self.Q1_arr, self.V_number_input, self.makes = excel_to_pb(self.p, nbr_tours=self.number_vehicles_used)
-        
-        
     
-    # def write_path_capac(self):
-    #     p = self.get_path()
-    #     print(p)
-    #     self.ui.lineEdit_capac.setText(p)
-    #     df = pd.read_excel(p)
-    #     print(df)
-    
-    
-    # def write_path_cons(self):
-    #     p = self.get_path()
-    #     print(p)
-    #     self.ui.lineEdit_cons.setText(p)
-    #     df = pd.read_excel(p)
-    #     print(df)
-    
-          
+         
     def get_path(self):
         #opens the file dialog and returns the path's name
         filename = QFileDialog.getOpenFileName()
@@ -118,8 +90,6 @@ class Window(QtWidgets.QMainWindow):
                     self.Q1_arr_ext = np.concatenate((self.Q1_arr, zero_mat), axis = 1)
                     self.Q1 = np.concatenate((self.Q1_central, self.Q1_arr_ext), axis = 0)
                     
-                    
-              
         else: 
             if self.ui.checkBox_central.isChecked():
                 self.central = None
@@ -146,10 +116,7 @@ class Window(QtWidgets.QMainWindow):
                     self.Q1_central = np.ones((1,self.K_central),dtype=float)*self.Q2
                     self.Q1_arr_ext = np.concatenate((self.Q1_arr, zero_mat), axis = 1)
                     self.Q1 = np.concatenate((self.Q1_central, self.Q1_arr_ext), axis = 0)
-        
-        
-        
-        
+             
     
     def solveModel(self):
         # connects the inputs with our ISI model
@@ -157,13 +124,11 @@ class Window(QtWidgets.QMainWindow):
             print('No file inserted. Could not optimize!')
         else:
             # and here we set up our model
-
             problem_global = Problem(Schools = self.schools, Warehouses = self.warehouses,
                                 T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v,
                                 t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, V_number = self.V_number,
                                 central = self.central, makes = self.makes)
 
-            
             param = Meta_param(seed=1)
             param.tau_start = 3.
             param.tau_end = 1.
