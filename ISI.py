@@ -1079,12 +1079,12 @@ def excel_to_pb(path,nbr_tours=1):
             s['name'] = s.pop('Name_ID') + ' ' + str(m)
             s['lower'] = s.pop('Lower')
             s['initial'] = s.pop('Initial')
-            s['consumption'] = s.pop('Consumption per week in mt')
+            s['consumption'] = s.pop('Consumption per week in MT')
             s['storage_cost'] = s.pop('Storage Cost')
             s['capacity'] = s.pop('Capacity')
             del s['Total Sum of Beneficiaries']
             del s['Total Sum of Commodities']
-            del s['Consumption per day in mt']
+            del s['Consumption per day in MT']
             
         df_v = pd.read_excel(io=path, sheet_name='VehicleFleet')
         vehicles = df_v.to_dict('records') # list of dictionaries of the form {'Warehouse':...,'Plate Nr':....,'Make':...,'Model':....,'Capacity in MT':....}
