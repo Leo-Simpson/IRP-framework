@@ -217,20 +217,30 @@ class Problem :
       
         return problems 
 
-    def final_solver(self, param, time_step=1, plot_cluster = True, info = False, folder="solution"):
+    def final_solver(self, param, time_step=1, plot_cluster = True, info = False, folder="solution", comp_small_cl = False, return_var = False):
         self = self.time_fuse(time_step)
         problems = self.clustering()
         solutions = []
+        if return_var:
+            heur = []
         for counter, pr in enumerate(problems):
-            print('Starting to compute cluster {} of {}! (Belonging to WH {})'.format(counter + 1, len(problems), pr.Warehouses[-1]['name']))
-            heuristic = Matheuristic(pr,param=param)
-            heuristic.algo2(plot_final=plot_cluster,info=info, file = folder+"/cluster %i.html" % (counter+1) )
-            solutions.append(heuristic.solution_best)
-            print('Cluster {} of {} computed!'.format(counter + 1, len(problems)))
+            if not comp_small_cl or len(pr.Schools) <= 55:
+                print('Starting to compute cluster {} of {}! (Belonging to WH {})'.format(counter + 1, len(problems), pr.Warehouses[-1]['name']))
+                heuristic = Matheuristic(pr,param=param)
+                heuristic.algo2(plot_final=plot_cluster,info=info, file = folder+"/cluster %i.html" % (counter+1) )
+                solutions.append(heuristic.solution_best)
+                if return_var:
+                    heur.append(heuristic)
+                print('Cluster {} of {} computed!'.format(counter + 1, len(problems)))
+            else:
+                print('Skipping cluster {} of {} of size {}! (Belonging to WH {})'.format(counter + 1, len(problems), len(pr.Schools),pr.Warehouses[-1]['name']))
 
         solution = cluster_fusing(solutions,self)
         solution.file = folder+"/global.html"
-        print(solution)
+        if return_var:
+            return heur
+        else:
+            print(solution)
 
 
 
