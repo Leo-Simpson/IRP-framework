@@ -98,17 +98,17 @@ def furthest_customer(solution, rho):
         candidates[t,n,k] -= 1
     
 def rand_insert_rho(solution, rho):    
-    candidates = ~np.any(solution.Y, axis = (1,2))  # ~ is the negation of a boolean array
+    candidates = ~np.any(solution.Y[1:], axis = (1,2))  # ~ is the negation of a boolean array
     for i in range( min(rho,np.sum(candidates)) ):
         t, m = random.choice(np.transpose(np.nonzero(candidates)))
         candidates[t,m] -= 1
-        n = random.choice(np.nonzero(solution.Cl[:,m])[0])
+        n = random.choice(np.nonzero(solution.Cl[:,m] & (solution.V_number>=1) )[0])
         k = random.choice(np.nonzero(solution.V_num_array()[n,:])[0])
         solution.Y[t,n,k,m] = 1
         solution.r[t][n][k],_ = solution.cheapest_school_insert(t,n,k,m)
 
 def assign_to_nearest_plant(solution, rho):
-    candidates = ~np.any(solution.Y, axis = (1,2))  # ~ is the negation of a boolean array
+    candidates = ~np.any(solution.Y[1:], axis = (1,2))  # ~ is the negation of a boolean array
     for i in range( min(rho,np.sum(candidates)) ):
         t, m = random.choice(np.transpose(np.nonzero(candidates)))
         allowed_plants = [i for i in range(solution.N) if solution.Cl[i,m] == 1]
@@ -125,7 +125,7 @@ def assign_to_nearest_plant(solution, rho):
         solution.r[t][nearest_plant][index] = route
     
 def insert_best_rho(solution, rho):
-    candidates = ~np.any(solution.Y, axis = (1,2))   # ~ is the negation of a boolean array
+    candidates = ~np.any(solution.Y[1:], axis = (1,2))   # ~ is the negation of a boolean array
     eliminate = np.transpose(np.where(np.any(solution.Y, axis = (1,2))))
     for t,m in eliminate:
         solution.b[t,:,:,m] = sys.maxsize
@@ -151,8 +151,8 @@ def insert_best_rho(solution, rho):
         
     
 def shaw_insertion(solution, rho): 
-    period = np.random.randint(solution.T)
-    not_served = np.where(np.sum(solution.Y[period,:,:,:], axis = (0,1)) == 0)[0]
+    period = np.random.randint(1,solution.T)
+    not_served = np.where(~np.any(solution.Y[period], axis = (0,1)))[0]
     if len(not_served) > 0:
         (index, choice) = random.choice(list(enumerate(not_served)))
         dist_to_all = solution.problem.D[np.ix_([choice + solution.N],[m  + solution.N for m in range(solution.M) if m != choice])][0]
