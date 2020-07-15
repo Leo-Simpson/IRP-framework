@@ -1,3 +1,5 @@
+import sys
+sys.path.append('../')
 import numpy as np
 import numpy.random as rd
 import random
@@ -245,6 +247,34 @@ class Problem :
             return heur
         else:
             print(solution)
+            self.write_in_excel(solution)
+    
+    def write_in_excel(self, solution):
+        # print('Y:')
+        # print(solution.Y)
+        # print('q:')
+        # print(solution.q)
+        # print('X:')
+        # print(solution.X)
+        # print('r:')
+        # print(solution.r)
+        # print('I_s:')
+        # print(solution.I_s)
+        output = {'Timestep': [], 'Warehouse': [], 'Vehicle':[], 'Total quantity': [], 'Route': []}
+        for t in range(solution.T+1):
+            for w in range(solution.N):
+                for k in range(solution.V_number[w]):
+                    if any(solution.Y[t,w,k,:]):
+                        output['Timestep'].append(t)
+                        output['Warehouse'].append(solution.name_warehouses[w])
+                        output['Vehicle'].append(self.makes[w,k])
+                        output['Total quantity'].append(round(self.Q1[w,k]*sum(solution.q[t,w,k,:]),3))
+                        school_index = solution.r[t][w][k]
+                        school_route = []
+                        for i in school_index: school_route.append(solution.name_schools[i-solution.N]+"({})".format(round(self.Q1[w,k]*solution.q[t,w,k,i-solution.N],3)))
+                        output['Route'].append(school_route)
+        do=pd.DataFrame(output, columns = ['Timestep', 'Warehouse', 'Vehicle', 'Total quantity', 'Route'])
+        do.to_excel(r'../Data/Output.xlsx', index = False)
 
     def __repr__(self):
         toprint = " Parameters of the problem : \n \n "
