@@ -82,7 +82,7 @@ class Problem :
         
         else : raise ValueError("K should be an integer, and not a {}".format(type(K)))
         
-        if makes is None : self.makes = np.array([["No name"]*self.K]*N)
+        if makes is None : self.makes = np.array([["No name    "]*self.K]*N)
         else :self.makes = makes # name of the vehicles
         
         self.Q2 = Q2 # capacity of the trucks for warehouses deliveries
@@ -1157,7 +1157,7 @@ def excel_to_pb(path,nbr_tours=1):
 
         V_number = np.array([len(vehicle_list[j]) for j in range(len(warehouses))])
         Q1 = np.zeros((len(warehouses), max(V_number)))
-        makes = np.array([["No name        "]*max(V_number)]*len(warehouses))
+        makes = np.array([["Doesn't exist        "]*max(V_number)]*len(warehouses))
         for n in range(len(warehouses)):
             for k in range(V_number[n]):
                 Q1[n,k] = vehicle_list[n][k]['Capacity in MT']
