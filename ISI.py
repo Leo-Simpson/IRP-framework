@@ -19,7 +19,11 @@ from visu import visu
 
 class Problem :
     #this is the class that contains the data of the problem
-    def __init__(self,Warehouses,Schools,T, Q1, Q2, v, t_load, c_per_km, Tmax, K = None, V_number = None, central = None, central_name = None, D = None, H= None, makes=None, t_virt=None, time_step = 1):
+    def __init__(self,Warehouses,Schools,
+                 Q1, Q2=20, K = None, V_number = None,
+                 T = 1, H=None, t_virt = None, time_step = 1,
+                 v=40, t_load=0.5, c_per_km=10., Tmax=10, 
+                 central = None, central_name = None, makes=None, D = None):
         
         inf = 10000
         if central_name is None : central_name = "CENTRAL"
@@ -102,10 +106,7 @@ class Problem :
             w["dist_central"] = self.D[0,i]
 
         self.time_step = time_step
-
-
-
-       
+      
     def define_arrays(self):
         self.I_s_init  =  np.array([s["initial"] for s in self.Schools])                 # initial inventory of school
         self.U_s       =  np.array([s["capacity"] for s in self.Schools])                # capactiy upper bound school
@@ -120,37 +121,35 @@ class Problem :
         self.to_central=  np.array([w["dist_central"] for w in self.Warehouses])         # distance between the warehouses and the central
 
     def copy(self):
-        problem = Problem(deepcopy(self.Warehouses.copy()),deepcopy(self.Schools),self.T,self.Q1,self.Q2,self.v,self.t_load, self.c_per_km,self.Tmax,V_number= self.V_number.copy(),D=self.D, H=self.H, makes = self.makes)
+        problem = Problem(deepcopy(self.Warehouses.copy()),deepcopy(self.Schools),
+                            Q1=self.Q1.copy(),Q2=self.Q2, V_number= self.V_number.copy(),
+                            T=self.T, H=self.H, t_virt = self.t_virt, time_step = self.time_step,
+                            v=self.v,t_load=self.t_load, c_per_km=self.c_per_km,Tmax=self.Tmax,
+                            makes = self.makes, D=self.D)
+
         problem.define_arrays()
         return problem
 
-    def time_fuse(self,time_step):
-        # first copy the problem
-        problem = self.copy()
-
+    def time_fuse(self,time_step=None):
+        if time_step is None : time_step = self.time_step
         # then change time horizon : 
-        problem.T = ceil(problem.T/time_step)
-        problem.H = ceil(problem.H/time_step)
-        problem.t_virt = ceil(problem.t_virt/time_step)
+        self.T = ceil(self.T/time_step)
+        self.H = ceil(self.H/time_step)
+        self.t_virt = ceil(self.t_virt/time_step)
 
         # then change the consumption and the prices 
-        for s in problem.Schools : 
+        for s in self.Schools : 
             s['consumption']  =  s['consumption'] * time_step
             s['storage_cost'] = s['storage_cost'] * time_step
 
         # then redifine the arrays 
-        problem.define_arrays()
-
-        return problem
+        self.define_arrays()
 
     def time_defuse(self,time_step) : 
-        # first copy the problem
-        problem = self.copy()
-
         # then change time horizon : 
-        problem.T = ceil(problem.T*time_step)
-        problem.H = ceil(problem.H*time_step)
-        problem.t_virt = ceil(problem.t_virt*time_step)
+        self.T = ceil(self.T*time_step)
+        self.H = ceil(self.H*time_step)
+        self.t_virt = ceil(self.t_virt*time_step)
 
 
         # then change the consumption and the prices 
@@ -159,9 +158,14 @@ class Problem :
             s['storage_cost'] =  s['storage_cost'] / time_step
 
         # then redifine the arrays 
-        problem.define_arrays()
+        self.define_arrays()
 
-        return problem
+    def augment_v(self,nbr=1):
+        self.V_number = self.V_number*nbr
+        self.K = self.K *nbr
+        self.Q1 = np.repeat(self.Q1,nbr,axis=1)
+
+
 
     def clustering(self):
         
@@ -172,7 +176,7 @@ class Problem :
         N = len(self.Warehouses)-1     #determine best amount of clusters
         best_score = 0
         for k_temp in range(max(2,N-3),N+4):
-            gmm_class = GaussianMixture(k_temp)     #compute clustering
+            gmm_class = GaussianMixture(k_temp,random_state=1)     #compute clustering
             gmm_class.fit(X)
             pred = gmm_class.predict(X)
             score = silhouette_score(X, pred, metric='euclidean')
@@ -215,14 +219,17 @@ class Problem :
 
     
             problems.append(  Problem(wh_div[i], schools_div[i],
-                                         self.T, np.array(q1_div[i]), self.Q2, self.v, self.t_load, self.c_per_km, self.Tmax, 
-                                         V_number = np.array(v_num_div[i]),makes = np.array(makes_div[i]),central=central,central_name=central_name, H =self.H )   )
+                                    Q1 = np.array(q1_div[i]), Q2 = self.Q2,V_number = np.array(v_num_div[i]),
+                                    T=self.T, H = self.H, t_virt = self.t_virt, time_step=self.time_step,
+                                    v=self.v, t_load=self.t_load, c_per_km=self.c_per_km, Tmax=self.Tmax, 
+                                    makes = np.array(makes_div[i]),central=central,central_name=central_name, D=self.D)   )
                 
+
       
         return problems 
 
     def final_solver(self, param, time_step=1, plot_cluster = True, info = False, folder="solution", comp_small_cl = False, return_var = False):
-        self = self.time_fuse(time_step)
+        self.time_fuse(time_step)
         problems = self.clustering()
         solutions = []
         if return_var:
@@ -247,25 +254,40 @@ class Problem :
             print(solution)
 
     def __repr__(self):
-        toprint = " Parameters of the problem : \n \n "
+        toprint = "Parameters of the problem : \n"
 
-        toprint += "For iterations : \n "
-        toprint += "    Length of segments (delta) : {} , \n ".format(self.Delta)
-        tau_iterations = int(np.log(self.tau_end / self.tau_start) / np.log(self.cooling))
-        toprint += "    Tau (the temperature for the simulated annealing) begins at {}, finishes at {} and is cooled by {} --> {} steps , \n ".format(self.tau_start, self.tau_end, self.cooling, tau_iterations)
+        toprint += "         Number of time steps : {} \n".format(self.T)
+        toprint += "         Number of schools : {} \n".format(len(self.Schools))
+        toprint += "         Number of warehouses : {} \n".format(len(self.Warehouses))
+        toprint+= "          Name of the warehouses : {} \n".format([ w["name"] for w in self.Warehouses  ])
+
+        toprint += "   Parameters specific to transportation : \n"
+        toprint += "         Number of vehicles in total : {} \n".format(sum(self.V_number))
+        toprint += "         Cost per kilometers done : {} \n".format(self.c_per_km)
+        toprint += "         Capacity of trucks for pickups : {} \n".format(self.Q2)
+        toprint += "         Capacity of trucks are from  : {}  to {}  \n".format(np.max(self.Q1),np.min(self.Q2))
+
+        toprint += "   Parameters specific to time steps : \n"
+        toprint += "         Number of time steps : {} \n".format(self.T)
+        toprint += "         Length of a time step (in weeks) : {} \n".format(self.time_step)
+        toprint += "         Length of time horizon segment for optimization (H) : {} \n".format(self.H)
+        toprint += "         Number of virtual time steps between segments : {} \n".format(self.t_virt)
+
+        toprint += "  Duration constraint : \n"
+        toprint += "         Maximum time spending in a tour : {} \n".format(self.Tmax)
+        toprint += "         Loading time at each school : {} \n".format(self.t_load)
+        toprint += "         Speed of vehicules : {} \n".format(self.v)
+        toprint += "         Number of virtual time steps between segments : {} \n".format(self.t_virt)
+
+
+
         
-        toprint += " \n "
+        T,self.T = self.T, 0
+        sol = Solution(self)
+        sol.visualization().show()
+        self.T = T
 
-        toprint += "Inside algorithm's parameters : \n "
-        toprint += "    Bounds of epsilon  : {} , \n ".format(self.epsilon_bound)
-        toprint += "    For randomizing G (ksi) : {} \n".format(self.ksi)
-
-        toprint += " \n "
-
-        toprint += "    Operators' parameters : \n "
-        toprint += "    Sigmas for updating the weigths of the operators {}, with reaction factor : {} , \n ".format(self.sigmas, self.reaction_factor)
-        toprint += "    Percentage rho for operators : {} , \n ".format(self.rho_percent)
-        toprint += "    Solver used for the MIP : {} ".format(self.solver)
+        return toprint
 
 
 
@@ -780,13 +802,13 @@ class Meta_param :
         toprint += "For iterations : \n "
         toprint += "    Length of segments (delta) : {} , \n ".format(self.Delta)
         tau_iterations = int(np.log(self.tau_end / self.tau_start) / np.log(self.cooling))
-        toprint += "    Tau (the temperature for the simulated annealing) begins at {}, finishes at {} and is cooled by {} --> {} steps , \n ".format(self.tau_start, self.tau_end, self.cooling, tau_iterations)
+        toprint += "    Tau (the temperature) begins at {}, finishes at {} and is cooled by {} --> {} steps \n ".format(self.tau_start, self.tau_end, self.cooling, tau_iterations)
         
         toprint += " \n "
 
         toprint += "Inside algorithm's parameters : \n "
         toprint += "    Bounds of epsilon  : {} , \n ".format(self.epsilon_bound)
-        toprint += "    For randomizing G (ksi) : {} \n".format(self.ksi)
+        toprint += "    For randomizing G (ksi) : {} \n".format(round(self.ksi,3))
 
         toprint += " \n "
 
@@ -900,9 +922,9 @@ class Matheuristic :
 
 
 
-    def info_operators(self):
+    def info_operators(operators):
         print("\n Scores of operators :  " )
-        for op in self.operators :
+        for op in operators :
             print("w = ",format(op["weight"], '.2f'), " number used = ", op['number_used'], "score = ",op["score"], " name : ", op["name"])
         print("\n")
 
@@ -923,7 +945,7 @@ class Matheuristic :
             op['number_used'] = 0
         
 
-    def algo2(self, info = False, plot = False,plot_final = True, file = "solution.html",penal=10):
+    def algo2(self, info = False, plot = False,plot_final = False, file = "solution.html",penal=10):
         # modified algo :  we don't do line 20, 23, 24
         t0 = time()
         param = self.param
@@ -940,6 +962,13 @@ class Matheuristic :
 
 
         tau, iterations, epsilon = param.tau_start, 0, rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1]  )
+        
+        step = {"Step":0, "Tau":round(tau,2),"Current cost":round(self.solution.cost,1),"Current best cost":round(self.solution_best.cost,1),"Running time" : round(time()-t0,2)}
+        #print("Step : ", 0,"Tau : ",round(tau,2), "Current cost is : ",round(self.solution.cost,1) , "Current best cost is : ", round(self.solution_best.cost,1), "Running time : ",round(time()-t0,2) )
+        #print(step)
+        self.steps = [step]
+        self.operators_infos = []
+        
         while tau > param.tau_end and iterations < param.max_loop : 
             t0_loop = time()
             i = Matheuristic.choose_operator(self.operators)
@@ -978,7 +1007,8 @@ class Matheuristic :
                 
 
             if iterations % param.Delta == param.Delta-1 :
-                self.info_operators()
+                #Matheuristic.info_operators(self.operators)
+                self.operators_infos.append(deepcopy(self.operators))
                 epsilon = rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1])
                 # implement update_weights or is this already done?
                 self.update_weights(param.reaction_factor)
@@ -988,8 +1018,12 @@ class Matheuristic :
             tau = tau*param.cooling
             dt = time()-t0_loop
 
-            print("Step : ", iterations,"Tau : ",round(tau,2), "Current cost is : ",round(self.solution.cost,1) , "Current best cost is : ", round(self.solution_best.cost,1), "Running time : ",round(dt,2) )
-        
+            step = {"Step":iterations, "Tau":round(tau,2),"Current cost":round(self.solution.cost,1),"Current best cost":round(self.solution_best.cost,1),"Running time" : round(dt,2)}
+            #print("Step : ", iterations,"Tau : ",round(tau,2), "Current cost is : ",round(self.solution.cost,1) , "Current best cost is : ", round(self.solution_best.cost,1), "Running time : ",round(dt,2) )
+            #print(step)
+            self.steps.append(step)
+
+
         t1 = time()
         print(" Total algorithm time = {} ".format(round(t1-t0,2)))
         self.solution_best.file = file
@@ -1006,12 +1040,20 @@ class Matheuristic :
             string_running_time += name +"  :  " + str(round(t,2)) + "\n  "
 
         print(string_running_time )
-        print(self.solution_best.informations())
+        #print(self.solution_best.informations())
 
 
 
 
+    def print_ope(self):
+        for i,operators in enumerate(self.operators_infos) : 
+            print("Segment of time steps number %i"%i)
+            Matheuristic.info_operators(operators)
+            print(" ")
 
+    def print_steps(self):
+        for step in self.steps:
+            print(step)
 
 
 
