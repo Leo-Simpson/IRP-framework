@@ -46,7 +46,7 @@ class Window(QtWidgets.QMainWindow):
         
     def read_from_excel(self, path):
         self.number_vehicles_used = self.ui.spinBox_veh_used.value()
-        self.schools, self.warehouses,self.Q1_arr, self.V_number_input, self.makes = excel_to_pb(self.p, nbr_tours=self.number_vehicles_used)
+        self.schools, self.warehouses,self.Q1_arr, self.V_number_input, self.makes_input = excel_to_pb(self.p, nbr_tours=self.number_vehicles_used)
     
          
     def get_path(self):
@@ -70,65 +70,87 @@ class Window(QtWidgets.QMainWindow):
             self.K = None
             if self.ui.checkBox_central.isChecked():
                 self.V_number = deepcopy(self.V_number_input)
+                self.makes = deepcopy(self.makes_input)
                 self.central = None
                 self.Q1 = self.Q1_arr
                 
             else: 
                 self.V_number = deepcopy(self.V_number_input)
+                self.makes = deepcopy(self.makes_input)
                 self.central = np.array([self.ui.doubleSpinBox_cw1.value(), self.ui.doubleSpinBox_cw2.value()])
-                self.K_central = self.ui.spinBox_vehicles_central.value()
+                self.K_central = self.ui.spinBox_vehicles_central.value()*self.number_vehicles_used
                 self.V_number = np.concatenate(([self.K_central], self.V_number), axis = 0)
+                self.K_max = max(self.V_number_input)
                 
                 if self.K_central <= self.K_max: 
                     self.Q1_central = np.zeros((1,self.K_max))
-                    for i in range(self.K_central): self.Q1_central[0][i] = self.Q2
+                    makes_central = np.array([["Doesn't exist        "]*self.K_max]*1)
+                    for i in range(self.K_central): 
+                        self.Q1_central[0][i] = self.Q2
+                        makes_central[0][i] = "Vehicle of central"
                     self.Q1 = np.concatenate((self.Q1_central, self.Q1_arr),axis = 0)
+                    self.makes = np.concatenate((makes_central, self.makes), axis = 0)
                 else: 
                     diff = self.K_central - self.K_max
                     zero_mat = np.zeros((len(self.warehouses), diff))
                     self.Q1_central = np.ones((1,self.K_central),dtype=float)*self.Q2
                     self.Q1_arr_ext = np.concatenate((self.Q1_arr, zero_mat), axis = 1)
                     self.Q1 = np.concatenate((self.Q1_central, self.Q1_arr_ext), axis = 0)
+                    noname_makes = np.array([["Doesn't exist        "]*diff]*len(self.warehouses))
+                    makes_central = np.array([["Vehicle of central" for i in range(self.K_central)]*1])
+                    makes_ext = np.concatenate((self.makes, noname_makes), axis=1)
+                    self.makes = np.concatenate((makes_central, makes_ext), axis=0)
+                    
                     
         else: 
             if self.ui.checkBox_central.isChecked():
                 self.central = None
-                self.K = self.ui.spinBox_vehicles_wh.value()
+                self.K = self.ui.spinBox_vehicles_wh.value()*self.number_vehicles_used
                 self.Q1 = self.ui.spinBox_Q1.value()
                 self.V_number = None
+                self.makes = None
             else: 
                 self.K = None
                 self.central = np.array([self.ui.doubleSpinBox_cw1.value(), self.ui.doubleSpinBox_cw2.value()])
-                self.K_central = self.ui.spinBox_vehicles_central.value()
-                K = self.ui.spinBox_vehicles_wh.value()
+                self.K_central = self.ui.spinBox_vehicles_central.value()*self.number_vehicles_used
+                K = self.ui.spinBox_vehicles_wh.value()*self.number_vehicles_used
                 Q1_value = self.ui.spinBox_Q1.value()
                 self.V_number = np.array([K for i in range(len(self.warehouses))])
                 self.V_number = np.concatenate(([self.K_central], self.V_number), axis = 0)
                 self.Q1_arr = np.ones((len(self.warehouses),K),dtype=float)*Q1_value
+                makes = np.array([["No name    "]*K]*len(self.warehouses))
                 
                 if self.K_central <= K: 
                     self.Q1_central = np.zeros((1,K))
-                    for i in range(self.K_central): self.Q1_central[0][i] = self.Q2
+                    makes_central = np.array([["Doesn't exist        "]*K]*1)
+                    for i in range(self.K_central): 
+                        self.Q1_central[0][i] = self.Q2
+                        makes_central[0][i] = "Vehicle of central"
                     self.Q1 = np.concatenate((self.Q1_central, self.Q1_arr),axis = 0)
+                    self.makes = np.concatenate((makes_central, makes), axis = 0)
                 else: 
                     diff = self.K_central - K
                     zero_mat = np.zeros((len(self.warehouses), diff))
                     self.Q1_central = np.ones((1,self.K_central),dtype=float)*self.Q2
                     self.Q1_arr_ext = np.concatenate((self.Q1_arr, zero_mat), axis = 1)
                     self.Q1 = np.concatenate((self.Q1_central, self.Q1_arr_ext), axis = 0)
+                    noname_makes = np.array([["Doesn't exist        "]*diff]*len(self.warehouses))
+                    makes_central = np.array([["Vehicle of central" for i in range(self.K_central)]*1])
+                    makes_ext = np.concatenate((makes, noname_makes), axis=1)
+                    self.makes = np.concatenate((makes_central, makes_ext), axis=0)
              
     
     def solveModel(self):
         # connects the inputs with our ISI model
         if self.ui.lineEdit_main.text()=='':
-            print('No file inserted. Could not optimize!')
+            raise ValueError('No file inserted. Could not optimize!')
         else:
             # and here we set up our model
             problem_global = Problem(Schools = self.schools, Warehouses = self.warehouses,
                                 T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v,
                                 t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, V_number = self.V_number,
                                 central = self.central, makes = self.makes)
-
+          
             param = Meta_param(seed=1)
             param.tau_start = 3.
             param.tau_end = 1.
