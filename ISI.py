@@ -19,7 +19,7 @@ from visu import visu
 
 class Problem :
     #this is the class that contains the data of the problem
-    def __init__(self,Warehouses,Schools,T, Q1, Q2, v, t_load, c_per_km, Tmax, K = None, V_number = None, central = None, central_name = None, D = None, H= None, makes=None, t_virt=None):
+    def __init__(self,Warehouses,Schools,T, Q1, Q2, v, t_load, c_per_km, Tmax, K = None, V_number = None, central = None, central_name = None, D = None, H= None, makes=None, t_virt=None, time_step = 1):
         
         inf = 10000
         if central_name is None : central_name = "CENTRAL"
@@ -100,6 +100,10 @@ class Problem :
 
         for i,w in enumerate(self.Warehouses) : 
             w["dist_central"] = self.D[0,i]
+
+        self.time_step = time_step
+
+
 
        
     def define_arrays(self):
@@ -242,7 +246,26 @@ class Problem :
         else:
             print(solution)
 
+    def __repr__(self):
+        toprint = " Parameters of the problem : \n \n "
 
+        toprint += "For iterations : \n "
+        toprint += "    Length of segments (delta) : {} , \n ".format(self.Delta)
+        tau_iterations = int(np.log(self.tau_end / self.tau_start) / np.log(self.cooling))
+        toprint += "    Tau (the temperature for the simulated annealing) begins at {}, finishes at {} and is cooled by {} --> {} steps , \n ".format(self.tau_start, self.tau_end, self.cooling, tau_iterations)
+        
+        toprint += " \n "
+
+        toprint += "Inside algorithm's parameters : \n "
+        toprint += "    Bounds of epsilon  : {} , \n ".format(self.epsilon_bound)
+        toprint += "    For randomizing G (ksi) : {} \n".format(self.ksi)
+
+        toprint += " \n "
+
+        toprint += "    Operators' parameters : \n "
+        toprint += "    Sigmas for updating the weigths of the operators {}, with reaction factor : {} , \n ".format(self.sigmas, self.reaction_factor)
+        toprint += "    Percentage rho for operators : {} , \n ".format(self.rho_percent)
+        toprint += "    Solver used for the MIP : {} ".format(self.solver)
 
 
 
@@ -562,8 +585,8 @@ class Solution :
                     empties = np.where(~vehicle_used[t,n,:])
                     for i in range(len(empties)-1):
                         k1,k2 = empties[i], empties[i+1]
-                        #if problem.Q[k1] == problem.Q[k2]:
-                        ISI_model += plp.lpSum(omega_vars[t,n,k2,m] for m in range(M) if (t,n,k2,m) in set_omega )<= plp.lpSum(omega_vars[t,n,k1,m] for m in range(M) if (t,n,k1,m) in set_omega )
+                        if problem.Q[k1] == problem.Q[k2]:
+                            ISI_model += plp.lpSum(omega_vars[t,n,k2,m] for m in range(M) if (t,n,k2,m) in set_omega )<= plp.lpSum(omega_vars[t,n,k1,m] for m in range(M) if (t,n,k1,m) in set_omega )
 
 
             for k in range(K):
@@ -742,13 +765,39 @@ class Meta_param :
         self.epsilon_bound = (0.05,0.15)
         self.tau_start = 3.
         self.tau_end = 1e-1
-        self.cooling = 0.95
+        self.cooling = 0.9
         self.reaction_factor = 0.8
         self.sigmas = (10,5,2)
         self.ksi = rd.uniform(low=0.1,high=0.2)
-        self.rho_percent = 0.5
+        self.rho_percent = 0.3
         self.max_loop = 100
         self.solver = "CBC"
+
+
+    def __repr__(self):
+        toprint = " Meta parameters of the heurestics : \n \n "
+
+        toprint += "For iterations : \n "
+        toprint += "    Length of segments (delta) : {} , \n ".format(self.Delta)
+        tau_iterations = int(np.log(self.tau_end / self.tau_start) / np.log(self.cooling))
+        toprint += "    Tau (the temperature for the simulated annealing) begins at {}, finishes at {} and is cooled by {} --> {} steps , \n ".format(self.tau_start, self.tau_end, self.cooling, tau_iterations)
+        
+        toprint += " \n "
+
+        toprint += "Inside algorithm's parameters : \n "
+        toprint += "    Bounds of epsilon  : {} , \n ".format(self.epsilon_bound)
+        toprint += "    For randomizing G (ksi) : {} \n".format(self.ksi)
+
+        toprint += " \n "
+
+        toprint += "    Operators' parameters : \n "
+        toprint += "    Sigmas for updating the weigths of the operators {}, with reaction factor : {} , \n ".format(self.sigmas, self.reaction_factor)
+        toprint += "    Percentage rho for operators : {} , \n ".format(self.rho_percent)
+        toprint += "    Solver used for the MIP : {} ".format(self.solver)
+
+        return toprint
+        
+
 
 
 from operators import operators
