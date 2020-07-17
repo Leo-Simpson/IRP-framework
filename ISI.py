@@ -167,6 +167,7 @@ class Problem :
         self.V_number = self.V_number*nbr
         self.K = self.K *nbr
         self.Q1 = np.repeat(self.Q1,nbr,axis=1)
+        self.makes = np.repeat(self.makes,nbr,axis=1)
 
 
 
