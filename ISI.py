@@ -53,8 +53,6 @@ class Problem :
         if H is None : self.H = T
         else : self.H = H
 
-        if t_virt is None : self.t_virt = 1
-        else : self.t_virt = t_virt
         
         if K is None : 
             if V_number is None : raise ValueError("Please put in K or V_number.")
@@ -108,6 +106,9 @@ class Problem :
             w["dist_central"] = self.D[0,i]
 
         self.time_step = time_step
+
+        if t_virt is None : self.t_virt = self.time_step
+        else : self.t_virt = self.time_step
       
     def define_arrays(self):
         self.I_s_init  =  np.array([s["initial"] for s in self.Schools])                 # initial inventory of school
@@ -224,7 +225,7 @@ class Problem :
                                     Q1 = np.array(q1_div[i]), Q2 = self.Q2,V_number = np.array(v_num_div[i]),
                                     T=self.T, H = self.H, t_virt = self.t_virt, time_step=self.time_step,
                                     v=self.v, t_load=self.t_load, c_per_km=self.c_per_km, Tmax=self.Tmax, 
-                                    makes = np.array(makes_div[i]),central=central,central_name=central_name, D=self.D)   )
+                                    makes = np.array(makes_div[i]),central=central,central_name=central_name, D=None)   )
                 
 
       
@@ -379,8 +380,11 @@ class Solution :
             return V_num_shaped_Y
         return V_num_array
 
-    def copy(self):
-        solution = Solution(self.problem,
+    def copy(self, copy_problem=False):
+        if copy_problem : pr = self.problem.copy()
+        else: pr = self.problem
+
+        solution = Solution(pr,
                              Y = np.copy(self.Y),
                              q = np.copy(self.q),
                              X = np.copy(self.X),
@@ -399,7 +403,8 @@ class Solution :
 
         return solution
 
-        
+
+
     def build_Cl(self,radfactor):
         for m in range(self.M):
             dist_vect = self.problem.D[m+self.N][:self.N]
@@ -506,8 +511,8 @@ class Solution :
         self.feasibility = {
                 "Truck constraint" : np.all(np.sum(self.q , axis = 3) <= 1 + tol) and np.all(self.q >=-tol),
                 "Duration constraint" : np.all(self.time_route <=self.problem.Tmax+ tol ),
-                "I_s constraint" : np.all( [ np.all(self.I_s[t]<= self.problem.U_s + tol) and np.all(self.I_s[t]>= self.problem.L_s - tol) for t in range(self.T)]),
-                "I_w constraint" : np.all( [ np.all(self.I_w[t]<= self.problem.U_w + tol) and np.all(self.I_w[t]>= self.problem.L_w - tol) for t in range(self.T)])
+                "I_s constraint" : np.all( [ np.all(self.I_s[t]<= self.problem.U_s + tol) and np.all(self.I_s[t]>= self.problem.L_s - tol) for t in range(self.T+1)]),
+                "I_w constraint" : np.all( [ np.all(self.I_w[t]<= self.problem.U_w + tol) and np.all(self.I_w[t]>= self.problem.L_w - tol) for t in range(self.T+1)])
         }
         #self.feasible = self.feasibility["Truck constraint"] and self.feasibility["I_s constraint"] and self.feasibility["I_s constraint"] and self.feasibility["I_w constraint"]
 
@@ -525,7 +530,7 @@ class Solution :
         
         self.compute_a_and_b()
         self.compute_time_adding()
-        vehicle_used =  np.any(self.Y, axis=3)
+        
         
         # decision variables:
         # q(t,n,k,m): fraction of capacity Q1 of truck k from warehouse m that is delivered to school n at time t
@@ -582,6 +587,7 @@ class Solution :
 
         I_w = {(0,n): problem.I_w_init[n]   for n in range(N) }  # need to see how to change an LpAffineExpression with a constant value
 
+        vehicle_used =  np.any(self.Y, axis=3)
         for t in range (1,T+1): 
             I_s.update(  {(t,m):
                          I_s[t-1,m]
@@ -596,6 +602,24 @@ class Solution :
                          + problem.Q2 * X_vars[t,n]
                          for n in range(N) }  
                         )
+            
+            
+            for n in range(N):                
+                for k in range(K):
+                    # Constraint on the time spending in one tour
+                    # sum( omega*self.time_adding, axis  = 3 ) + self.time_route - sum( delta*self.time_substracting, axis  = 3 )  < Tmax
+                    # expression1 is the upper bound of the tour duration
+                    # expression2 is the lower bound of the tour duration
+                    expression1 = self.time_route[t,n,k] - plp.lpSum(delta_vars[t,n,k,m] * self.time_substract[t,n,k,m] for m in range(M) if (t,n,k,m) in set_delta)
+                    expression2 = expression1 + plp.lpSum(omega_vars[t,n,k,m] for m in range(M) if (t,n,k,m) in set_omega ) * problem.t_load        # to change if t_load depends on the schools
+                    expression1 = expression1 + plp.lpSum(omega_vars[t,n,k,m] * self.time_adding[t,n,k,m] for m in range(M) if (t,n,k,m) in set_omega )
+                    
+                    ISI_model += expression1 <= problem.Tmax + violation_vars[t,n,k]* (sum(self.time_adding[t,n,k])+self.time_route[t,n,k] )
+                    ISI_model += expression2 <= problem.Tmax
+
+                    # constraint on capacity of trucks
+                    ISI_model += plp.lpSum(q_vars[t,n,k,m] for  m in range(M) if (t,n,k,m) in set_q ) <=1
+            
             # constraint 9 in Latex script, respect capacities + min. stock of schools and warehouses
             for m in range(M):
                 # schools: problem.L_s < I_s < problem.U_s
@@ -607,44 +631,21 @@ class Solution :
                 ISI_model += I_w[t,n] <= problem.U_w[n]       #I_w < U_w      # can maybe be omitted 
                 ISI_model += I_w[t,n] >= problem.L_w[n]      #I_w > L_w
 
-
-            for n in range(N):                
-                for k in range(K):
-                    # constraint on capacity of trucks
-                    ISI_model += plp.lpSum(q_vars[t,n,k,m] for  m in range(M) if (t,n,k,m) in set_q ) <=1
-
+                    
 
             for n in range(N):
-                for k in range(K):
-                    # Constraint on the time spending in one tour
-                    # sum( omega*self.time_adding, axis  = 3 ) + self.time_route - sum( delta*self.time_substracting, axis  = 3 )  < Tmax
-                    # expression1 is the upper bound of the tour duration
-                    # expression2 is the lower bound of the tour duration
-                    expression1 = self.time_route[t,n,k]
-                    expression1 = expression1 - plp.lpSum(delta_vars[t,n,k,m] * self.time_substract[t,n,k,m] for m in range(M) if (t,n,k,m) in set_delta)
-                    expression2 = expression1 + plp.lpSum(omega_vars[t,n,k,m] for m in range(M) if (t,n,k,m) in set_omega ) * problem.t_load        # to change if t_load depends on the schools
-                    expression1 = expression1 + plp.lpSum(omega_vars[t,n,k,m] * self.time_adding[t,n,k,m] for m in range(M) if (t,n,k,m) in set_omega )
-                    
-                    
-                    
-                    ISI_model += expression1 <= problem.Tmax + violation_vars[t,n,k]* (sum(self.time_adding[t,n,k])+self.time_route[t,n,k] )
-                    ISI_model += expression2 <= problem.Tmax
-
-
-            for n in range(N):
-                for k in range(K):
                 # constaint for asymetry of the problem in vehicles : if k1 and k2 are initially empty sum(omega, k = k1) <= sum(omega, k=k2)
-                    empties = np.where(~vehicle_used[t,n,:])
-                    for i in range(len(empties)-1):
-                        k1,k2 = empties[i], empties[i+1]
-                        if problem.Q[k1] == problem.Q[k2]:
-                            ISI_model += plp.lpSum(omega_vars[t,n,k2,m] for m in range(M) if (t,n,k2,m) in set_omega )<= plp.lpSum(omega_vars[t,n,k1,m] for m in range(M) if (t,n,k1,m) in set_omega )
+                empties = np.where(~vehicle_used[t,n,:])
+                for i in range(len(empties)-1):
+                    k1,k2 = empties[i], empties[i+1]
+                    if problem.Q[k1] == problem.Q[k2]:
+                        ISI_model += plp.lpSum(omega_vars[t,n,k2,m] for m in range(M) if (t,n,k2,m) in set_omega )<= plp.lpSum(omega_vars[t,n,k1,m] for m in range(M) if (t,n,k1,m) in set_omega )
 
 
-            for k in range(K):
-                #constraint 18: bound on the number of changes comitted by the ISI model
-                #sum(delta+omega, axis = 3) < G
-                ISI_model += plp.lpSum(delta_vars[t,n,k,m] for n in range(N) for m in range(M) if (t,n,k,m) in set_delta ) + plp.lpSum(omega_vars[t,n,k,m] for n in range(N) for m in range(M) if (t,n,k,m) in set_omega ) <= G
+                for k in range(K):
+                    #constraint 18: bound on the number of changes comitted by the ISI model
+                    #sum(delta+omega, axis = 3) < G for all t,n,k
+                    ISI_model += plp.lpSum(delta_vars[t,n,k,m] for m in range(M) if (t,n,k,m) in set_delta ) + plp.lpSum(omega_vars[t,n,k,m] for m in range(M) if (t,n,k,m) in set_omega ) <= G
 
 
         
@@ -654,9 +655,9 @@ class Solution :
 
 
         transport_cost = problem.c_per_km * plp.lpSum( self.b[t,n,k,m] * omega_vars[t,n,k,m] for (t,n,k,m) in set_omega ) - problem.c_per_km * plp.lpSum( self.a[t,n,k,m] * delta_vars[t,n,k,m] for (t,n,k,m) in set_delta )
-        add_cost = plp.lpSum([problem.h_s[m] * I_s[t,m] for t in range(1,T) for m in range(M)]) + problem.c_per_km * plp.lpSum( problem.to_central[n] * X_vars[t,n] for t in range(1,T) for n in range(N) ) * 2
+        add_cost = plp.lpSum([problem.h_s[m] * I_s[t,m] for t in range(1,T+1) for m in range(M)]) + problem.c_per_km * plp.lpSum( problem.to_central[n] * X_vars[t,n] for t in range(1,T+1) for n in range(N) ) * 2
 
-        violation_cost = penalization* plp.lpSum( violation_vars[t,n,k] for t in range(1,T) for n in range(N) for k in range(K)  )
+        violation_cost = penalization* plp.lpSum( violation_vars[t,n,k] for t in range(1,T+1) for n in range(N) for k in range(K)  )
         #objective function
 
 
@@ -727,6 +728,9 @@ class Solution :
 
 
     def ISI_multi_time(self, G,solver="CBC", plot = False ,info=True,total_running_time=None):
+
+        tol = 1e-4
+
         H = self.problem.H
         t_virt = ceil(self.problem.t_virt)
         L = ceil( self.T/H)
@@ -736,18 +740,21 @@ class Solution :
 
         solutions = []
         for l in range(L) : 
-            sol = self.copy()
+            sol = self.copy(copy_problem=True)
             sol.time_cut(Tmin,Tmax, self.T)
-            sol.problem.I_w_init, sol.problem.I_s_init = I_w_init, I_s_init
+            sol.problem.I_w_init, sol.problem.I_s_init = I_w_init[:], I_s_init[:]
             sol.multi_ISI(G,solver = solver, plot = plot, info = info, total_running_time= total_running_time)
-            
             I_w_init, I_s_init = sol.I_w[-1-t_virt], sol.I_s[-1-t_virt]
-            
-            solutions.append(sol)
-            
             Tmin, Tmax = Tmax - t_virt, Tmax+H+t_virt
+            solutions.append(sol)
 
-
+        self.fuse(solutions)
+        self.compute_costs()
+        self.verify_feasibility()
+        
+        
+    def fuse(self,solutions):
+        t_virt = ceil(self.problem.t_virt)
         if t_virt == 0 : 
             self.q[1:] = np.concatenate( [sol.q[1:] for sol in solutions], axis=0  )
             self.X[1:] = np.concatenate( [sol.X[1:] for sol in solutions], axis=0  )
@@ -758,9 +765,6 @@ class Solution :
             self.X[1:] = np.concatenate( [sol.X[1:-t_virt] for sol in solutions]+[solutions[-1].X[-t_virt:]], axis=0  )
             self.Y[1:] = np.concatenate( [sol.Y[1:-t_virt] for sol in solutions]+[solutions[-1].Y[-t_virt:]], axis=0  )
             self.r[1:] = sum(            [sol.r[1:-t_virt] for sol in solutions]+[solutions[-1].r[-t_virt:]], [])
-        self.compute_costs()
-        self.verify_feasibility()
-        
         
 
     def time_cut(self,Tmin,Tmax, T_total):
@@ -871,87 +875,6 @@ class Matheuristic :
 
 
 
-
-    def algo1(self, param, MAXiter = 1000, solver= "CBC"):
-        # here one can do the final matheuristic described in the paper : page 18
-        t0 = time()
-        rd.seed(param.seed)
-
-        M,N,K,T = self.solution.M, self.solution.N, self.solution.K, self.solution.T
-        
-        # initialization (step 2 and 3 of the pseudo code)
-        self.solution.ISI(G = N, solver=solver)
-        running_time = self.solution.running_time.copy()
-
-        self.solution_best = self.solution.copy()
-
-        # line 4 of pseudocode
-        epsilon = rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1]  )
-
-        tau = param.tau_start
-        iterations = 0
-        while tau > param.tau_end and iterations < MAXiter : 
-            
-            # line 6 of pseudocode
-            i = Matheuristic.choose_operator(self.operators)
-            operator = self.operators[i]['function']
-            self.solution_prime = self.solution.copy()
-            operator(self.solution_prime, param.rho)
-            G = N
-            self.solution_prime.ISI(G=G, solver=solver)
-
-            if self.solution_prime.cost < self.solution.cost and self.solution_prime.feasible : # line 7
-                self.solution = self.solution_prime.copy() # line 8
-                G = max(G-1,1)                                  # line 9
-
-                for j in range(param.max_subloop):
-                    self.solution_prime.ISI(G=G, solver=solver)  
-
-                    if self.solution_prime.cost < (1+epsilon)*self.solution.cost and self.solution_prime.feasible: 
-                        if self.solution_prime.cost < self.solution.cost :              # line 11
-                            self.solution = self.solution_prime.copy()              # line 12
-                            G = max(G-1,1)                                              # line 13
-                        else : G = max(int(param.ksi*(N+M)),1)                          # line 14-15
-                                            
-
-                    elif self.solution.cost < (1+epsilon)*self.solution_best.cost and self.solution.feasible:   # line 17 / 23 (deviation from pseudo code : not s'' but s ! )
-                        if self.solution.cost < self.solution_best.cost : #line 17
-                            self.solution_best = self.solution.copy()    # line 18
-                            self.operators[i]['score'] += param.sigmas[0]   # line 19
-                            G = max(G-1,1)                                  # line 20
-                        else :                                              # line 21
-                            self.operators[i]['score'] += param.sigmas[1]   # line 22
-                            G = max(int(param.ksi*(N+M)),1)                 # line 24
-                    
-                    else : 
-                        self.operators[i]['score'] += param.sigmas[1]   # line 22
-                        break
-
-            elif self.solution_prime.cost < self.solution.cost - np.log(rd.random())*tau and self.solution_prime.feasible: # line 27 # choose theta everytime as a new random value or is it a fixed random value?
-                self.solution = self.solution_prime.copy()                         # line 28
-                self.operators[i]['score'] += param.sigmas[2]                             # line 29
-            
-            if iterations % param.Delta == param.Delta-1 :
-                epsilon = rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1])
-                # implement update_weights or is this already done?
-                self.update_weights(param.reaction_factor)
-                self.solution = self.solution_best.copy()
-            iterations += 1
-            tau = tau*param.cooling
-
-            print("Step %i is finished !!" %iterations)
-            print("Current cost is : ", self.solution_best.cost )
-        t1 = time()
-        visualization(self.solution_best)
-        t2 = time()
-        print('Total algorithm time = {} <br> Final visualisation time = {} '.format(round(t1-t0,2),round(t2-t1,2)))
-
-        string_running_time ="Total ISI running times : \n "
-        for name, t in self.running_time.items():
-            string_running_time += name +"  :  " + str(round(t,4)) + "\n  "
-
-
-
     def info_operators(operators):
         print("\n Scores of operators :  " )
         for op in operators :
@@ -975,7 +898,7 @@ class Matheuristic :
             op['number_used'] = 0
         
 
-    def algo2(self, info = False, plot = False,plot_final = False, file = "solution.html",penal=10):
+    def algo2(self, info = False, plot = False,plot_final = False, file = "solution.html",penal=5):
         # modified algo :  we don't do line 20, 23, 24
         t0 = time()
         param = self.param
@@ -987,13 +910,13 @@ class Matheuristic :
         
         self.solution.ISI_multi_time(G = M, solver=param.solver, info=info, total_running_time=self.running_time, plot=plot)
         typical_cost = self.solution.cost
-        self.solution.cost += penal*(1-self.solution.feasible)
+        if not self.solution.feasible :  self.solution.cost = self.solution.cost*penal
         self.solution_best = self.solution.copy()
 
 
         tau, iterations, epsilon = param.tau_start, 0, rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1]  )
         
-        step = {"Step":0, "Tau":round(tau,2),"Current cost":round(self.solution.cost,1),"Current best cost":round(self.solution_best.cost,1),"Running time" : round(time()-t0,2)}
+        step = {"Step":0, "Tau":round(tau,2),"Operator":"None","Current cost":round(self.solution.cost,1),"Current best cost":round(self.solution_best.cost,1),"Running time" : round(time()-t0,2)}
         #print("Step : ", 0,"Tau : ",round(tau,2), "Current cost is : ",round(self.solution.cost,1) , "Current best cost is : ", round(self.solution_best.cost,1), "Running time : ",round(time()-t0,2) )
         #print(step)
         self.steps = [step]
@@ -1008,7 +931,7 @@ class Matheuristic :
             operator(self.solution_prime, param.rho)
             G = M
             self.solution_prime.ISI_multi_time(G=G, solver=param.solver, info=info, total_running_time=self.running_time, plot=plot)
-            self.solution_prime.cost += penal*(1-self.solution.feasible)
+            if not self.solution_prime.feasible :  self.solution_prime.cost = self.solution_prime.cost*penal
 
             amelioration, finish = False, False
             while ( self.solution_prime.cost < (1+epsilon)*self.solution.cost ):
@@ -1022,7 +945,7 @@ class Matheuristic :
                     finish = True
 
                 self.solution_prime.ISI_multi_time(G=G, solver=param.solver, info=info,total_running_time=self.running_time, plot=plot)
-                self.solution_prime.cost += penal*(1-self.solution.feasible)
+                if not self.solution_prime.feasible :  self.solution_prime.cost = self.solution_prime.cost*penal
 
             
             if self.solution.cost < self.solution_best.cost : 
@@ -1040,7 +963,6 @@ class Matheuristic :
                 #Matheuristic.info_operators(self.operators)
                 self.operators_infos.append(deepcopy(self.operators))
                 epsilon = rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1])
-                # implement update_weights or is this already done?
                 self.update_weights(param.reaction_factor)
                 self.solution = self.solution_best.copy()
 
@@ -1048,7 +970,7 @@ class Matheuristic :
             tau = tau*param.cooling
             dt = time()-t0_loop
 
-            step = {"Step":iterations, "Tau":round(tau,2),"Current cost":round(self.solution.cost,1),"Current best cost":round(self.solution_best.cost,1),"Running time" : round(dt,2)}
+            step = {"Step":iterations, "Tau":round(tau,2),"Operator":self.operators[i]["name"],"Current cost":round(self.solution.cost,1),"Current best cost":round(self.solution_best.cost,1),"Running time" : round(dt,2)}
             #print("Step : ", iterations,"Tau : ",round(tau,2), "Current cost is : ",round(self.solution.cost,1) , "Current best cost is : ", round(self.solution_best.cost,1), "Running time : ",round(dt,2) )
             #print(step)
             self.steps.append(step)
@@ -1084,6 +1006,25 @@ class Matheuristic :
     def print_steps(self):
         for step in self.steps:
             print(step)
+
+    def plot_steps(self):
+        I1,I2,BEST,SOL,TEXT = [],[],[],[],[]
+        for step in self.steps:
+            I1.append(step["Step"])
+            I2.append(step["Step"]+0.1)
+            BEST.append(step["Current best cost"])
+            SOL.append(step["Current cost"])
+            TEXT.append("Operator : "+ step["Operator"]+"<br>  Running time : "+str(step["Running time"]))
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=I1,y=BEST,text=TEXT,mode='markers+lines', name='best cost'))
+        fig.add_trace(go.Scatter(x=I2,y=SOL,text=TEXT,mode='markers+lines', name='current cost'))
+
+        fig.show()
+        
+
+
+
 
 
 
@@ -1239,3 +1180,90 @@ def excel_to_pb(path,nbr_tours=1):
         
 
 
+
+
+'''
+
+
+    def algo1(self, param, MAXiter = 1000, solver= "CBC"):
+        # here one can do the final matheuristic described in the paper : page 18
+        t0 = time()
+        rd.seed(param.seed)
+
+        M,N,K,T = self.solution.M, self.solution.N, self.solution.K, self.solution.T
+        
+        # initialization (step 2 and 3 of the pseudo code)
+        self.solution.ISI(G = N, solver=solver)
+        running_time = self.solution.running_time.copy()
+
+        self.solution_best = self.solution.copy()
+
+        # line 4 of pseudocode
+        epsilon = rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1]  )
+
+        tau = param.tau_start
+        iterations = 0
+        while tau > param.tau_end and iterations < MAXiter : 
+            
+            # line 6 of pseudocode
+            i = Matheuristic.choose_operator(self.operators)
+            operator = self.operators[i]['function']
+            self.solution_prime = self.solution.copy()
+            operator(self.solution_prime, param.rho)
+            G = N
+            self.solution_prime.ISI(G=G, solver=solver)
+
+            if self.solution_prime.cost < self.solution.cost and self.solution_prime.feasible : # line 7
+                self.solution = self.solution_prime.copy() # line 8
+                G = max(G-1,1)                                  # line 9
+
+                for j in range(param.max_subloop):
+                    self.solution_prime.ISI(G=G, solver=solver)  
+
+                    if self.solution_prime.cost < (1+epsilon)*self.solution.cost and self.solution_prime.feasible: 
+                        if self.solution_prime.cost < self.solution.cost :              # line 11
+                            self.solution = self.solution_prime.copy()              # line 12
+                            G = max(G-1,1)                                              # line 13
+                        else : G = max(int(param.ksi*(N+M)),1)                          # line 14-15
+                                            
+
+                    elif self.solution.cost < (1+epsilon)*self.solution_best.cost and self.solution.feasible:   # line 17 / 23 (deviation from pseudo code : not s'' but s ! )
+                        if self.solution.cost < self.solution_best.cost : #line 17
+                            self.solution_best = self.solution.copy()    # line 18
+                            self.operators[i]['score'] += param.sigmas[0]   # line 19
+                            G = max(G-1,1)                                  # line 20
+                        else :                                              # line 21
+                            self.operators[i]['score'] += param.sigmas[1]   # line 22
+                            G = max(int(param.ksi*(N+M)),1)                 # line 24
+                    
+                    else : 
+                        self.operators[i]['score'] += param.sigmas[1]   # line 22
+                        break
+
+            elif self.solution_prime.cost < self.solution.cost - np.log(rd.random())*tau and self.solution_prime.feasible: # line 27 # choose theta everytime as a new random value or is it a fixed random value?
+                self.solution = self.solution_prime.copy()                         # line 28
+                self.operators[i]['score'] += param.sigmas[2]                             # line 29
+            
+            if iterations % param.Delta == param.Delta-1 :
+                epsilon = rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1])
+                # implement update_weights or is this already done?
+                self.update_weights(param.reaction_factor)
+                self.solution = self.solution_best.copy()
+            iterations += 1
+            tau = tau*param.cooling
+
+            print("Step %i is finished !!" %iterations)
+            print("Current cost is : ", self.solution_best.cost )
+        t1 = time()
+        visualization(self.solution_best)
+        t2 = time()
+        print('Total algorithm time = {} <br> Final visualisation time = {} '.format(round(t1-t0,2),round(t2-t1,2)))
+
+        string_running_time ="Total ISI running times : \n "
+        for name, t in self.running_time.items():
+            string_running_time += name +"  :  " + str(round(t,4)) + "\n  "
+
+
+
+
+'''
