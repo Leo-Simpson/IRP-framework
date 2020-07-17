@@ -723,9 +723,9 @@ class Solution :
             else : 
                 break
         
-        if not self.feasibility["Duration constraint"] : 
+        #if not self.feasibility["Duration constraint"] : 
             #raise ValueError("Duration constraint looks infeasible")
-            print("Duration constraint looks infeasible")
+            #print("Duration constraint looks infeasible")
 
 
     def ISI_multi_time(self, G,solver="CBC", plot = False ,info=True,total_running_time=None):
@@ -795,12 +795,18 @@ class Solution :
     def informations(self):
         self.verify_feasibility()
         string_running_time = "Running time : \n  "
-        string_f = "Constraints fulfilled : \n  "
+        
         for name, t in self.running_time.items():
             string_running_time += name +"  :  " + str(round(t,4)) + "\n  "
 
-        for name, boole in self.feasibility.items():
-            string_f += name +"  :  " + str(boole) + "\n  "
+        if not self.feasible : 
+            string_f = "Constraints fulfilled : \n  "
+            for name, boole in self.feasibility.items():
+                string_f += name +"  :  " + str(boole) + "\n  "
+        else : 
+            string_f = "All constraints are respected. "
+
+
 
         return("Solution with a total cost of {} ".format(round(self.cost,3))
                 + " \n "  + string_f
