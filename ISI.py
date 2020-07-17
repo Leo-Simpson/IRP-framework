@@ -903,6 +903,7 @@ class Matheuristic :
         # modified algo :  we don't do line 20, 23, 24
         t0 = time()
         param = self.param
+        rd.seed(param.seed)
         param.rho = max(int(param.rho_percent * self.solution.M),1)
         rd.seed(param.seed)
         self.running_time = { "Define problem" : 0., "Solve problem ":0. , "Compute TSPs" : 0. , "Visualisation" : 0.}
