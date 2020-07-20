@@ -48,10 +48,13 @@ def shaw_removal_greedy(solution, rho):
         schools = route[np.where(route != m + solution.N)[0]]
         dist_from_m = solution.problem.D[np.ix_([m + solution.N],route)][0]
         dist = solution.problem.D[np.ix_(route,route)]
-        min_dist = np.min(dist[dist>0])
-        to_remove = route[np.where(dist_from_m <= 2*min_dist)[0]] - solution.N 
-        solution.Y[t,n,k,to_remove] = 0
-        solution.r[t][n][k] = tsp_tour(np.setdiff1d(route, to_remove + solution.N), n, solution.problem.D)
+        try:
+            min_dist = np.min(dist[dist>0])
+            to_remove = route[np.where(dist_from_m <= 2*min_dist)[0]] - solution.N 
+            solution.Y[t,n,k,to_remove] = 0
+            solution.r[t][n][k] = tsp_tour(np.setdiff1d(route, to_remove + solution.N), n, solution.problem.D)
+        else:
+            pass
     else:
         solution.Y[t,n,k,:] = 0
         solution.r[t][n][k] = []
