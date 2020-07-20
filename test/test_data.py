@@ -6,11 +6,11 @@ from os.path import expanduser as ospath
 
 
 t_load = 0.5
-time_step = 0.25
-cooling = 0.8
-T = 1
-H = None
-t_virt = 1
+time_step = 0.5
+cooling = 0.9
+T = 2
+H = 1
+t_virt = 0.5
 
 param = Meta_param(seed=1)
 param.tau_start = 3.

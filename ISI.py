@@ -13,6 +13,7 @@ from math import *  # for ceil
 from sklearn.mixture import GaussianMixture
 from sklearn.metrics import silhouette_score
 from copy import deepcopy
+from geopy.distance import vincenty as geo_dist
 
 import plotly.graph_objects as go 
 from plotly import offline
@@ -98,7 +99,7 @@ class Problem :
         
         if D is None : 
             locations = [w['location'] for w in self.Warehouses] + [s['location'] for s in self.Schools] 
-            self.D = distance_matrix(locations,locations)
+            self.D = geo_dist_matrix(locations)
         else : 
             self.D = D # distance matrix. Numpy array , NOT pandas dataframe
 
@@ -108,7 +109,7 @@ class Problem :
         self.time_step = time_step
 
         if t_virt is None : self.t_virt = self.time_step
-        else : self.t_virt = self.time_step
+        else : self.t_virt = t_virt
       
     def define_arrays(self):
         self.I_s_init  =  np.array([s["initial"] for s in self.Schools])                 # initial inventory of school
@@ -1189,6 +1190,16 @@ def excel_to_pb(path,nbr_tours=1):
 
 
 
+def geo_dist_matrix(locations): 
+    N = len(locations)
+    D = np.zeros((N,N))
+    for i in range(N):
+        for j in range(i+1,N):
+            d = geo_dist((locations[i][0],locations[i][1]),(locations[j][0],locations[j][1])).km
+            D[i,j] = d
+            D[j,i] = d 
+
+
 
 '''
 
@@ -1275,3 +1286,5 @@ def excel_to_pb(path,nbr_tours=1):
 
 
 '''
+
+
