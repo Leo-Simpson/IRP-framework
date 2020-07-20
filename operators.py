@@ -53,7 +53,7 @@ def shaw_removal_greedy(solution, rho):
             to_remove = route[np.where(dist_from_m <= 2*min_dist)[0]] - solution.N 
             solution.Y[t,n,k,to_remove] = 0
             solution.r[t][n][k] = tsp_tour(np.setdiff1d(route, to_remove + solution.N), n, solution.problem.D)
-        else:
+        except:
             pass
     else:
         solution.Y[t,n,k,:] = 0
