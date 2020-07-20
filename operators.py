@@ -89,6 +89,7 @@ def empty_one_plant(solution, rho):
     
 def furthest_customer(solution, rho):
     candidates = np.sum(solution.Y, axis = 3)
+    solution.compute_r()
     for i in range( min(rho,np.sum(candidates)) ):
         t,n,k = random.choice(np.transpose(np.nonzero(candidates)))
         route = solution.r[t][n][k]
