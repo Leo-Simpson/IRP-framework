@@ -150,11 +150,11 @@ class Window(QtWidgets.QMainWindow):
                                 T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v,
                                 t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, V_number = self.V_number,
                                 central = self.central, makes = self.makes, t_virt=1)
-          
+
             param = Meta_param(seed=1)
             param.tau_start = 3.
             param.tau_end = 1.
-            param.cooling = 0.8
+            param.cooling = 0.9
 
             problem_global.final_solver(param,time_step=self.step_duration)
 

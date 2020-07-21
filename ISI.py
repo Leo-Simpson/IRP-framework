@@ -13,7 +13,7 @@ from math import *  # for ceil
 from sklearn.mixture import GaussianMixture
 from sklearn.metrics import silhouette_score
 from copy import deepcopy
-from geopy.distance import vincenty as geo_dist
+from geopy.distance import geodesic as geo_dist
 
 import plotly.graph_objects as go 
 from plotly import offline
@@ -1198,7 +1198,7 @@ def geo_dist_matrix(locations):
             d = geo_dist((locations[i][0],locations[i][1]),(locations[j][0],locations[j][1])).km
             D[i,j] = d
             D[j,i] = d 
-
+    return D
 
 
 '''
