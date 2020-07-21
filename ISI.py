@@ -1201,7 +1201,6 @@ def geo_dist_matrix(locations):
     return D
 
 
-
 '''
 
 
