@@ -210,7 +210,7 @@ class Window(QtWidgets.QMainWindow):
         
     
     def solveModel(self):
-    # connects the inputs with our ISI model
+        # connects the inputs with our ISI model
         if self.ui.lineEdit_main.text()=='':
             print('No file inserted. Could not optimize!')
         else:               
