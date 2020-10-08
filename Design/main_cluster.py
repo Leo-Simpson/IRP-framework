@@ -18,7 +18,9 @@ from copy import deepcopy
 
 sys.path.append('../')
 
-from Design.DesignDT_testing2 import Ui_MainWindow
+from Design.DesignDT_testing3 import Ui_MainWindow
+from Design.DialogAbout import Ui_Dialog as Ui_Dialog_About
+from Design.DialogManual import Ui_Dialog as Ui_Dialog_Manual
 from ISI import Problem, Matheuristic, Meta_param, cluster_fusing, excel_to_pb
 
 
@@ -29,6 +31,9 @@ class Window(QtWidgets.QMainWindow):
         self.ui.setupUi(self)
         self.ui.browseButton_main.clicked.connect(self.pushButton_handler_main)
         self.ui.pushButton_opt.clicked.connect(self.pushButton_handler_opt)
+        self.ui.actionAbout.triggered.connect(self.open_wind)
+        self.ui.actionUser_Manual.triggered.connect(self.open_man)
+        self.ui.pushButton_calculate.clicked.connect(self.pushButton_handler_calculate)
         
         
     def pushButton_handler_main(self):
@@ -43,6 +48,30 @@ class Window(QtWidgets.QMainWindow):
         # put this in if window should be closed after clicking opt button
         # self.close()
         
+    def pushButton_handler_calculate(self):
+        self.get_meta_parameters()
+        steps = int(np.log(self.tau_end / self.tau_start) / np.log(self.cooling))
+        self.ui.lcdNumber_steps.display(steps)
+        
+        
+    def open_wind(self):
+        Dialog = QtWidgets.QDialog()
+        ui_dialog = Ui_Dialog_About()
+        ui_dialog.setupUi(Dialog)
+        Dialog.exec_()
+        
+    def open_man(self):
+        Dialog = QtWidgets.QDialog()
+        ui_dialog = Ui_Dialog_Manual()
+        ui_dialog.setupUi(Dialog)
+        path = r"D:\Dokumente\Uni\Mathematics in Science and Engineering\Case Study - Discrete Optimization\slides.pdf"
+        url = bytearray(QtCore.QUrl.fromLocalFile(path).toEncoded()).decode() 
+        text = "<a href={}>User Manual </a>".format(url)
+        ui_dialog.UserManual.setText(text)
+        ui_dialog.UserManual.setOpenExternalLinks(True)
+        ui_dialog.UserManual.show()
+        Dialog.exec_()
+        
         
     def read_from_excel(self, path):
         self.number_vehicles_used = self.ui.spinBox_veh_used.value()
@@ -55,7 +84,11 @@ class Window(QtWidgets.QMainWindow):
         path = filename[0]
         return path
 
-    
+    def get_meta_parameters(self):
+        self.tau_start = self.ui.doubleSpinBox_starttau.value()
+        self.tau_end = self.ui.doubleSpinBox_endtau.value()
+        self.cooling = self.ui.doubleSpinBox_cooling.value()
+
     def get_parameters(self):
         self.step_duration = self.ui.horizontalSlider_timeinterval.value()
         if self.step_duration == 0: self.step_duration = 0.5
@@ -65,6 +98,8 @@ class Window(QtWidgets.QMainWindow):
         self.t_load = self.ui.doubleSpinBox_loadingtime.value()
         self.c_per_km = self.ui.doubleSpinBox_costsperkm.value()
         self.Tmax = self.ui.doubleSpinBox_maxtime.value()
+        self.get_meta_parameters()
+        
         
         if self.ui.checkBox_vehiclefleet.isChecked():
             self.K = None
@@ -152,9 +187,9 @@ class Window(QtWidgets.QMainWindow):
                                 central = self.central, makes = self.makes, t_virt=1)
 
             param = Meta_param(seed=1)
-            param.tau_start = 3.
-            param.tau_end = 1.
-            param.cooling = 0.9
+            param.tau_start = self.tau_start
+            param.tau_end = self.tau_end
+            param.cooling = self.cooling
 
             problem_global.final_solver(param,time_step=self.step_duration)
 
