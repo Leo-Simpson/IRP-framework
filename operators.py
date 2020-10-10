@@ -28,36 +28,38 @@ def remove_worst_rho(solution, rho):
         solution.compute_school_remove_dist(t,n,k)
 
 def shaw_removal_route_based(solution, rho):
-    t,n,k,m = random.choice(np.transpose(np.nonzero(solution.Y)))
-    route = np.array(solution.r[t][n][k])
-    if len(route) > 2:
-        schools = route[np.where(route != m + solution.N)[0]]
-        dist_from_m = solution.problem.D[np.ix_([m + solution.N],route)][0]
-        min_dist_from_m = np.min(solution.problem.D[np.ix_([m + solution.N],schools)][0])
-        to_remove = route[np.where(dist_from_m <= 2*min_dist_from_m)[0]] - solution.N 
-        solution.Y[t,n,k,to_remove] = 0
-        solution.r[t][n][k] = tsp_tour(np.setdiff1d(route, to_remove + solution.N), n, solution.problem.D)
-    else:
-        solution.Y[t,n,k,:] = 0
-        solution.r[t][n][k] = []
-
-def shaw_removal_greedy(solution, rho):
-    t,n,k,m = random.choice(np.transpose(np.nonzero(solution.Y)))
-    route = np.array(solution.r[t][n][k])
-    if len(route) > 2:
-        schools = route[np.where(route != m + solution.N)[0]]
-        dist_from_m = solution.problem.D[np.ix_([m + solution.N],route)][0]
-        dist = solution.problem.D[np.ix_(route,route)]
-        try:
-            min_dist = np.min(dist[dist>0])
-            to_remove = route[np.where(dist_from_m <= 2*min_dist)[0]] - solution.N 
+    if np.any(solution.Y):
+        t,n,k,m = random.choice(np.transpose(np.nonzero(solution.Y)))
+        route = np.array(solution.r[t][n][k])
+        if len(route) > 2:
+            schools = route[np.where(route != m + solution.N)[0]]
+            dist_from_m = solution.problem.D[np.ix_([m + solution.N],route)][0]
+            min_dist_from_m = np.min(solution.problem.D[np.ix_([m + solution.N],schools)][0])
+            to_remove = route[np.where(dist_from_m <= 2*min_dist_from_m)[0]] - solution.N 
             solution.Y[t,n,k,to_remove] = 0
             solution.r[t][n][k] = tsp_tour(np.setdiff1d(route, to_remove + solution.N), n, solution.problem.D)
-        except:
-            pass
-    else:
-        solution.Y[t,n,k,:] = 0
-        solution.r[t][n][k] = []
+        else:
+            solution.Y[t,n,k,:] = 0
+            solution.r[t][n][k] = []
+
+def shaw_removal_greedy(solution, rho):
+    if np.any(solution.Y):
+        t,n,k,m = random.choice(np.transpose(np.nonzero(solution.Y)))
+        route = np.array(solution.r[t][n][k])
+        if len(route) > 2:
+            schools = route[np.where(route != m + solution.N)[0]]
+            dist_from_m = solution.problem.D[np.ix_([m + solution.N],route)][0]
+            dist = solution.problem.D[np.ix_(route,route)]
+            try:
+                min_dist = np.min(dist[dist>0])
+                to_remove = route[np.where(dist_from_m <= 2*min_dist)[0]] - solution.N 
+                solution.Y[t,n,k,to_remove] = 0
+                solution.r[t][n][k] = tsp_tour(np.setdiff1d(route, to_remove + solution.N), n, solution.problem.D)
+            except:
+                pass
+        else:
+            solution.Y[t,n,k,:] = 0
+            solution.r[t][n][k] = []
 
 def avoid_consecutive_visits(solution, rho):
     for t in range(solution.T-1):
