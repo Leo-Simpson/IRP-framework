@@ -356,6 +356,22 @@ class Problem :
             do2.to_excel(writer, sheet_name = 'Plan', index = False)
             do3.to_excel(writer, sheet_name = 'Total Costs', index = False)
             
+            workbook = writer.book
+            
+            worksheet = writer.sheets['Chosen input parameters']
+            for i, col in enumerate(do1.columns):
+                column_len = max(do1[col].astype(str).str.len().max(), len(col) + 2)
+                worksheet.set_column(i, i, column_len)
+            
+            worksheet = writer.sheets['Plan']
+            for i, col in enumerate(do2.columns):
+                column_len = max(do2[col].astype(str).str.len().max(), len(col) + 2)
+                worksheet.set_column(i, i, column_len)
+            
+            worksheet = writer.sheets['Total Costs']
+            for i, col in enumerate(do3.columns):
+                column_len = max(do3[col].astype(str).str.len().max(), len(col) + 2)
+                worksheet.set_column(i, i, column_len)
             
     def __repr__(self):
         toprint = "Parameters of the problem : \n"
