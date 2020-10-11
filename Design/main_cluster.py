@@ -190,6 +190,7 @@ class Window(QtWidgets.QMainWindow):
             param.tau_start = self.tau_start
             param.tau_end = self.tau_end
             param.cooling = self.cooling
+            param.input_var_more = [self.ui.checkBox_vehiclefleet.isChecked(), self.ui.spinBox_veh_used.value(), self.ui.spinBox_Q1.value(), self.ui.checkBox_central.isChecked(), [self.ui.doubleSpinBox_cw1.value(), self.ui.doubleSpinBox_cw2.value()], self.ui.spinBox_vehicles_central.value(), self.number_vehicles_used].copy()
 
             problem_global.final_solver(param,time_step=self.step_duration)
 
