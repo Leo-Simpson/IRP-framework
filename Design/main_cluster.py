@@ -64,7 +64,7 @@ class Window(QtWidgets.QMainWindow):
         Dialog = QtWidgets.QDialog()
         ui_dialog = Ui_Dialog_Manual()
         ui_dialog.setupUi(Dialog)
-        path = r"D:\Dokumente\Uni\Mathematics in Science and Engineering\Case Study - Discrete Optimization\slides.pdf"
+        path = r"../UserManual.pdf"
         url = bytearray(QtCore.QUrl.fromLocalFile(path).toEncoded()).decode() 
         text = "<a href={}>User Manual </a>".format(url)
         ui_dialog.UserManual.setText(text)
