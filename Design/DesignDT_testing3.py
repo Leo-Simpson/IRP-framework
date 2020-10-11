@@ -13,7 +13,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(771, 652)
+        MainWindow.resize(771, 655)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -762,6 +762,7 @@ class Ui_MainWindow(object):
         self.doubleSpinBox_cooling = QtWidgets.QDoubleSpinBox(self.tab_more)
         self.doubleSpinBox_cooling.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
         self.doubleSpinBox_cooling.setAccelerated(True)
+        self.doubleSpinBox_cooling.setMaximum(1.0)
         self.doubleSpinBox_cooling.setSingleStep(0.01)
         self.doubleSpinBox_cooling.setProperty("value", 0.9)
         self.doubleSpinBox_cooling.setObjectName("doubleSpinBox_cooling")
@@ -829,10 +830,6 @@ class Ui_MainWindow(object):
         icon.addPixmap(QtGui.QPixmap("clipart schließen.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.actionExit.setIcon(icon)
         self.actionExit.setObjectName("actionExit")
-        self.actionManual = QtWidgets.QAction(MainWindow)
-        self.actionManual.setObjectName("actionManual")
-        self.actionhhh = QtWidgets.QAction(MainWindow)
-        self.actionhhh.setObjectName("actionhhh")
         self.actionUser_Manual = QtWidgets.QAction(MainWindow)
         self.actionUser_Manual.setObjectName("actionUser_Manual")
         self.menuHelp.addAction(self.actionUser_Manual)
@@ -956,19 +953,17 @@ class Ui_MainWindow(object):
         self.pushButton_opt.setText(_translate("MainWindow", "Optimize"))
         self.pushButton_opt.setShortcut(_translate("MainWindow", "Ctrl+O"))
         self.menuHelp.setTitle(_translate("MainWindow", "Help"))
-        self.menuFile.setTitle(_translate("MainWindow", "File"))
+        self.menuFile.setTitle(_translate("MainWindow", "Exit"))
         self.actionAbout.setText(_translate("MainWindow", "About the developers"))
         self.actionExit.setText(_translate("MainWindow", "Exit"))
-        self.actionManual.setText(_translate("MainWindow", "Manual"))
-        self.actionhhh.setText(_translate("MainWindow", "hhh"))
         self.actionUser_Manual.setText(_translate("MainWindow", "User Manual"))
 
 
-if __name__ == "__main__":
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    MainWindow = QtWidgets.QMainWindow()
-    ui = Ui_MainWindow()
-    ui.setupUi(MainWindow)
-    MainWindow.show()
-    sys.exit(app.exec_())
+# if __name__ == "__main__":
+#     import sys
+#     app = QtWidgets.QApplication(sys.argv)
+#     MainWindow = QtWidgets.QMainWindow()
+#     ui = Ui_MainWindow()
+#     ui.setupUi(MainWindow)
+#     MainWindow.show()
+#     sys.exit(app.exec_())
