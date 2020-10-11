@@ -274,12 +274,23 @@ class Problem :
         
         output_sheet_1 = {}
         output_sheet_1['Column 1'] = ['Parameters',None,'Planning Period in weeks:', 'Duration of one time step:', 'Times a vehicle can be used per time step:', 'Loading time (in h):', 'Maximum time for a trip (in h):', 'Costs per km (in $):', 'Average speed (in km/h):', 'Capacity of vehicles to central warehouses (in MT):', None]
-        output_sheet_1['Column 2'] = [None,None,self.T*self.time_step, self.time_step, None, self.t_load, self.Tmax, self.c_per_km, self.v, self.Q2, None]
-        if True:
-            output_sheet_1['Column 1'] = output_sheet_1['Column 1'] + ['Details', None, 'Number of vehicles per warehouse:', 'Capacity of vehicles to schools (in MT):', 'Coordinates of central warehouse:', 'Number of vehicles of central warehouse:',None]
-            output_sheet_1['Column 2']  = output_sheet_1['Column 2'] + [None, None, None, None, None, None, None]
-        output_sheet_1['Column 1'] = output_sheet_1['Column 1'] + ['More', None, 'Starting point of tau:', 'Ending point of tau:', 'Cooling factor:']
-        output_sheet_1['Column 2']  = output_sheet_1['Column 2'] + [None,None, solution.param.tau_start, solution.param.tau_end, solution.param.cooling]
+        output_sheet_1['Column 2'] = [None,None,self.T*self.time_step, self.time_step, solution.param.input_var_more[6], self.t_load, self.Tmax, self.c_per_km, self.v, self.Q2, None]
+        if solution.param.input_var_more[0] or solution.param.input_var_more[2]:
+            output_sheet_1['Column 1'] += ['Details', None, 'Vehicle Fleet taken from excel input file:']
+            output_sheet_1['Column 2'] += [None, None, solution.param.input_var_more[0]]
+            if not solution.param.input_var_more[0]:
+                output_sheet_1['Column 1'] += ['Number of vehicles per warehouse:', 'Capacity of vehicles to schools (in MT):', None]
+                output_sheet_1['Column 2'] += [solution.param.input_var_more[1], solution.param.input_var_more[2], None]
+            output_sheet_1['Column 1'] += ['Central warehouse taken from excel input file:']
+            output_sheet_1['Column 2'] += [solution.param.input_var_more[3]]
+            if not solution.param.input_var_more[3]:
+                output_sheet_1['Column 1'] += ['Coordinates of central warehouse:', 'Number of vehicles of central warehouse:',None]
+                output_sheet_1['Column 2'] += [solution.param.input_var_more[4], solution.param.input_var_more[5], None]
+            if solution.param.input_var_more[0] and solution.param.input_var_more[2]:
+                output_sheet_1['Column 1'] += [None]
+                output_sheet_1['Column 2'] += [None]
+        output_sheet_1['Column 1'] += ['More', None, 'Starting point of tau:', 'Ending point of tau:', 'Cooling factor:']
+        output_sheet_1['Column 2'] += [None,None, solution.param.tau_start, solution.param.tau_end, solution.param.cooling]
         
         do1=pd.DataFrame(output_sheet_1, columns = list(output_sheet_1.keys()))
         
