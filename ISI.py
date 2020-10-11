@@ -276,77 +276,57 @@ class Problem :
         output_sheet_1['Column 1'] = ['Parameters',None,'Planning Period in weeks:', 'Duration of one time step:', 'Times a vehicle can be used per time step:', 'Loading time (in h):', 'Maximum time for a trip (in h):', 'Costs per km (in $):', 'Average speed (in km/h):', 'Capacity of vehicles to central warehouses (in MT):', None]
         output_sheet_1['Column 2'] = [None,None,self.T*self.time_step, self.time_step, None, self.t_load, self.Tmax, self.c_per_km, self.v, self.Q2, None]
         if True:
-            output_sheet_1['Column 1'] = output_sheet_1['Column 1'] + ['Details', None, 'Number of vehicles per warehouse:', 'Capacity of vehicles to schools to schools (in MT):', 'Coordinates of central warehouse:', 'Number of vehicles of central warehouse:',None]
+            output_sheet_1['Column 1'] = output_sheet_1['Column 1'] + ['Details', None, 'Number of vehicles per warehouse:', 'Capacity of vehicles to schools (in MT):', 'Coordinates of central warehouse:', 'Number of vehicles of central warehouse:',None]
             output_sheet_1['Column 2']  = output_sheet_1['Column 2'] + [None, None, None, None, None, None, None]
         output_sheet_1['Column 1'] = output_sheet_1['Column 1'] + ['More', None, 'Starting point of tau:', 'Ending point of tau:', 'Cooling factor:']
         output_sheet_1['Column 2']  = output_sheet_1['Column 2'] + [None,None, solution.param.tau_start, solution.param.tau_end, solution.param.cooling]
         
         do1=pd.DataFrame(output_sheet_1, columns = list(output_sheet_1.keys()))
         
-        if np.any(solution.Y):
-            output_sheet_2 = {'Timestep': [], 'Point in time (in weeks)': [], 'Warehouse': [], 'Vehicle':[], 'Quantity': [], 'Route': []}
-            output_sheet_3 = {'Timestep': [], 'Point in time (in weeks)': [], 'Warehouse': [], 'Vehicle':[], 'Quantity Route': []}
-            for t in range(solution.T+1):
-                for w in range(solution.N):
-                    for k in range(solution.V_number[w]):
-                        if any(solution.Y[t,w,k,:]):
-                            school_index = solution.r[t][w][k]
-                            last_school_index = len(school_index) - 1
-                            for counter,i in enumerate(school_index): 
-                                if counter == 0 and last_school_index > 0:
-                                    output_sheet_2['Timestep'].append(t)
-                                    output_sheet_2['Point in time (in weeks)'].append(t*self.time_step)
-                                    output_sheet_2['Warehouse'].append(solution.name_warehouses[w])
-                                    output_sheet_2['Vehicle'].append(self.makes[w,k])
-                                    output_sheet_2['Quantity'].append(round(self.Q1[w,k]*solution.q[t,w,k,i-solution.N],3))
-                                    output_sheet_2['Route'].append(solution.name_schools[i-solution.N])
+        output_sheet_2 = {'Timestep': [], 'Point in time (in weeks)': [], 'Warehouse': [], 'Vehicle':[], 'Quantity': [], 'Route': []}
+        output_sheet_3 = {'Timestep': [], 'Point in time (in weeks)': [], 'Warehouse': [], 'Vehicle':[], 'Quantity Route': []}
+            
+        for t in range(solution.T+1):
+            for w in range(solution.N):
+                for k in range(solution.V_number[w]):
+                    if any(solution.Y[t,w,k,:]):
+                        school_index = solution.r[t][w][k]
+                        last_school_index = len(school_index) - 1
+                        for counter,i in enumerate(school_index): 
+                            if counter == 0 and last_school_index > 0:
+                                output_sheet_2['Timestep'].append(t)
+                                output_sheet_2['Point in time (in weeks)'].append(t*self.time_step)
+                                output_sheet_2['Warehouse'].append(solution.name_warehouses[w])
+                                output_sheet_2['Vehicle'].append(self.makes[w,k])
+                                output_sheet_2['Quantity'].append(round(self.Q1[w,k]*solution.q[t,w,k,i-solution.N],3))
+                                output_sheet_2['Route'].append(solution.name_schools[i-solution.N])
 
-                                    output_sheet_3['Timestep'].append(t)
-                                    output_sheet_3['Point in time (in weeks)'].append(t*self.time_step)
-                                    output_sheet_3['Warehouse'].append(solution.name_warehouses[w])
-                                    output_sheet_3['Vehicle'].append(self.makes[w,k])
-                                    output_sheet_3['Quantity Route'].append(round(self.Q1[w,k]*sum(solution.q[t,w,k,:]),3))
-                                elif counter == last_school_index:
-                                    output_sheet_2['Timestep'].append(None)
-                                    output_sheet_2['Point in time (in weeks)'].append(None)
-                                    output_sheet_2['Warehouse'].append(None)
-                                    output_sheet_2['Vehicle'].append(None)
-                                    output_sheet_2['Quantity'].append(round(self.Q1[w,k]*solution.q[t,w,k,i-solution.N],3))
-                                    output_sheet_2['Route'].append(solution.name_schools[i-solution.N])
+                                output_sheet_3['Timestep'].append(t)
+                                output_sheet_3['Point in time (in weeks)'].append(t*self.time_step)
+                                output_sheet_3['Warehouse'].append(solution.name_warehouses[w])
+                                output_sheet_3['Vehicle'].append(self.makes[w,k])
+                                output_sheet_3['Quantity Route'].append(round(self.Q1[w,k]*sum(solution.q[t,w,k,:]),3))
+                            elif counter == last_school_index:
+                                output_sheet_2['Timestep'] += [None, None, None]
+                                output_sheet_2['Point in time (in weeks)'] += [None, None, None]
+                                output_sheet_2['Warehouse'] += [None, None, None]
+                                output_sheet_2['Vehicle'] += [None, 'Total:', None]
+                                output_sheet_2['Quantity'] += [round(self.Q1[w,k]*solution.q[t,w,k,i-solution.N],3), round(self.Q1[w,k]*sum(solution.q[t,w,k,:]),3), None]
+                                output_sheet_2['Route'] += [solution.name_schools[i-solution.N], None, None]
+                            else:
+                                output_sheet_2['Timestep'].append(None)
+                                output_sheet_2['Point in time (in weeks)'].append(None)
+                                output_sheet_2['Warehouse'].append(None)
+                                output_sheet_2['Vehicle'].append(None)
+                                output_sheet_2['Quantity'].append(round(self.Q1[w,k]*solution.q[t,w,k,i-solution.N],3))
+                                output_sheet_2['Route'].append(solution.name_schools[i-solution.N])
 
-                                    output_sheet_2['Timestep'].append(None)
-                                    output_sheet_2['Point in time (in weeks)'].append(None)
-                                    output_sheet_2['Warehouse'].append(None)
-                                    output_sheet_2['Vehicle'].append('Total:')
-                                    output_sheet_2['Quantity'].append(round(self.Q1[w,k]*sum(solution.q[t,w,k,:]),3))
-                                    output_sheet_2['Route'].append(None)
-
-                                    output_sheet_2['Timestep'].append(None)
-                                    output_sheet_2['Point in time (in weeks)'].append(None)
-                                    output_sheet_2['Warehouse'].append(None)
-                                    output_sheet_2['Vehicle'].append(None)
-                                    output_sheet_2['Quantity'].append(None)
-                                    output_sheet_2['Route'].append(None)
-                                else:
-                                    output_sheet_2['Timestep'].append(None)
-                                    output_sheet_2['Point in time (in weeks)'].append(None)
-                                    output_sheet_2['Warehouse'].append(None)
-                                    output_sheet_2['Vehicle'].append(None)
-                                    output_sheet_2['Quantity'].append(round(self.Q1[w,k]*solution.q[t,w,k,i-solution.N],3))
-                                    output_sheet_2['Route'].append(solution.name_schools[i-solution.N])
-
-            sum_quantities_routes = sum(output_sheet_3['Quantity Route'])
-            output_sheet_3['Timestep'].append(None)
-            output_sheet_3['Point in time (in weeks)'].append(None)
-            output_sheet_3['Warehouse'].append(None)
-            output_sheet_3['Vehicle'].append(None)
-            output_sheet_3['Quantity Route'].append(None)
-
-            output_sheet_3['Timestep'].append(None)
-            output_sheet_3['Point in time (in weeks)'].append(None)
-            output_sheet_3['Warehouse'].append(None)
-            output_sheet_3['Vehicle'].append('Total Quantity:')
-            output_sheet_3['Quantity Route'].append(sum_quantities_routes)
+        sum_quantities_routes = sum(output_sheet_3['Quantity Route'])
+        output_sheet_3['Timestep'] += [None, None]
+        output_sheet_3['Point in time (in weeks)'] += [None, None]
+        output_sheet_3['Warehouse'] += [None, None]
+        output_sheet_3['Vehicle'] += [None, 'Total Quantity:']
+        output_sheet_3['Quantity Route'] += [None, sum_quantities_routes]
         
         do2=pd.DataFrame(output_sheet_2, columns = list(output_sheet_2.keys())) 
         do3=pd.DataFrame(output_sheet_3, columns = list(output_sheet_3.keys())) 
