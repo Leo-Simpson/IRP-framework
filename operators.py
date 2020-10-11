@@ -3,6 +3,7 @@ from OR_tools_solve_tsp import tsp_tour
 import random
 import sys
 
+#randomly remove rho school deliveries
 def rand_remove_rho(solution, rho):
     for i in range( min(rho,np.sum(solution.Y)) ):  
         t,n,k,m = random.choice(np.transpose(np.nonzero(solution.Y)))
@@ -10,7 +11,7 @@ def rand_remove_rho(solution, rho):
         tour = np.array(solution.r[t][n][k])
         solution.r[t][n][k] = np.ndarray.tolist(tour[tour != m + solution.N])
 
-
+#remove the rho school deliveries with the furthest driving distance
 def remove_worst_rho(solution, rho):
     for i in range( min(rho,np.sum(solution.Y)) ):   
         Y_flat = solution.Y.reshape(-1)
@@ -27,6 +28,7 @@ def remove_worst_rho(solution, rho):
         #solution.r[t][n][k] = np.ndarray.tolist(tour[tour != m + solution.N])
         solution.compute_school_remove_dist(t,n,k)
 
+#in a randomly selected route, all school deliveries in the proximity of one randomly selected school (with the radius 2 times the distance to the next school) are canceled
 def shaw_removal_route_based(solution, rho):
     if np.any(solution.Y):
         t,n,k,m = random.choice(np.transpose(np.nonzero(solution.Y)))
@@ -42,6 +44,7 @@ def shaw_removal_route_based(solution, rho):
             solution.Y[t,n,k,:] = 0
             solution.r[t][n][k] = []
 
+#same as before, but now the radius is 2 times the minimal distance between any two schools on the route
 def shaw_removal_greedy(solution, rho):
     if np.any(solution.Y):
         t,n,k,m = random.choice(np.transpose(np.nonzero(solution.Y)))
@@ -61,6 +64,7 @@ def shaw_removal_greedy(solution, rho):
             solution.Y[t,n,k,:] = 0
             solution.r[t][n][k] = []
 
+#for all time steps, all schools that got delivered on the preceding time step are canceled from delivery
 def avoid_consecutive_visits(solution, rho):
     for t in range(solution.T-1):
         time_schools = np.sum(solution.Y[[t, t+1],:,:,:], axis = (1,2))
@@ -71,13 +75,13 @@ def avoid_consecutive_visits(solution, rho):
             schools = np.nonzero(solution.Y[t+1,n,k,:])[0]
             solution.r[t+1][n][k] = tsp_tour(schools  + solution.N, n, solution.problem.D)
 
-
-
+#all deliveries from one randomly selected time step are canceled
 def empty_one_period(solution, rho):
     period = np.random.randint(solution.T)
     solution.Y[period,:,:,:] = 0
     solution.r[period] = [ [[]]*solution.K]*solution.N
 
+#in one randomly selected time step, one randomly selected route is canceled.
 def empty_one_vehicle(solution, rho):
     warehouse = np.random.randint(solution.N)
     vehicle = np.random.randint(solution.K)
@@ -85,13 +89,15 @@ def empty_one_vehicle(solution, rho):
     for t in range(solution.T):
         solution.r[t][warehouse][vehicle] = []
 
+#in one randomly selected time step, all routes starting from one randomly selected warehouse are canceled.
 def empty_one_plant(solution, rho):
     warehouse = np.random.randint(solution.N)
     solution.Y[:,warehouse,:,:] = 0
     for t in range(solution.T):
         for k in range(solution.K):
             solution.r[t][warehouse][k] = []
-    
+
+#the school delivery that is furthest from its providing warehouse, gets canceled. This is repeated rho times.
 def furthest_customer(solution, rho):
     candidates = np.sum(solution.Y, axis = 3)
     solution.compute_r()
@@ -103,6 +109,9 @@ def furthest_customer(solution, rho):
         route.pop(furthest_cust_index)
         candidates[t,n,k] -= 1
     
+#for the following: the cheapest insertion rule describes that if a school (delivery) is inserted into a route, then it is inserted between the two schools where it adds the least driving costs.
+    
+#randomly insert rho school deliveries into any routes following the cheapest insertion rule. It must be deliveries to schools that are not yet served during the time step of the route.
 def rand_insert_rho(solution, rho):    
     candidates = ~np.any(solution.Y[1:], axis = (1,2))  # ~ is the negation of a boolean array
     for i in range( min(rho,np.sum(candidates)) ):
@@ -113,6 +122,7 @@ def rand_insert_rho(solution, rho):
         solution.Y[t,n,k,m] = 1
         solution.r[t][n][k],_ = solution.cheapest_school_insert(t,n,k,m)
 
+#Randomly insert a school delivery into a route starting at the nearest warehouse to the school following the cheapest insertion rule. This is repeated rho times.
 def assign_to_nearest_plant(solution, rho):
     candidates = ~np.any(solution.Y[1:], axis = (1,2))  # ~ is the negation of a boolean array
     for i in range( min(rho,np.sum(candidates)) ):
@@ -130,6 +140,7 @@ def assign_to_nearest_plant(solution, rho):
         solution.Y[t,nearest_plant,index,m] = 1
         solution.r[t][nearest_plant][index] = route
     
+#insert the rho school deliveries that add the least driving costs to the plan.
 def insert_best_rho(solution, rho):
     candidates = ~np.any(solution.Y[1:], axis = (1,2))   # ~ is the negation of a boolean array
     eliminate = np.transpose(np.where(np.any(solution.Y, axis = (1,2))))
@@ -155,7 +166,7 @@ def insert_best_rho(solution, rho):
         solution.b[t,:,:,m] = sys.maxsize
     solution.compute_a_and_b()
         
-    
+#in a randomly selected time step, a school not yet served and its closest warehouse is randomly selected. Then all schools in the proximity (with the radius 2 times the distance to the next school) not yet served during the time step get assigned to a route of that warehouse following the cheapest insertion rule.
 def shaw_insertion(solution, rho): 
     period = np.random.randint(1,solution.T)
     not_served = np.where(~np.any(solution.Y[period], axis = (0,1)))[0]
@@ -179,6 +190,7 @@ def shaw_insertion(solution, rho):
         solution.Y[period,closest_warehouse,index, close_reachable] = 1
         solution.r[period][closest_warehouse][index] = route
     
+#Randomly selects a time step and two schools served from the same warehouse but on different routes, i.e. by different vehicles.  The operator then swaps their assignments and inserts the schools in the corresponding routes following the cheapest insertion rule.  This is done rho times.
 def swap_rho_cust_intra_routes(solution, rho):
     not_empty_veh = np.any(solution.Y,axis=3)
     candidates = np.transpose(np.where(np.sum(not_empty_veh, axis = 2) > 1))
@@ -196,6 +208,7 @@ def swap_rho_cust_intra_routes(solution, rho):
     #else:
     #    print('Applied swap_rho_cust_intra_routes, but there were no viable candidates (=Warehouses with two departing vehicles in one time step')
         
+#Randomly selects a time step and two schools on different routes from different warehouses. The operator then swaps their assignments and inserts the schools in the corresponding routes following the cheapest insertion rule, IF the schools can be delivered by the other warehouse respectively. This is tried at most 100 times and repeated successfully at most rho times.
 def swap_rho_cust_intra_plants(solution, rho):
     max_iter = 100
     iterations = 0
@@ -216,7 +229,8 @@ def swap_rho_cust_intra_plants(solution, rho):
                 solution.r[t][n1][k1], solution.r[t][n2][k2] = tsp_tour(np.nonzero(solution.Y[t,n1,k1,:])[0] + solution.N, n1, solution.problem.D), tsp_tour(np.nonzero(solution.Y[t,n2,k2,:])[0] + solution.N, n2, solution.problem.D)
                 changed += 1
             iterations += 1
-            
+
+#In a randomly selected time step, a warehouse with at least two existing routes is randomly selected. The vehicles of the routes are then swapped (Only interesting if the vehicles have different capacities).
 def swap_routes(solution, rho):
     not_empty_veh = np.any(solution.Y,axis=3)
     candidates = np.transpose(np.where(np.sum(not_empty_veh, axis = 2) > 1))
