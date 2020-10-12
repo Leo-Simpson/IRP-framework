@@ -1,3 +1,15 @@
+'''
+    In this file, the main classes are defined, with the methods that contains the optimization algorithm
+
+    The data is structured with a class called Problem that contains 
+'''
+
+
+
+
+
+
+
 import sys
 sys.path.append('../')
 import numpy as np
@@ -21,7 +33,34 @@ from visu import visu
 
 
 class Problem :
-    #this is the class that contains the data of the problem
+    
+    ''' Class that contains all the information about the problem we want to solve 
+
+    Args:
+        Warehouse (list): list of dictionary {"capacity": .., "lower":.., "dist_central":.., "fixed_cost":.., "initial": .., "name": ..., "location": ... }
+            It can contains as well the central warehouse in the first position. 
+        Schools (list): list of dictionary {'capacity': ..., 'lower':..., 'consumption': ...,'storage_cost': ... , 'initial': ...,  'name' : ..., 'location':...}
+        Q1 (np.ndarray or int ): Capacity of the vehicles. 
+            It can be an integer if all vehicle has the same capacity, it can also be an array of size NxK with N the number of warehouse and K the maximum number of vehicle per warehouse
+        Q2 (int): Capacity of the second type of vehicle : the one that serve the warehouses.
+        K (int, optional): Number of vehicle per warehouse, if V_number is not given
+        V_number (np.ndarry, optional): Array of size N with the number of vehicle for each warehouse, if K is not given (hence, not constant)
+        T (int): Length (in weeks) of total time horizon
+        H (int): Length (in weeks) of time windows for optimization
+        t_virt (int): Virtual time step to add between time windows
+        time_step (int): Length (in weeks) of one time step 
+        v (float or int): Speed of vehicles (in km/h)
+        t_load (float) : Time (in hours) of loading + deloading
+        c_per_km (float): Cost (in dollars) of driving 1 kilometer
+        Tmax (float or int): Maximum length (in hours) of a route
+        central (np.array or dict optional) : Either the information as a dict format of the central warehouse, either its gps coordinates, either use the first warehouse to be the central one
+        central_name (str, optional) : One can change the name of the central warehouse. If None : "CENTRAL"
+        makes (np.array, optional) : NxK matrix with the string of the names of the vehicles. 
+        D (np.ndarray): Matrix of distances. If None, the geodesic distance will be taken.
+    
+        '''
+
+
     def __init__(self,Warehouses,Schools,
                  Q1, Q2=20, K = None, V_number = None,
                  T = 1, H=None, t_virt = None, time_step = 1,
@@ -112,6 +151,9 @@ class Problem :
         else : self.t_virt = t_virt
       
     def define_arrays(self):
+        '''
+            Build arrays that are gonna be used to express constraints and objective function. 
+        '''
         self.I_s_init  =  np.array([s["initial"] for s in self.Schools])                 # initial inventory of school
         self.U_s       =  np.array([s["capacity"] for s in self.Schools])                # capactiy upper bound school
         self.L_s       =  np.array([s["lower"]+s["consumption"] for s in self.Schools])  # capacity lower bound school     
@@ -125,6 +167,9 @@ class Problem :
         self.to_central=  np.array([w["dist_central"] for w in self.Warehouses])         # distance between the warehouses and the central
 
     def copy(self):
+        '''
+            Method to create a copy of the problem instance
+        '''
         problem = Problem(deepcopy(self.Warehouses.copy()),deepcopy(self.Schools),
                             Q1=self.Q1.copy(),Q2=self.Q2, V_number= self.V_number.copy(),
                             T=self.T, H=self.H, t_virt = self.t_virt, time_step = self.time_step,
@@ -135,6 +180,9 @@ class Problem :
         return problem
 
     def time_fuse(self,time_step=None):
+        '''
+            To change the length of a time step
+        '''
         if time_step is None : time_step = self.time_step
         # then change time horizon : 
         self.T = ceil(self.T/time_step)
@@ -150,6 +198,9 @@ class Problem :
         self.define_arrays()
 
     def time_defuse(self,time_step) : 
+        '''
+            Defusing the split time steps. 
+        '''
         # then change time horizon : 
         self.T = ceil(self.T*time_step)
         self.H = ceil(self.H*time_step)
@@ -165,6 +216,9 @@ class Problem :
         self.define_arrays()
 
     def augment_v(self,nbr=1):
+        '''
+            Add possibility of more vehicles per warehouse, if for example the length of the time step has changed
+        '''
         self.V_number = self.V_number*nbr
         self.K = self.K *nbr
         self.Q1 = np.repeat(self.Q1,nbr,axis=1)
@@ -173,6 +227,9 @@ class Problem :
 
 
     def clustering(self):
+        '''
+            Perform clustering on the gps coordinates of the schools, with an ideal size of cluster, and split the problem instance in k smallest instances. 
+        '''
         
         central_name = self.Warehouses[0]["name"]
         schools = self.Schools
@@ -234,6 +291,22 @@ class Problem :
         return problems 
 
     def final_solver(self, param, time_step=1, plot_cluster = True, info = False, folder="solution", comp_small_cl = False, return_var = False):
+        '''
+        Function that first use clustering, and then solve the optimization problem on each of those clusters. 
+         If return_var is set to true : Output the list of the heuristic instances, that contains the best solutions as well. 
+         Else: it uses write_in_excel to write an excel sheet
+
+         Args:
+            param (Meta_param): parameters of the heuristic
+            time_step (int): time steps to fuse before hand
+            plot_cluster (bool): if true, it plot the visualisation of each cluster
+            info (bool) : if true, it will print additional info about each ISI computation
+            folder (string): folder in which the solution should be saved
+            comp_small_cl (bool): if set to True, clusters of size more than 55 will not be computed. 
+            return_vars (bool): If return_var is set to true : Output the list of the heuristic instances, that contains the best solutions as well. 
+                                Else: it uses write_in_excel to write an excel sheet
+
+        '''
         self.time_fuse(time_step)
         problems = self.clustering()
         solutions = []
@@ -261,6 +334,10 @@ class Problem :
             self.write_in_excel(solution)
     
     def write_in_excel(self, solution):
+        '''
+            Function that generate the output sheet from the problem, and its solution instance
+        '''
+
         # print('Y:')
         # print(solution.Y)
         # print('q:')
@@ -365,6 +442,10 @@ class Problem :
                 worksheet.set_column(i, i, column_len)
             
     def __repr__(self):
+
+        '''
+            Repr the main caracteristics of the problem instance
+        '''
         toprint = "Parameters of the problem : \n"
 
         toprint += "         Number of time steps : {} \n".format(self.T)
@@ -403,6 +484,32 @@ class Problem :
 
 
 class Solution : 
+    '''
+    Solution instance : class containing the informations about the solution computed
+
+    Attributes :
+    
+    M (int): Number of schools
+    N (int): Number of warehouses
+    K (int): Maximum number of vehicle per warehouse
+    V_number (np.ndarray): N array, Number of vehicle in each warehouse
+    problem (Problem): problem instance
+    Y (np.ndarray): T+1xNxKxM array with boolean true when vehicle k of warehouse n deliver school m at time t
+    q (np.ndarray): T+1xNxKxM array with portion of food delivered to school m by vehicle k of warehouse n at time t
+    X (np.ndarray): T+1xN array with boolean true when warehouse is supplied at time t
+    Cl (np.ndarray): NxM array with boolean true when warehouse n can deliver school m
+    r (list) : each r[t][n][k] is the ordered list of the schools visited in a tour
+    running_time (dict): dictionary with the detailed current running time to get to this solution. 
+    feasibility (dict): dictionary with booelean for each type of feasibility constraint
+    a (np.ndarray): routing cost reduction if school m is removed from the tour of vehicle k from WH n at time t ==> array TxKxMxN
+    b (np.ndarray): routing cost addition if school m is added to the tour of vehicle k from WH n at time t ==> array TxKxMxN
+    dt (np.ndarray): array of size T with consumptions. 
+    dist (npn.ndarra): array of size TxNxK with km driven for each route
+    cost (float): total cost, in dollars
+    file (str): name of the file where to store the output data
+
+
+    '''
     #radfactor: parameter to build Cl, gives maximal factor of min distance to warehouse still allowed to serve school, between 1.1 and 1.6
     def __init__(self,problem, Y = None, q = None, X = None, Cl=None, radfactor=100):
         M,N,K,T, V_number = len(problem.Schools), len(problem.Warehouses),problem.K, problem.T, problem.V_number
@@ -440,7 +547,10 @@ class Solution :
         self.file = 'visu.html'
         
         
-    def Cl_shaped_like_Y(self):
+    def Cl_shaped_like_Y(self): 
+        '''
+            Misc function to change the shape of the matrix Cl
+        '''
         Cl_shape_Y = np.zeros(self.Y.shape)
         for i in range(self.T + 1):
             for j in range(self.N):
@@ -449,7 +559,9 @@ class Solution :
         return Cl_shape_Y
     
     def V_num_array(self, shape_Y = False):
-        
+        '''
+            Misc function to change the shape of the matrix V_num
+        '''
         V_num_array = np.array([[i for i in range(self.K)] for j in range(self.N)]) < self.V_number.reshape(self.N,1)
         if shape_Y:
             V_num_shaped_Y = np.zeros(self.Y.shape, dtype = bool)
@@ -461,6 +573,9 @@ class Solution :
         return V_num_array
 
     def copy(self, copy_problem=False):
+        '''
+            Create a copy of the instance, with or without a deep copy of the problem instance as well
+        '''
         if copy_problem : pr = self.problem.copy()
         else: pr = self.problem
 
@@ -483,9 +598,12 @@ class Solution :
 
         return solution
 
-
-
     def build_Cl(self,radfactor):
+        '''
+            Build Cl based on some criterion, 
+            for example, if the school is so far away from the warehouse that it would take more time than possible in a single drive to get there. 
+
+        '''
         for m in range(self.M):
             dist_vect = self.problem.D[m+self.N][:self.N]
 
@@ -494,15 +612,21 @@ class Solution :
                                                      #additionally: only warehouses allowed that are not more than radfactor far away as the closest warehouses
             dist_max = min(dist_time,dist_radius)
             self.Cl[dist_vect > dist_max , m] = False
-
-    
+ 
     def compute_school_remove_dist(self,t,n,k):
+        '''
+            For a given route, compute matrix a[t,n,k]
+            a is the routing cost reduction if school m is removed from the tour of vehicle k from WH n at time t ==> array TxKxMxN
+        '''
         tour_complete = [n]+self.r[t][n][k]+[n]
         for i in range(1,len(tour_complete)-1): 
             self.a[t,n,k, tour_complete[i] - self.N] = self.problem.D[tour_complete[i], tour_complete[i+1]] + self.problem.D[tour_complete[i], tour_complete[i-1]] - self.problem.D[tour_complete[i-1], tour_complete[i+1]]
             
     def compute_school_insert_dist(self,t,n,k):
-        
+        '''
+            compute b[t,n,k] for a given route : 
+            b is the routing cost addition if school m is added to the tour of vehicle k from WH n at time t ==> array TxKxMxN
+        '''
         tour_complete   = [n]+self.r[t][n][k]+[n] 
 
         edges_cost = np.array( [self.problem.D[tour_complete[i],tour_complete[i+1]] for i in range(len(tour_complete)-1)] )
@@ -513,7 +637,9 @@ class Solution :
             self.b[t,n,k,m] = np.amin(add_edges_cost-edges_cost)
             
     def cheapest_school_insert(self,t,n,k,m):
-        
+        '''
+            output a route after performing cheapest school insertion on it for a given school
+        '''
         tour_school = self.r[t][n][k]
         tour_complete   = [n]+tour_school+[n] 
         edges_cost = np.array( [self.problem.D[tour_complete[i],tour_complete[i+1]] for i in range(len(tour_complete)-1)] )
@@ -523,10 +649,14 @@ class Solution :
         return tour_school[:position] + [m] + tour_school[position:], cost
     
     def compute_a_and_b(self):
-       
+        '''
+            compute a and b : 
+            a is the routing cost reduction if school m is removed from the tour of vehicle k from WH n at time t ==> array TxKxMxN
+            b is the routing cost addition if school m is added to the tour of vehicle k from WH n at time t ==> array TxKxMxN
+
+        '''
         self.a[:,:,:,:] = 0.
         self.b[:,:,:,:] = 0.
-
         for t in range(self.T+1): 
             for n in range(self.N):
                 for k in range(self.V_number[n]):
@@ -534,7 +664,11 @@ class Solution :
                         self.compute_school_insert_dist(t,n,k)
                    
     def compute_r(self):
-        # here are the TSP to be computed
+        '''
+            Here are the TSP to be computed, thanks to tsp_tour, from the file OR_tools_solve_tsp. 
+            For each t,n,k it takes the schools that should be visited, and order it in a list stored in self.r[t][n][k]
+
+        '''
         self.r = [[[[] for k in range(self.K)] for n in range(self.N)] for t in range(self.T+1)] # for each time t, for each vehicle k, for each warehouse n, a list of ordered integer of [0, M+N] corresponding to a tour
         for t in range(self.T+1):
             for n in range(self.N):
@@ -545,6 +679,10 @@ class Solution :
                     # tour without the warehouses, but indexed from N to N+M
 
     def compute_dist(self):
+        '''
+            compute kilometers in each route and store it in self.dist[t][n][k]
+
+        '''
         self.dist = np.array([[[
                         self.compute_route_dist(self.r[t][n][k],n) for k in range(self.K)
                         ] for n in range(self.N)
@@ -552,6 +690,9 @@ class Solution :
                     ])
 
     def compute_costs(self): 
+        '''
+            compute self.dist (km of each route) and inventories and then overall cost in self.cost
+        '''
         self.compute_dist()
         self.compute_inventory()
 
@@ -559,14 +700,19 @@ class Solution :
 
         self.cost = self.problem.c_per_km * np.sum(self.dist) + add
         
-
     def compute_route_dist(self, tour_schools, warehouse : int):
+        '''
+            input the tour, out the distance thanks to matrix problem.D
+        '''
         tour_complete   = [warehouse]+tour_schools+[warehouse]
         distance = sum( [ self.problem.D[tour_complete[i],tour_complete[i+1]] for i in range(len(tour_complete)-1)])
         #distance = distance + something  CHRIS not for wednesday
         return distance
 
     def compute_time_adding(self):
+        '''
+            time_adding and time_substract are similar to a and b, but in hours instead of km
+        '''
         problem  = self.problem
         self.compute_dist()
         self.time_route     = self.dist / problem.v + problem.t_load*np.sum(self.Y, axis = 3)   # to change : t_load can depends on the schools ! 
@@ -574,6 +720,9 @@ class Solution :
         self.time_substract = self.a / problem.v + problem.t_load
 
     def compute_inventory(self):
+        '''
+            Compute the planned inventories for each time step for a solution
+        '''
         self.I_s = np.zeros((self.T+1,self.M))
         self.I_w = np.zeros((self.T+1,self.N))
 
@@ -585,6 +734,11 @@ class Solution :
             self.I_w[t] = self.I_w[t-1]-  np.sum( self.problem.Q1[:,:,np.newaxis] * self.q[t,:,:,:], axis = (1,2) ) + self.problem.Q2 * self.X[t,:]
 
     def verify_feasibility(self):
+        '''
+            Compute the inventories, and then look if the constraints are satisfied (verify feasibility of the problem)
+            It store it into a dictionary self.feasibility =  {"Truck constraint" : ...,"Duration constraint" : ... ,"I_s constraint" : ...,"I_w constraint" : ...}
+            and then a boolean self.feasible set to True iff all componant of dict are true. 
+        '''
         self.compute_inventory()
         self.compute_time_adding()
         tol = 1e-4
@@ -601,6 +755,17 @@ class Solution :
 
 
     def ISI(self, G = 1, penalization=10,accuracy = 0.01, time_lim = 1000, solver = "CBC", plot = False, info = True, total_running_time=None):
+        '''
+            Main algorithm : 
+                Use functions compute_a_and_b() and compute_time_adding()
+                Then define an Mixed Integer Programming problem thanks to pulp
+                Solve it then with a solver (its name is in the input, default value is "CBC")
+                Then, call the function compute_r() to solve the TSPs
+                If plot is set to True, the visualisation will pop out
+                If info is set to true, it will print some information about the solution found in this algorithm (feasibility, running time, cost...)
+        '''
+
+
         # change the solution itself to the ISI solution
         t0 = time()
 
@@ -663,9 +828,9 @@ class Solution :
 
 
 
-        I_s = {(0,m): problem.I_s_init[m]   for m in range(M) }   # need to see how to change an LpAffineExpression with a constant value
+        I_s = {(0,m): problem.I_s_init[m]   for m in range(M) }  
 
-        I_w = {(0,n): problem.I_w_init[n]   for n in range(N) }  # need to see how to change an LpAffineExpression with a constant value
+        I_w = {(0,n): problem.I_w_init[n]   for n in range(N) }
 
         vehicle_used =  np.any(self.Y, axis=3)
         for t in range (1,T+1): 
@@ -747,6 +912,7 @@ class Solution :
         
         t1 = time()
 
+        # here we actually solve the MIP 
         if solver == "CBC"    : ISI_model.solve(solver = plp.PULP_CBC_CMD(msg=False, mip_start=True))
         elif solver == "GLPK" : ISI_model.solve(solver = plp.GLPK_CMD(options=['--mipgap', str(accuracy),"--tmlim", str(time_lim)],msg=0))
         else : raise ValueError(str(solver) + " is not a known solver, use CBC or GLPK")
@@ -789,6 +955,11 @@ class Solution :
 
 
     def multi_ISI(self,G,solver="CBC", plot = False ,info=True,total_running_time=None):
+        '''
+            This function do a loop, and compute several time the algorithm in ISI
+            On each of those iterations, a penalization is added, in order to enforce the constraint of time duration of routes to be feasible. 
+        '''
+
         itera = 5
         for p in range(1,itera+1):
             penalization = 2*self.cost * p / itera
@@ -808,6 +979,10 @@ class Solution :
 
 
     def ISI_multi_time(self, G,solver="CBC", plot = False ,info=True,total_running_time=None):
+        '''
+            Perform multi_ISI() on each time-interval, and the initial inventory storage is the final inventory of the multi_ISI on the latter time-interval. 
+
+        '''
 
         tol = 1e-4
 
@@ -834,6 +1009,9 @@ class Solution :
         
         
     def fuse(self,solutions):
+        ''' 
+        Concatenate matrices of the solution for several time-intervals
+        '''
         t_virt = ceil(self.problem.t_virt)
         if t_virt == 0 : 
             self.q[1:] = np.concatenate( [sol.q[1:] for sol in solutions], axis=0  )
@@ -848,6 +1026,9 @@ class Solution :
         
 
     def time_cut(self,Tmin,Tmax, T_total):
+        '''
+            Take the solution matrices only for a specific time-interval
+        '''
         Tmax2 = min(Tmax, T_total)
         self.T = Tmax2 - Tmin 
         self.dt = self.dt[Tmin:Tmax2+1]
@@ -861,6 +1042,9 @@ class Solution :
     
     
     def visualization(self):
+        '''
+            Compute visualisation, output a figure instance, which is a plotly object. It can then be plot for example with fig.show()
+        '''
         t0 = time()
         schools,warehouses = self.problem.Schools, self.problem.Warehouses
         km = np.sum(self.dist, axis = (1,2))
@@ -872,6 +1056,9 @@ class Solution :
         
 
     def informations(self):
+        '''
+            Return a string of informaation about the solution : the cost, the feasibility, and the running time. 
+        '''
         self.verify_feasibility()
         string_running_time = "Running time : \n  "
         
@@ -893,6 +1080,9 @@ class Solution :
 
 
     def __repr__(self):
+        '''
+            Print info with .informations(), and plot the visualisation with .visualization()
+        '''
         self.visualization().show()
         return self.informations()
         
@@ -900,6 +1090,35 @@ class Solution :
 
 
 class Meta_param : 
+
+    '''
+        Class of meta parameters that are gonna be used in the meta-heuristic
+        Args : 
+            seed (int, optional) : seed for the randomness of our meta-heuristic
+                Default value : 1
+            Delta (int): length of interval in the algorithm-iterations space
+                Default value : 10
+            epsilon_bound (tuple): (lower bound, upper bound) for generating a random epsilon used in the algorithm
+                Default value : (0.05, 0.15)
+            tau_start (float): Temperature in the beginning of the algorithm
+                Default value : 3.
+            tau_end (float): Temperature for which the algorithm stops
+                Default value : 1e-1
+            cool (float): Float between 0 and 1 that gives how the temperature is reduced on each iteration
+                Default value : 0.9
+            reaction_factor (float): factor used for updating the weigths. 
+                Default value : 0.8
+            sigmas (tuple): (sigma1, sigma2, sigma3) as described in the paper, the scores for using an operator, for selecting it, for selecting it when the solution is better...
+                Default value : (10,5,2)
+            ksi (float): Value for changing G to a certain value, as described in the paper
+                Default value :  rd.uniform(low=0.1,high=0.2)
+            rho_percent (float): Parameter used in the operators to control how destructive they are. 
+                Default value : 0.3
+            solver (str): name of the solver that is gonna be used. 
+                Default value : "CBC"
+
+
+    '''
     def __init__(self,seed=1):
         self.seed = seed
         rd.seed(self.seed)
@@ -917,6 +1136,9 @@ class Meta_param :
 
 
     def __repr__(self):
+        '''
+            Print method to see what was the meta parameters of an heuristic. 
+        '''
         toprint = " Meta parameters of the heurestics : \n \n "
 
         toprint += "For iterations : \n "
@@ -944,6 +1166,10 @@ class Meta_param :
 
 from operators import operators
 class Matheuristic : 
+    '''
+        Class in order to represent an heuristic. It contains a set of operator, with their weigths
+        It also has as attribute, the current best solution, and two other solutions, that has to be stored according to the description of the meta-heuristic
+    '''
     def __init__(self, problem,param=None, seed=1):
 
         self.operators = [ {'weight' : 1, 'score': 0 , 'number_used':0, 'function':function, 'name':name } for (name, function) in operators ]
@@ -962,6 +1188,9 @@ class Matheuristic :
 
 
     def info_operators(operators):
+        '''
+            Method to print the info of the operators
+        '''
         print("\n Scores of operators :  " )
         for op in operators :
             print("w = ",format(op["weight"], '.2f'), " number used = ", op['number_used'], "score = ",op["score"], " name : ", op["name"])
@@ -969,6 +1198,9 @@ class Matheuristic :
 
 
     def choose_operator(operators):
+        '''
+            Misc function, to choose an operator with probability proportional to the weigths
+        '''
         weights = [operator['weight'] for operator in operators]
         s = 0.
         v = rd.random()*sum(weights)
@@ -978,6 +1210,9 @@ class Matheuristic :
 
 
     def update_weights(self, r):        # r is the reaction factor
+        '''
+            Misc function to update the weigths after a segment of size Delta (in algorithmic iterations)
+        '''
         for op in self.operators : 
             if (op['number_used']>0): op['weight'] = (1-r)*op['weight'] + r* op['score']/op['number_used']
             op['score']  = 0
@@ -985,6 +1220,16 @@ class Matheuristic :
         
 
     def algo2(self, info = False, plot = False,plot_final = False, file = "solution.html",penal=5):
+        '''
+            Main heuristic, described in the paper, that involve a long loop, in which the function ISI_multi_time is called several time. 
+            Args : 
+                info : parameter for ISI : if true : print some info of the solution found for each ISI computation
+                plot : parameter for ISI : if true : plot visualisation of the solution found for each ISI computation
+                plot_final : plot visualisation in the end of this function
+                file : name of the file in which the visualisation of the solution should be saved 
+                penal : multiplicative penalisation for a solution that is not feasible. 
+
+        '''
         # modified algo :  we don't do line 20, 23, 24
         t0 = time()
         param = self.param
@@ -1085,16 +1330,26 @@ class Matheuristic :
 
 
     def print_ope(self):
+        '''
+            Information about operators are printed (thanks to info_operators)
+        '''
         for i,operators in enumerate(self.operators_infos) : 
             print("Segment of time steps number %i"%i)
             Matheuristic.info_operators(operators)
             print(" ")
 
     def print_steps(self):
+        '''
+            componant of self.steps are printed 
+            self.steps are some info about each step : which operator is used, what is the cost of the current solution, and what is the cost of the best solution
+        '''
         for step in self.steps:
             print(step)
 
     def plot_steps(self):
+        '''
+            Plot a graph representing the evolution of the costs of the best solution and the cost of the current solution, with as insights, the operators that are used
+        '''
         I1,I2,BEST,SOL,TEXT = [],[],[],[],[]
         for step in self.steps:
             I1.append(step["Step"])
@@ -1120,7 +1375,11 @@ class Matheuristic :
 # test !
 
 def random_problem(T,N,M,K = None, H = None, seed = None):
-    
+    '''
+        Generate problem instance with random data such as school positions. 
+
+    '''
+
 
     np.random.seed(seed)
     Schools = []
@@ -1166,6 +1425,12 @@ def random_problem(T,N,M,K = None, H = None, seed = None):
 
 
 def cluster_fusing(solutions, problem_global):
+    '''
+        Fusing several solution instances into a sinlge solution instance. Also needs to input the global problem instance. 
+    '''
+
+
+
     if solutions : 
         S_names = [s["name"] for s in problem_global.Schools]
         Wh_names = [w["name"] for w in problem_global.Warehouses]
@@ -1206,69 +1471,86 @@ def cluster_fusing(solutions, problem_global):
 
 
 def excel_to_pb(path,nbr_tours=1):
-        df_w = pd.read_excel(io=path, sheet_name='Warehouses')         #reads the excel table Warehouses
-        warehouses = df_w.to_dict('records')                   #and transforms it into a Panda dataframe
-        for w in warehouses:                                   #puts longitude and latitude together in a numpy array 'location'
-            location = np.array([w['Latitude'],w['Longitude']])
-            del w['Latitude'], w['Longitude']
-            w['location']=location
-            w['name'] = w.pop('Name')
-            w['capacity'] = w.pop('Capacity')
-            w['lower'] = w.pop('Lower')
-            w['initial'] = w.pop('Initial')
-            w['fixed_cost'] = w.pop('Fixed Cost')
+    '''
+        Read the excel and write the data structured as we need to create a problem instance with it
+        Arg:
+            path : Path to find th excel sheet
+            nbr_tour(int): The function can directly multiply the number of vehicle with a constant, for example if 5days of delivery are possible within the same time step (week)
+        
+        Output: 
+            schools (list of dict): input for Problem init
+            warehouses (list of dict): input for Problem init
+            Q1 (np.ndarray) : input for Problem init
+            V_number (np.ndarray) : input for Problem init
+            makes (np.ndarray): input for Problem init
+
+    '''
+    df_w = pd.read_excel(io=path, sheet_name='Warehouses')         #reads the excel table Warehouses
+    warehouses = df_w.to_dict('records')                   #and transforms it into a Panda dataframe
+    for w in warehouses:                                   #puts longitude and latitude together in a numpy array 'location'
+        location = np.array([w['Latitude'],w['Longitude']])
+        del w['Latitude'], w['Longitude']
+        w['location']=location
+        w['name'] = w.pop('Name')
+        w['capacity'] = w.pop('Capacity')
+        w['lower'] = w.pop('Lower')
+        w['initial'] = w.pop('Initial')
+        w['fixed_cost'] = w.pop('Fixed Cost')
             
+
+    df_s = pd.read_excel(io=path, sheet_name='Schools')
+    schools = df_s.to_dict('records')
+    for m,s in enumerate(schools):                                      #puts longitude and latitude together in a numpy array 'location'
+        location = np.array([s['Latitude'],s['Longitude']])
+        del s['Latitude'], s['Longitude']
+        s['location']=location
+        s['name'] = s.pop('Name_ID') + ' ' + str(m)
+        s['lower'] = s.pop('Lower')
+        s['initial'] = s.pop('Initial')
+        s['consumption'] = s.pop('Consumption per week in MT')
+        s['storage_cost'] = s.pop('Storage Cost')
+        s['capacity'] = s.pop('Capacity')
+        del s['Total Sum of Beneficiaries']
+        del s['Total Sum of Commodities']
+        del s['Consumption per day in MT']
+        
+    df_v = pd.read_excel(io=path, sheet_name='VehicleFleet')
+    vehicles = df_v.to_dict('records') # list of dictionaries of the form {'Warehouse':...,'Plate Nr':....,'Make':...,'Model':....,'Capacity in MT':....}
+    vehicles.sort(key = lambda v : v['Capacity in MT'],reverse = True)
     
-        df_s = pd.read_excel(io=path, sheet_name='Schools')
-        schools = df_s.to_dict('records')
-        for m,s in enumerate(schools):                                      #puts longitude and latitude together in a numpy array 'location'
-            location = np.array([s['Latitude'],s['Longitude']])
-            del s['Latitude'], s['Longitude']
-            s['location']=location
-            s['name'] = s.pop('Name_ID') + ' ' + str(m)
-            s['lower'] = s.pop('Lower')
-            s['initial'] = s.pop('Initial')
-            s['consumption'] = s.pop('Consumption per week in MT')
-            s['storage_cost'] = s.pop('Storage Cost')
-            s['capacity'] = s.pop('Capacity')
-            del s['Total Sum of Beneficiaries']
-            del s['Total Sum of Commodities']
-            del s['Consumption per day in MT']
-            
-        df_v = pd.read_excel(io=path, sheet_name='VehicleFleet')
-        vehicles = df_v.to_dict('records') # list of dictionaries of the form {'Warehouse':...,'Plate Nr':....,'Make':...,'Model':....,'Capacity in MT':....}
-        vehicles.sort(key = lambda v : v['Capacity in MT'],reverse = True)
-        
 
-        
-        i = 0
-        # list with N entries, which contain the list of dictionaries {'Warehouse':...., 'Plate Nr':....., 'Capacity in MT':...} per Warehouse
-        # self.vehicle_list[i] gives you the list of vehicles(dictionaries) of warehouse i
-        vehicle_list=[ [] for w in warehouses ]
-        Wh_names = [w['name'] for w in warehouses]
-        
+    
+    i = 0
+    # list with N entries, which contain the list of dictionaries {'Warehouse':...., 'Plate Nr':....., 'Capacity in MT':...} per Warehouse
+    # self.vehicle_list[i] gives you the list of vehicles(dictionaries) of warehouse i
+    vehicle_list=[ [] for w in warehouses ]
+    Wh_names = [w['name'] for w in warehouses]
+    
 
-        for v in vehicles:
-            i = Wh_names.index(v['Warehouse'])
-            del v['Model']
-            for j in range(nbr_tours):
-                vehicle_list[i].append(v)
-                    
+    for v in vehicles:
+        i = Wh_names.index(v['Warehouse'])
+        del v['Model']
+        for j in range(nbr_tours):
+            vehicle_list[i].append(v)
+                
 
-        V_number = np.array([len(vehicle_list[j]) for j in range(len(warehouses))])
-        Q1 = np.zeros((len(warehouses), max(V_number)))
-        makes = np.array([["Doesn't exist        "]*max(V_number)]*len(warehouses))
-        for n in range(len(warehouses)):
-            for k in range(V_number[n]):
-                Q1[n,k] = vehicle_list[n][k]['Capacity in MT']
-                makes[n,k] = vehicle_list[n][k]['Make']
+    V_number = np.array([len(vehicle_list[j]) for j in range(len(warehouses))])
+    Q1 = np.zeros((len(warehouses), max(V_number)))
+    makes = np.array([["Doesn't exist        "]*max(V_number)]*len(warehouses))
+    for n in range(len(warehouses)):
+        for k in range(V_number[n]):
+            Q1[n,k] = vehicle_list[n][k]['Capacity in MT']
+            makes[n,k] = vehicle_list[n][k]['Make']
 
-        return schools, warehouses, Q1, V_number, makes
+    return schools, warehouses, Q1, V_number, makes
         
 
 
 
 def geo_dist_matrix(locations): 
+    '''
+        Compute the matrix of the geodesic distances
+    '''
     N = len(locations)
     D = np.zeros((N,N))
     for i in range(N):

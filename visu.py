@@ -5,6 +5,15 @@ import numpy as np
 from copy import copy, deepcopy
 
 
+'''
+This files' main purpose is to build the function visu, that create a visualisation of a solution. 
+This visualisation is made thanks to the 
+
+'''
+
+
+
+
 col_vehicules = ['grey', 'lime', 'darksalmon', 'olive', 'violet', 'slategrey' ,'lightgray'] * 10
 col_vehicules.append("black") # color for the pickups
 
@@ -191,6 +200,26 @@ def plot_arr(start,end,distance, color, quantity, name):
 
 
 def visu(schools, warehouses, TITLE, I_s, I_w, km, routes1,X, q, Q2, D,makes):
+    '''
+        Main function, that build a dict, compatible with the plotly.figure object , that contain all the data of the visualisation of the solution
+
+        Args : 
+            schools (list): list of dictionary {'capacity': ..., 'lower':..., 'consumption': ...,'storage_cost': ... , 'initial': ...,  'name' : ..., 'location':...}
+            Warehouse (list): list of dictionary {"capacity": .., "lower":.., "dist_central":.., "fixed_cost":.., "initial": .., "name": ..., "location": ... }
+                It can contains as well the central warehouse in the first position. 
+            TITLE (string): title to be print at the top of the animation. 
+            I_s (list) : list of school inventories, for each time step
+            I_w (list) : list of warehouse inventories, for each time step
+            km (list of float) : list of the total km driven for each time step
+            routes1 (list): each r[t][n][k] is the ordered list of the schools visited in a tour
+            X (np.ndarray): T+1xN array with boolean true when warehouse is supplied at time t
+            q (np.ndarray): T+1xNxKxM array with portion of food delivered to school m by vehicle k of warehouse n at time t
+            Q2 (int): Capacity of the second type of vehicle : the one that serve the warehouses.
+            D (np.ndarray): Matrix of distances. If None, the geodesic distance will be taken.
+            makes (np.array, optional) : NxK matrix with the string of the names of the vehicles. 
+
+
+    '''
 
     N,T =len(warehouses),len(I_s)
     routes = [[[ [routes1[t][n][k][m]-N for m in range(len(routes1[t][n][k]))] for k in range(len(routes1[t][n]))] for n in range(N)] for t in range(T)]
