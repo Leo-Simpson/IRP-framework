@@ -299,8 +299,9 @@ class Problem :
                     print("     its capacity is {} ; its lower bound is {} ; its consumption during {} week(s) is {}".format(s["capacity"],s["lower"],self.time_step, s["consumption"]))
                     print("The problem is then infeasible... one should either : reduce time_step duration, lower bound or increase capacity")
                     return False
-
+                s["initial"]-= food_left
                 print('  The necessary food has been added to its initial value' ) 
+        self.define_arrays()
         return True
                  
     def final_solver(self, param, time_step=1, plot_cluster = True, info = False, folder="solution", comp_small_cl = False, return_var = False, filename=None, visu_filename=None):
