@@ -179,11 +179,12 @@ class Problem :
         problem.define_arrays()
         return problem
 
-    def time_fuse(self,time_step=None):
+    def time_fuse(self,time_step):
         '''
             To change the length of a time step
         '''
-        if time_step is None : time_step = self.time_step
+
+        self.time_step = time_step*self.time_step
         # then change time horizon : 
         self.T = ceil(self.T/time_step)
         self.H = ceil(self.H/time_step)
@@ -223,8 +224,6 @@ class Problem :
         self.K = self.K *nbr
         self.Q1 = np.repeat(self.Q1,nbr,axis=1)
         self.makes = np.repeat(self.makes,nbr,axis=1)
-
-
 
     def clustering(self):
         '''
@@ -290,7 +289,21 @@ class Problem :
       
         return problems 
 
-    def final_solver(self, param, time_step=1, plot_cluster = True, info = False, folder="solution", comp_small_cl = False, return_var = False):
+    def check_init(self):
+        for s in self.Schools:
+            food_left = s["initial"]-(s["lower"]+s["consumption"])
+            if food_left < 0 :
+                print("School {} will run out of food before first time step. It needs {} units of food more".format(s["name"],-food_left))
+                if s["lower"]+s["consumption"] > s["capacity"] :
+                    print("The capacity of the school {} does not allow it to survive during 1 time step : ".format(s["name"]) )
+                    print("     its capacity is {} ; its lower bound is {} ; its consumption during {} week(s) is {}".format(s["capacity"],s["lower"],self.time_step, s["consumption"]))
+                    print("The problem is then infeasible... one should either : reduce time_step duration, lower bound or increase capacity")
+                    return False
+
+                print('  The necessary food has been added to its initial value' ) 
+        return True
+                 
+    def final_solver(self, param, time_step=1, plot_cluster = True, info = False, folder="solution", comp_small_cl = False, return_var = False, filename=None, visu_filename=None):
         '''
         Function that first use clustering, and then solve the optimization problem on each of those clusters. 
          If return_var is set to true : Output the list of the heuristic instances, that contains the best solutions as well. 
@@ -307,7 +320,10 @@ class Problem :
                                 Else: it uses write_in_excel to write an excel sheet
 
         '''
+
         self.time_fuse(time_step)
+        if not self.check_init(): 
+            return()
         problems = self.clustering()
         solutions = []
         if return_var:
@@ -325,15 +341,17 @@ class Problem :
                 print('Skipping cluster {} of {} of size {}! (Belonging to WH {})'.format(counter + 1, len(problems), len(pr.Schools),pr.Warehouses[-1]['name']))
 
         solution = cluster_fusing(solutions,self)
-        solution.file = folder+"/global.html"
+        #solution.file = folder+"/global.html"
         if return_var:
             return heur
         else:
-            print(solution)
+            if visu_filename is None : visu_filename = 'visu.html'
+            solution.file = visu_filename
+            solution.visualization()
             solution.param = param
-            self.write_in_excel(solution)
+            self.write_in_excel(solution, filename=filename)
     
-    def write_in_excel(self, solution):
+    def write_in_excel(self, solution, filename=None):
         '''
             Function that generate the output sheet from the problem, and its solution instance
         '''
@@ -419,7 +437,8 @@ class Problem :
         do2=pd.DataFrame(output_sheet_2, columns = list(output_sheet_2.keys())) 
         do3=pd.DataFrame(output_sheet_3, columns = list(output_sheet_3.keys())) 
         
-        with pd.ExcelWriter(r'../Data/Output.xlsx') as writer:
+        if filename is None : filename = '../Data/Output.xlsx'
+        with pd.ExcelWriter(filename) as writer:
             do1.to_excel(writer, sheet_name = 'Chosen input parameters', index = False, header = False)
             do2.to_excel(writer, sheet_name = 'Plan', index = False)
             do3.to_excel(writer, sheet_name = 'Total Costs', index = False)
@@ -440,6 +459,7 @@ class Problem :
             for i, col in enumerate(do3.columns):
                 column_len = max(do3[col].astype(str).str.len().max(), len(col) + 2)
                 worksheet.set_column(i, i, column_len)
+
             
     def __repr__(self):
 
@@ -1038,6 +1058,7 @@ class Solution :
         self.Y = self.Y[Tmin:Tmax2+1]
         self.r = self.r[Tmin:Tmax2+1]
         
+    
     
     
     

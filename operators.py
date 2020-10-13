@@ -66,7 +66,7 @@ def shaw_removal_greedy(solution, rho):
 
 #for all time steps, all schools that got delivered on the preceding time step are canceled from delivery
 def avoid_consecutive_visits(solution, rho):
-    for t in range(solution.T-1):
+    for t in range(solution.T):
         time_schools = np.sum(solution.Y[[t, t+1],:,:,:], axis = (1,2))
         index = np.where(time_schools[1,:] + time_schools[0,:] > 1)[0]
         change = np.transpose(np.where(np.sum(solution.Y[:,:,:,index][t+1], axis = 2) > 0))
@@ -77,7 +77,7 @@ def avoid_consecutive_visits(solution, rho):
 
 #all deliveries from one randomly selected time step are canceled
 def empty_one_period(solution, rho):
-    period = np.random.randint(solution.T)
+    period = np.random.randint(solution.T+1)
     solution.Y[period,:,:,:] = 0
     solution.r[period] = [ [[]]*solution.K]*solution.N
 
@@ -86,14 +86,14 @@ def empty_one_vehicle(solution, rho):
     warehouse = np.random.randint(solution.N)
     vehicle = np.random.randint(solution.K)
     solution.Y[:,warehouse,vehicle,:] = 0
-    for t in range(solution.T):
+    for t in range(solution.T+1):
         solution.r[t][warehouse][vehicle] = []
 
 #in one randomly selected time step, all routes starting from one randomly selected warehouse are canceled.
 def empty_one_plant(solution, rho):
     warehouse = np.random.randint(solution.N)
     solution.Y[:,warehouse,:,:] = 0
-    for t in range(solution.T):
+    for t in range(solution.T+1):
         for k in range(solution.K):
             solution.r[t][warehouse][k] = []
 
@@ -113,7 +113,8 @@ def furthest_customer(solution, rho):
     
 #randomly insert rho school deliveries into any routes following the cheapest insertion rule. It must be deliveries to schools that are not yet served during the time step of the route.
 def rand_insert_rho(solution, rho):    
-    candidates = ~np.any(solution.Y[1:], axis = (1,2))  # ~ is the negation of a boolean array
+    candidates = ~np.any(solution.Y, axis = (1,2))  # ~ is the negation of a boolean array
+    candidates[0,:] = 0
     for i in range( min(rho,np.sum(candidates)) ):
         t, m = random.choice(np.transpose(np.nonzero(candidates)))
         candidates[t,m] -= 1
@@ -124,7 +125,8 @@ def rand_insert_rho(solution, rho):
 
 #Randomly insert a school delivery into a route starting at the nearest warehouse to the school following the cheapest insertion rule. This is repeated rho times.
 def assign_to_nearest_plant(solution, rho):
-    candidates = ~np.any(solution.Y[1:], axis = (1,2))  # ~ is the negation of a boolean array
+    candidates = ~np.any(solution.Y, axis = (1,2))  # ~ is the negation of a boolean array
+    candidates[0,:] = 0
     for i in range( min(rho,np.sum(candidates)) ):
         t, m = random.choice(np.transpose(np.nonzero(candidates)))
         allowed_plants = [i for i in range(solution.N) if solution.Cl[i,m] == 1]
@@ -142,7 +144,8 @@ def assign_to_nearest_plant(solution, rho):
     
 #insert the rho school deliveries that add the least driving costs to the plan.
 def insert_best_rho(solution, rho):
-    candidates = ~np.any(solution.Y[1:], axis = (1,2))   # ~ is the negation of a boolean array
+    candidates = ~np.any(solution.Y, axis = (1,2))   # ~ is the negation of a boolean array
+    candidates[0,:] = 0
     eliminate = np.transpose(np.where(np.any(solution.Y, axis = (1,2))))
     for t,m in eliminate:
         solution.b[t,:,:,m] = sys.maxsize
@@ -168,7 +171,7 @@ def insert_best_rho(solution, rho):
         
 #in a randomly selected time step, a school not yet served and its closest warehouse is randomly selected. Then all schools in the proximity (with the radius 2 times the distance to the next school) not yet served during the time step get assigned to a route of that warehouse following the cheapest insertion rule.
 def shaw_insertion(solution, rho): 
-    period = np.random.randint(1,solution.T)
+    period = np.random.randint(1,solution.T+1)
     not_served = np.where(~np.any(solution.Y[period], axis = (0,1)))[0]
     if len(not_served) > 0:
         (index, choice) = random.choice(list(enumerate(not_served)))
