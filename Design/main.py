@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Jul 9 15:34:00 2020
 
-@author: Christophe
+'''
+You have to run this file to execute the Decision Tool. 
 
-template: main.py
-"""
+Furthermore all widgets of the interface are connected here with algorithm.
+'''
 
 
 import sys
@@ -27,6 +26,9 @@ from ISI import Problem, Matheuristic, Meta_param, cluster_fusing, excel_to_pb
 
 
 class Window(QtWidgets.QMainWindow):
+    '''
+        This class deals with the interface.
+    '''
     def __init__(self):
         QtWidgets.QMainWindow.__init__(self)
         self.ui = Ui_MainWindow()
@@ -39,30 +41,47 @@ class Window(QtWidgets.QMainWindow):
         
         
     def pushButton_handler_main(self):
+        '''
+            Defines the action when clicking on the 'Browse'-button.
+        '''
         self.p = self.get_path()
-        self.ui.lineEdit_main.setText(self.p)             # writes path into the lineEdit    
+        self.ui.lineEdit_main.setText(self.p)               
         
         
     def pushButton_handler_opt(self):
+        '''
+            Defines the action when clicking on the 'Optimize'-button, 
+            i.e. it reads the input file, saves the parameters set in the interface and starts solving the problem.
+        '''
         self.read_from_excel(self.p)
         self.get_parameters()
         self.solveModel()
-        # put this in if window should be closed after clicking opt button
-        # self.close()
+        
+        self.close()    # if the window should stay open at the end, take this out
+        
         
     def pushButton_handler_calculate(self):
+        '''
+            Defines the action when clicking on the 'Calculate'-button.
+        '''
         self.get_meta_parameters()
         steps = int(np.log(self.tau_end / self.tau_start) / np.log(self.cooling))
         self.ui.lcdNumber_steps.display(steps)
         
         
     def open_wind(self):
+        '''
+            Opens a dialog window.
+        '''
         Dialog = QtWidgets.QDialog()
         ui_dialog = Ui_Dialog_About()
         ui_dialog.setupUi(Dialog)
         Dialog.exec_()
         
     def open_man(self):
+        '''
+            Opens the manual dialog window when clicking on 'User Manual' and creates a link to it.
+        '''
         Dialog = QtWidgets.QDialog()
         ui_dialog = Ui_Dialog_Manual()
         ui_dialog.setupUi(Dialog)
@@ -76,22 +95,36 @@ class Window(QtWidgets.QMainWindow):
         
         
     def read_from_excel(self, path):
+        '''
+           Reads all the values from the input excel file.
+        '''
         self.number_vehicles_used = self.ui.spinBox_veh_used.value()
         self.schools, self.warehouses,self.Q1_arr, self.V_number_input, self.makes_input = excel_to_pb(self.p, nbr_tours=self.number_vehicles_used)
     
          
     def get_path(self):
-        #opens the file dialog and returns the path's name
+        '''
+        Opens a file dialog and returns the path of the selected file as a string.
+
+        '''
         filename = QFileDialog.getOpenFileName()
         path = filename[0]
         return path
 
+
     def get_meta_parameters(self):
+        '''
+            Saves the meta parameters in the third tab 'More'.
+        '''
         self.tau_start = self.ui.doubleSpinBox_starttau.value()
         self.tau_end = self.ui.doubleSpinBox_endtau.value()
         self.cooling = self.ui.doubleSpinBox_cooling.value()
 
+
     def get_parameters(self):
+        '''
+            Saves all other parameters and deals with the checkboxes in the second tab (4 cases).
+        '''
         self.step_duration = self.ui.horizontalSlider_timeinterval.value()
         if self.step_duration == 0: self.step_duration = 0.5
         self.time_horizon = self.ui.spinBox_TimeHorizon.value()
@@ -105,13 +138,13 @@ class Window(QtWidgets.QMainWindow):
         
         if self.ui.checkBox_vehiclefleet.isChecked():
             self.K = None
-            if self.ui.checkBox_central.isChecked():
+            if self.ui.checkBox_central.isChecked():            # Case 1: User wants to use the vehicle fleet AND the central WH of the input file.
                 self.V_number = deepcopy(self.V_number_input)
                 self.makes = deepcopy(self.makes_input)
                 self.central = None
                 self.Q1 = self.Q1_arr
                 
-            else: 
+            else:                                               # Case 2: User wants to use the vehicle fleet but NOT the central WH of the input file.
                 self.V_number = deepcopy(self.V_number_input)
                 self.makes = deepcopy(self.makes_input)
                 self.central = np.array([self.ui.doubleSpinBox_cw1.value(), self.ui.doubleSpinBox_cw2.value()])
@@ -140,13 +173,14 @@ class Window(QtWidgets.QMainWindow):
                     
                     
         else: 
-            if self.ui.checkBox_central.isChecked():
+            if self.ui.checkBox_central.isChecked():            # Case 3: User DON'T want to use the vehicle fleet BUT want to use the central WH of the input file.
                 self.central = None
                 self.K = self.ui.spinBox_vehicles_wh.value()*self.number_vehicles_used
                 self.Q1 = self.ui.spinBox_Q1.value()
                 self.V_number = None
                 self.makes = None
-            else: 
+                
+            else:                                               # Case 4: User DON'T want to use the vehicle fleet AND the central WH of the input file.
                 self.K = None
                 self.central = np.array([self.ui.doubleSpinBox_cw1.value(), self.ui.doubleSpinBox_cw2.value()])
                 self.K_central = self.ui.spinBox_vehicles_central.value()*self.number_vehicles_used
@@ -177,12 +211,21 @@ class Window(QtWidgets.QMainWindow):
                     self.makes = np.concatenate((makes_central, makes_ext), axis=0)
              
     
+    
     def solveModel(self):
-        # connects the inputs with our ISI model
+        '''
+            Defines our problem with the parameters of the interface and solves it. 
+        
+            Furthermore it saves the output file.
+        ------
+            Raises a ValueError if no input file was selected.
+
+        '''
         if self.ui.lineEdit_main.text()=='':
             raise ValueError('No file inserted. Could not optimize!')
+            
+            
         else:
-            # and here we set up our model
             problem_global = Problem(Schools = self.schools, Warehouses = self.warehouses,
                                 T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v,
                                 t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, V_number = self.V_number,
@@ -201,13 +244,34 @@ class Window(QtWidgets.QMainWindow):
             input_name = os.path.splitext(input_name)[0] # take only the name of the sheet, without the extension
             output_name = path + '/output/Output-'+input_name+ time_stamp + '.xlsx'
             visu_name = path + '/output/Visualization-'+input_name+ time_stamp + '.html'
+            
+            ''' 
+            Finally problem gets solved.
+            '''
             problem_global.final_solver(param,time_step=self.step_duration, plot_cluster = False, filename=output_name,visu_filename=visu_name)
+           
             print("Optimization finished")
             print("visualisation saved in",visu_name)
             print("output sheets saved in",output_name)
             
 
 def create_file_names(path_total):
+    '''
+        Creates the file names of the output.
+
+    Parameters
+    ----------
+    path_total : string
+        total path of the input file
+
+    Returns
+    -------
+    output_name : string
+        path of the excel output
+    visu_name : string
+        path of the visualization output
+
+    '''
     time_stamp = time.strftime("%Y%m%d-%H%M%S")
     path1,input_name = os.path.split(path_total) # find the path of the directory in which there is the input sheet
     input_name = os.path.splitext(input_name)[0] # take only the name of the sheet, without the extension
@@ -231,63 +295,3 @@ if __name__ == '__main__':
     window.show()
     sys.exit(app.exec_())
     
-
-
-
-
-
-
-'''
-        df_w = pd.read_excel(io=p, sheet_name='Warehouses')         #reads the excel table Warehouses
-        self.warehouses = df_w.to_dict('records')                   #and transforms it into a Panda dataframe
-        for w in self.warehouses:                                   #puts longitude and latitude together in a numpy array 'location'
-            location = np.array([w['Latitude'],w['Longitude']])
-            del w['Latitude'], w['Longitude']
-            w['location']=location
-            w['name'] = w.pop('Name')
-            w['capacity'] = w.pop('Capacity')
-            w['lower'] = w.pop('Lower')
-            w['initial'] = w.pop('Initial')
-            w['fixed_cost'] = w.pop('Fixed Cost')
-            
-    
-        df_s = pd.read_excel(io=p, sheet_name='Schools')
-        self.schools = df_s.to_dict('records')
-        for s in self.schools:                                      #puts longitude and latitude together in a numpy array 'location'
-            location = np.array([s['Latitude'],s['Longitude']])
-            del s['Latitude'], s['Longitude']
-            s['location']=location
-            s['name'] = s.pop('Name_ID')
-            s['lower'] = s.pop('Lower')
-            s['initial'] = s.pop('Initial')
-            s['consumption'] = s.pop('Consumption per week in mt')
-            s['storage_cost'] = s.pop('Storage Cost')
-            s['capacity'] = s.pop('Capacity')
-            del s['Total Sum of Beneficiaries']
-            del s['Total Sum of Commodities']
-            del s['Consumption per day in mt']
-            
-        df_v = pd.read_excel(io=p, sheet_name='VehicleFleet')
-        self.vehicles = df_v.to_dict('records') # list of dictionaries of the form {'Warehouse':...,'Plate Nr':....,'Make':...,'Model':....,'Capacity in MT':....}
-        
-
-        i = 0
-        # list with N entries, which contain the list of dictionaries {'Warehouse':...., 'Plate Nr':....., 'Capacity in MT':...} per Warehouse
-        # self.vehicle_list[i] gives you the list of vehicles(dictionaries) of warehouse i
-        self.vehicle_list=[[] for j in range(len(self.warehouses))]
-        
-        for w in self.warehouses:
-            for v in self.vehicles:
-                if w['name'] == v['Warehouse']:
-                    v2 = deepcopy(v)
-                    self.vehicle_list[i].append(v2)
-                    del self.vehicle_list[i][-1]['Make'], self.vehicle_list[i][-1]['Model']
-            i+=1
-            
-        self.V_number_input = np.array([len(self.vehicle_list[j]) for j in range(len(self.warehouses))])
-        self.K_max = max(self.V_number_input)
-        self.Q1_arr = np.zeros((len(self.warehouses), self.K_max))
-        for n in range(len(self.warehouses)):
-            for k in range(self.V_number_input[n]):
-                self.Q1_arr[n,k] = self.vehicle_list[n][k]['Capacity in MT']
-'''
