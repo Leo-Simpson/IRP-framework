@@ -1,14 +1,34 @@
-# Revisited Inventory Routing problem
+# Last miles project : TUM case study with World Food Program
 
-Here we approximate the solution of an inventory routing problem, and compute a nice visualization of it. 
+This python code solve a revisited Inventory routing problem. A user interface is also provided. 
+More information is available in the technical documentation or in the user guide. 
 
 
-## Summary
+## Files
 
-The user have to enter the routes that the algorithm will consider (with the quantity of food that they should deliver at each point... for now).
+The Design folder contains the code that generates the interface, more precisely, the file ```main.py``` should be run to launch the interface. The interface is implemented using the python package PyQt5.
 
-On each day, the algorithm  minimizes the cost per quantity delivered (it is not necessarly the optimal solution after a couple of day, the cost is minimized on each day SEPARATELY) with the constraint of capactiy of customers and with the constraint of always having non-negative inventories.
+The file ```ISI.py``` is the file that contains the optimization algorithm. 
 
-The code can then generate an html page with the graphic. 
+The files ```OR_tools_solve_tsp.py``` and ```OR_tools_solve_tsp.py```provides auxiliary functions that are used in ``ÌSI.py```. 
 
-A simple example is also provided. 
+THe file ```visu.py``` uses plotly package in order to 
+
+## Dependencies of the package
+
+Several open source python packages are needed to use the tool : 
+
+ - sys
+ - time
+ - random
+ - copy
+ - numpy
+ - pandas
+ - scipy
+ - sklearn
+ - geopy
+ - plotly
+ - pulp
+ - XlsxWriter
+ - ortools
+ - PyQt5
