@@ -889,7 +889,7 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(_translate("MainWindow", "Decision Tool WFP@TUM"))
         self.label_welcome.setText(_translate("MainWindow", "Welcome to the Optimization Decision Tool!"))
         self.text_top.setText(_translate("MainWindow", "Select the appropriate files below, set your parameters and click on \'Optimize\' to get your optimal route.\n"
-"Please notice that you can find further explanantion in the status bar in the bottom left if you cursor points on an input field."))
+"Please notice that you can find additional information in the bottom left status bar when your cursor points on an input field."))
         self.groupBox_selectfiles.setTitle(_translate("MainWindow", "Select files"))
         self.label_choose_main.setText(_translate("MainWindow", "Choose input file:"))
         self.browseButton_main.setStatusTip(_translate("MainWindow", "Select the file with all data for warehouses and schools."))
@@ -934,7 +934,7 @@ class Ui_MainWindow(object):
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_details), _translate("MainWindow", "Details"))
         self.label_7.setText(_translate("MainWindow", "Changing the following settings has a huge impact on the performance of the optimization tool!"))
         self.label_9.setText(_translate("MainWindow", "Clicking on \'Calculate\' after entering the numbers on the left will give you the number of steps in the algorithm.\n"
-"The more steps, the longer the running time but the solution could be better."))
+"The more steps, the longer the running time but the solution my improve."))
         self.label_cooling.setText(_translate("MainWindow", "Cooling factor:"))
         self.doubleSpinBox_endtau.setStatusTip(_translate("MainWindow", "If τ reaches this number, the algorithm will stop searching for other solutions."))
         self.doubleSpinBox_starttau.setStatusTip(_translate("MainWindow", "Enter the starting point of τ from which it will decrease until reaching the ending point. "))
