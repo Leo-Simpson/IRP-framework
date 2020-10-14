@@ -19,7 +19,7 @@ import time
 
 sys.path.append('../')
 
-from Design.DesignDT_testing3 import Ui_MainWindow
+from Design.InterfaceDT import Ui_MainWindow
 from Design.DialogAbout import Ui_Dialog as Ui_Dialog_About
 from Design.DialogManual import Ui_Dialog as Ui_Dialog_Manual
 from ISI import Problem, Matheuristic, Meta_param, cluster_fusing, excel_to_pb

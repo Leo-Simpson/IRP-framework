@@ -4,7 +4,9 @@
 #
 # Created by: PyQt5 UI code generator 5.12.3
 #
-# WARNING! All changes made in this file will be lost!
+'''
+ This file designes the dialog for the action 'About Developers'.
+'''
 
 
 from PyQt5 import QtCore, QtGui, QtWidgets
