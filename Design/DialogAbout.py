@@ -105,7 +105,7 @@ class Ui_Dialog(object):
         self.label_4.setText(_translate("Dialog", "theresa.bader@tum.de"))
         self.label_2.setText(_translate("Dialog", "sabrina.primus@tum.de"))
         self.label_3.setText(_translate("Dialog", "leo.simpson@tum.de"))
-        self.label_6.setText(_translate("Dialog", "Chris email adress"))
+        self.label_6.setText(_translate("Dialog", "christophe.vetter@tum.de"))
         self.pushButton.setText(_translate("Dialog", "Ok"))
 
 
