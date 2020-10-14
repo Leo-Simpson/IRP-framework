@@ -90,7 +90,8 @@ class Problem :
         self.Schools = Schools  # list of dictionary {'capacity': ..., 'lower':..., 'consumption': ...,'storage_cost': ... , 'initial': ...,  'name' : ..., 'location':...}
         self.T = T # time horizon
         
-        if H is None : self.H = T
+        if H is None : 
+            self.H = min(T,theoretical_H(Schools))
         else : self.H = H
 
         
@@ -293,10 +294,10 @@ class Problem :
         for s in self.Schools:
             food_left = s["initial"]-(s["lower"]+s["consumption"])
             if food_left < 0 :
-                print("School {} will run out of food before first time step. It needs {} units of food more".format(s["name"],-food_left))
+                print("School {} will run out of food before first time step. It needs {} units of food more".format(s["name"],round(-food_left,5)))
                 if s["lower"]+s["consumption"] > s["capacity"] :
                     print("The capacity of the school {} does not allow it to survive during 1 time step : ".format(s["name"]) )
-                    print("     its capacity is {} ; its lower bound is {} ; its consumption during {} week(s) is {}".format(s["capacity"],s["lower"],self.time_step, s["consumption"]))
+                    print("     its capacity is {} ; its lower bound is {} ; its consumption during {} week(s) is {}".format(s["capacity"],s["lower"],self.time_step, round(s["consumption"],5)))
                     print("The problem is then infeasible... one should either : reduce time_step duration, lower bound or increase capacity")
                     return False
                 s["initial"]-= food_left
@@ -332,6 +333,7 @@ class Problem :
         for counter, pr in enumerate(problems):
             if not comp_small_cl or len(pr.Schools) <= 55:
                 print('Starting to compute cluster {} of {}! (Belonging to WH {})'.format(counter + 1, len(problems), pr.Warehouses[-1]['name']))
+                #pr.H = min(pr.T,theoretical_H(pr.Schools)) 
                 heuristic = Matheuristic(pr,param=param)
                 heuristic.algo2(plot_final=plot_cluster,info=info, file = folder+"/cluster %i.html" % (counter+1) )
                 solutions.append(heuristic.solution_best)
@@ -356,17 +358,6 @@ class Problem :
         '''
             Function that generate the output sheet from the problem, and its solution instance
         '''
-
-        # print('Y:')
-        # print(solution.Y)
-        # print('q:')
-        # print(solution.q)
-        # print('X:')
-        # print(solution.X)
-        # print('r:')
-        # print(solution.r)
-        # print('I_s:')
-        # print(solution.I_s)
         
         output_sheet_1 = {}
         output_sheet_1['Column 1'] = ['Parameters',None,'Planning Period in weeks:', 'Duration of one time step:', 'Times a vehicle can be used per time step:', 'Loading time (in h):', 'Maximum time for a trip (in h):', 'Costs per km (in $):', 'Average speed (in km/h):', 'Capacity of vehicles to central warehouses (in MT):', None]
@@ -391,49 +382,60 @@ class Problem :
         do1=pd.DataFrame(output_sheet_1, columns = list(output_sheet_1.keys()))
         
         output_sheet_2 = {'Timestep': [], 'Point in time (in weeks)': [], 'Warehouse': [], 'Vehicle':[], 'Quantity': [], 'Route': []}
-        output_sheet_3 = {'Timestep': [], 'Point in time (in weeks)': [], 'Warehouse': [], 'Vehicle':[], 'Quantity Route': []}
+        output_sheet_3 = {'Timestep': [], 'Point in time (in weeks)': [], 'Warehouse': [], 'Vehicle':[], 'Quantity of food': [], 'Distance (km)':[], 'Cost (dol)':[]}
             
         for t in range(solution.T+1):
             for w in range(solution.N):
                 for k in range(solution.V_number[w]):
                     if any(solution.Y[t,w,k,:]):
                         school_index = solution.r[t][w][k]
-                        last_school_index = len(school_index) - 1
-                        for counter,i in enumerate(school_index): 
-                            if counter == 0 and last_school_index > 0:
-                                output_sheet_2['Timestep'].append(t)
-                                output_sheet_2['Point in time (in weeks)'].append(t*self.time_step)
-                                output_sheet_2['Warehouse'].append(solution.name_warehouses[w])
-                                output_sheet_2['Vehicle'].append(self.makes[w,k])
-                                output_sheet_2['Quantity'].append(round(self.Q1[w,k]*solution.q[t,w,k,i-solution.N],3))
-                                output_sheet_2['Route'].append(solution.name_schools[i-solution.N])
 
-                                output_sheet_3['Timestep'].append(t)
-                                output_sheet_3['Point in time (in weeks)'].append(t*self.time_step)
-                                output_sheet_3['Warehouse'].append(solution.name_warehouses[w])
-                                output_sheet_3['Vehicle'].append(self.makes[w,k])
-                                output_sheet_3['Quantity Route'].append(round(self.Q1[w,k]*sum(solution.q[t,w,k,:]),3))
-                            elif counter == last_school_index:
-                                output_sheet_2['Timestep'] += [None, None, None]
-                                output_sheet_2['Point in time (in weeks)'] += [None, None, None]
-                                output_sheet_2['Warehouse'] += [None, None, None]
-                                output_sheet_2['Vehicle'] += [None, 'Total:', None]
-                                output_sheet_2['Quantity'] += [round(self.Q1[w,k]*solution.q[t,w,k,i-solution.N],3), round(self.Q1[w,k]*sum(solution.q[t,w,k,:]),3), None]
-                                output_sheet_2['Route'] += [solution.name_schools[i-solution.N], None, None]
-                            else:
-                                output_sheet_2['Timestep'].append(None)
-                                output_sheet_2['Point in time (in weeks)'].append(None)
-                                output_sheet_2['Warehouse'].append(None)
-                                output_sheet_2['Vehicle'].append(None)
-                                output_sheet_2['Quantity'].append(round(self.Q1[w,k]*solution.q[t,w,k,i-solution.N],3))
-                                output_sheet_2['Route'].append(solution.name_schools[i-solution.N])
+                        output_sheet_2['Timestep'].append(t)
+                        output_sheet_2['Point in time (in weeks)'].append(t*self.time_step)
+                        output_sheet_2['Warehouse'].append(solution.name_warehouses[w])
+                        output_sheet_2['Vehicle'].append(self.makes[w,k])
 
-        sum_quantities_routes = sum(output_sheet_3['Quantity Route'])
-        output_sheet_3['Timestep'] += [None, None]
-        output_sheet_3['Point in time (in weeks)'] += [None, None]
-        output_sheet_3['Warehouse'] += [None, None]
-        output_sheet_3['Vehicle'] += [None, 'Total Quantity:']
-        output_sheet_3['Quantity Route'] += [None, sum_quantities_routes]
+                        for col in ['Timestep','Point in time (in weeks)','Warehouse','Vehicle']:
+                                output_sheet_2[col]+= [None]*(len(school_index)-1)
+
+                        for i in school_index: 
+                            output_sheet_2['Quantity'].append(round(self.Q1[w,k]*solution.q[t,w,k,i-solution.N],3))
+                            output_sheet_2['Route'].append(solution.name_schools[i-solution.N])
+                            
+                        # add 'Total line'
+                        for col in ['Timestep','Point in time (in weeks)','Warehouse']:
+                            output_sheet_2[col].append(None)
+                        output_sheet_2['Vehicle'].append('Total:')
+                        output_sheet_2['Quantity'].append(round(self.Q1[w,k]*sum(solution.q[t,w,k,:]),3))
+                        output_sheet_2['Route'].append(len(school_index))
+
+                        # add blank line 
+                        for key,l in output_sheet_2.items():
+                            l.append(None)
+
+                        # cost sheet
+                        output_sheet_3['Timestep'].append(t)
+                        output_sheet_3['Point in time (in weeks)'].append(t*self.time_step)
+                        output_sheet_3['Warehouse'].append(solution.name_warehouses[w])
+                        output_sheet_3['Vehicle'].append(self.makes[w,k])
+                        output_sheet_3['Quantity of food'].append(round(self.Q1[w,k]*sum(solution.q[t,w,k,:]),3))
+                        output_sheet_3['Distance (km)'].append(round(solution.dist[t,w,k],3))
+                        output_sheet_3['Cost (dol)'].append(round(self.c_per_km*solution.dist[t,w,k],2))
+
+        # add blank line and Total
+        for key,l in output_sheet_3.items():
+            l.append(None)
+        
+            if key in ['Quantity of food', 'Distance (km)', 'Cost (dol)']: l.append(sum(l[:-1]))
+            elif key == 'Vehicle': l.append('Total : ')
+            else : l.append(None)
+
+            if key== 'Distance (km)' : l.append(' All costs (including holding cost) : ')
+            elif key== 'Cost (dol)': l.append(round(solution.cost,2))
+            else : l.append(None)
+
+        
+        
         
         do2=pd.DataFrame(output_sheet_2, columns = list(output_sheet_2.keys())) 
         do3=pd.DataFrame(output_sheet_3, columns = list(output_sheet_3.keys())) 
@@ -525,7 +527,7 @@ class Solution :
     a (np.ndarray): routing cost reduction if school m is removed from the tour of vehicle k from WH n at time t ==> array TxKxMxN
     b (np.ndarray): routing cost addition if school m is added to the tour of vehicle k from WH n at time t ==> array TxKxMxN
     dt (np.ndarray): array of size T with consumptions. 
-    dist (npn.ndarra): array of size TxNxK with km driven for each route
+    dist (np.ndarray): array of size TxNxK with km driven for each route
     cost (float): total cost, in dollars
     file (str): name of the file where to store the output data
 
@@ -1583,90 +1585,12 @@ def geo_dist_matrix(locations):
     return D
 
 
-'''
+def theoretical_H(Schools): 
+    '''
+        Compute a theoretical H :  smallest number of weeks such that 80% of the schools has to be served if they start at their full capacity
+    '''
+    return ceil( np.percentile(  [(s['capacity']-s['lower'])/s['consumption'] for s in Schools], 80  ) )
 
 
-    def algo1(self, param, MAXiter = 1000, solver= "CBC"):
-        # here one can do the final matheuristic described in the paper : page 18
-        t0 = time()
-        rd.seed(param.seed)
-
-        M,N,K,T = self.solution.M, self.solution.N, self.solution.K, self.solution.T
-        
-        # initialization (step 2 and 3 of the pseudo code)
-        self.solution.ISI(G = N, solver=solver)
-        running_time = self.solution.running_time.copy()
-
-        self.solution_best = self.solution.copy()
-
-        # line 4 of pseudocode
-        epsilon = rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1]  )
-
-        tau = param.tau_start
-        iterations = 0
-        while tau > param.tau_end and iterations < MAXiter : 
-            
-            # line 6 of pseudocode
-            i = Matheuristic.choose_operator(self.operators)
-            operator = self.operators[i]['function']
-            self.solution_prime = self.solution.copy()
-            operator(self.solution_prime, param.rho)
-            G = N
-            self.solution_prime.ISI(G=G, solver=solver)
-
-            if self.solution_prime.cost < self.solution.cost and self.solution_prime.feasible : # line 7
-                self.solution = self.solution_prime.copy() # line 8
-                G = max(G-1,1)                                  # line 9
-
-                for j in range(param.max_subloop):
-                    self.solution_prime.ISI(G=G, solver=solver)  
-
-                    if self.solution_prime.cost < (1+epsilon)*self.solution.cost and self.solution_prime.feasible: 
-                        if self.solution_prime.cost < self.solution.cost :              # line 11
-                            self.solution = self.solution_prime.copy()              # line 12
-                            G = max(G-1,1)                                              # line 13
-                        else : G = max(int(param.ksi*(N+M)),1)                          # line 14-15
-                                            
-
-                    elif self.solution.cost < (1+epsilon)*self.solution_best.cost and self.solution.feasible:   # line 17 / 23 (deviation from pseudo code : not s'' but s ! )
-                        if self.solution.cost < self.solution_best.cost : #line 17
-                            self.solution_best = self.solution.copy()    # line 18
-                            self.operators[i]['score'] += param.sigmas[0]   # line 19
-                            G = max(G-1,1)                                  # line 20
-                        else :                                              # line 21
-                            self.operators[i]['score'] += param.sigmas[1]   # line 22
-                            G = max(int(param.ksi*(N+M)),1)                 # line 24
-                    
-                    else : 
-                        self.operators[i]['score'] += param.sigmas[1]   # line 22
-                        break
-
-            elif self.solution_prime.cost < self.solution.cost - np.log(rd.random())*tau and self.solution_prime.feasible: # line 27 # choose theta everytime as a new random value or is it a fixed random value?
-                self.solution = self.solution_prime.copy()                         # line 28
-                self.operators[i]['score'] += param.sigmas[2]                             # line 29
-            
-            if iterations % param.Delta == param.Delta-1 :
-                epsilon = rd.uniform (low = param.epsilon_bound[0], high = param.epsilon_bound[1])
-                # implement update_weights or is this already done?
-                self.update_weights(param.reaction_factor)
-                self.solution = self.solution_best.copy()
-            iterations += 1
-            tau = tau*param.cooling
-
-            print("Step %i is finished !!" %iterations)
-            print("Current cost is : ", self.solution_best.cost )
-        t1 = time()
-        visualization(self.solution_best)
-        t2 = time()
-        print('Total algorithm time = {} <br> Final visualisation time = {} '.format(round(t1-t0,2),round(t2-t1,2)))
-
-        string_running_time ="Total ISI running times : \n "
-        for name, t in self.running_time.items():
-            string_running_time += name +"  :  " + str(round(t,4)) + "\n  "
-
-
-
-
-'''
 
 

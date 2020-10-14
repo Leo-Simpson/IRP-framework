@@ -53,9 +53,9 @@ def plots(schools, warehouses,central,central_name):
         x.append(s["location"][0])
         y.append(s["location"][1])
         
-        t = ""
-        for param in ["name","capacity","lower", "consumption", "storage_cost"] :
-            t += "{} = {} <br>".format(param,s[param])
+        t = "{} : {} <br>".format("name",s['name'])
+        for param in ["capacity","lower", "consumption", "storage_cost"] :
+            t += "{} = {} <br>".format(param,round(s[param],4))
 
         text.append(t)
     

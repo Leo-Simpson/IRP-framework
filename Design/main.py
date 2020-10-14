@@ -201,7 +201,7 @@ class Window(QtWidgets.QMainWindow):
             input_name = os.path.splitext(input_name)[0] # take only the name of the sheet, without the extension
             output_name = path + '/output/Output-'+input_name+ time_stamp + '.xlsx'
             visu_name = path + '/output/Visualization-'+input_name+ time_stamp + '.html'
-            problem_global.final_solver(param,time_step=self.step_duration, plot_cluster = False, comp_small_cl = False, filename=output_name,visu_filename=visu_name)
+            problem_global.final_solver(param,time_step=self.step_duration, plot_cluster = False, filename=output_name,visu_filename=visu_name)
             print("Optimization finished")
             print("visualisation saved in",visu_name)
             print("output sheets saved in",output_name)
