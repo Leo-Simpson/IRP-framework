@@ -237,13 +237,7 @@ class Window(QtWidgets.QMainWindow):
             param.cooling = self.cooling
             param.input_var_more = [self.ui.checkBox_vehiclefleet.isChecked(), self.ui.spinBox_veh_used.value(), self.ui.spinBox_Q1.value(), self.ui.checkBox_central.isChecked(), [self.ui.doubleSpinBox_cw1.value(), self.ui.doubleSpinBox_cw2.value()], self.ui.spinBox_vehicles_central.value(), self.number_vehicles_used].copy()
             
-
             output_name, visu_name = create_file_names(self.p)
-            time_stamp = time.strftime("%Y%m%d-%H%M%S")
-            path,input_name = os.path.split(self.p)  # find the path of the directory in which there is the input sheet
-            input_name = os.path.splitext(input_name)[0] # take only the name of the sheet, without the extension
-            output_name = path + '/output/Output-'+input_name+ time_stamp + '.xlsx'
-            visu_name = path + '/output/Visualization-'+input_name+ time_stamp + '.html'
             
             ''' 
             Finally problem gets solved.
