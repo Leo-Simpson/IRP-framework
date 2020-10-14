@@ -149,6 +149,7 @@ def insert_best_rho(solution, rho):
     eliminate = np.transpose(np.where(np.any(solution.Y, axis = (1,2))))
     for t,m in eliminate:
         solution.b[t,:,:,m] = sys.maxsize
+    solution.b[0]=sys.maxsize
     for i in range( min(rho,np.sum(candidates)) ):
         b_flat = solution.b.reshape(-1)
         Y_flat = solution.Y.reshape(-1)

@@ -787,8 +787,7 @@ class Solution :
                 If plot is set to True, the visualisation will pop out
                 If info is set to true, it will print some information about the solution found in this algorithm (feasibility, running time, cost...)
         '''
-
-
+     
         # change the solution itself to the ISI solution
         t0 = time()
 
@@ -944,12 +943,15 @@ class Solution :
 
         # transform the _vars things into numpy array to return it. 
 
+
+        
         for (t,n,k,m) in set_q : 
             self.q[t,n,k,m] = max(q_vars[t,n,k,m].varValue,0.)
             if (t,n,k,m) in set_delta : 
                 self.Y[t,n,k,m] -= delta_vars[t,n,k,m].varValue
             elif (t,n,k,m) in set_omega : 
                 self.Y[t,n,k,m] += omega_vars[t,n,k,m].varValue
+        
 
 
         for t in range(1,T+1):
@@ -975,6 +977,7 @@ class Solution :
         if not total_running_time is None : 
             for name,dt in total_running_time.items() : 
                 total_running_time[name] = dt + self.running_time[name]
+
 
 
     def multi_ISI(self,G,solver="CBC", plot = False ,info=True,total_running_time=None):
@@ -1277,15 +1280,17 @@ class Matheuristic :
         #print(step)
         self.steps = [step]
         self.operators_infos = []
-        
         while tau > param.tau_end and iterations < param.max_loop : 
             t0_loop = time()
             i = Matheuristic.choose_operator(self.operators)
             operator = self.operators[i]['function']
+            
             self.operators[i]['number_used'] += 1
             self.solution_prime = self.solution.copy()
+            print('Before operator ',self.operators[i]['name'],'  any Y[0] ? ', np.any(self.solution_prime.Y[0]))
             operator(self.solution_prime, param.rho)
             G = M
+            print('After operator ',self.operators[i]['name'],'  any Y[0] ? ', np.any(self.solution_prime.Y[0]))
             self.solution_prime.ISI_multi_time(G=G, solver=param.solver, info=info, total_running_time=self.running_time, plot=plot)
             if not self.solution_prime.feasible :  self.solution_prime.cost = self.solution_prime.cost*penal
 
