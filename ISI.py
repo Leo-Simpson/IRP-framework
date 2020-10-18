@@ -1287,10 +1287,8 @@ class Matheuristic :
             
             self.operators[i]['number_used'] += 1
             self.solution_prime = self.solution.copy()
-            print('Before operator ',self.operators[i]['name'],'  any Y[0] ? ', np.any(self.solution_prime.Y[0]))
             operator(self.solution_prime, param.rho)
             G = M
-            print('After operator ',self.operators[i]['name'],'  any Y[0] ? ', np.any(self.solution_prime.Y[0]))
             self.solution_prime.ISI_multi_time(G=G, solver=param.solver, info=info, total_running_time=self.running_time, plot=plot)
             if not self.solution_prime.feasible :  self.solution_prime.cost = self.solution_prime.cost*penal
 
