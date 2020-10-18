@@ -1075,7 +1075,8 @@ class Solution :
         t0 = time()
         schools,warehouses = self.problem.Schools, self.problem.Warehouses
         km = np.sum(self.dist, axis = (1,2))
-        visual = visu(schools,warehouses, "WFP Inventory problem", self.I_s,self.I_w, km, self.r, self.X, self.q*self.problem.Q1[np.newaxis,:,:,np.newaxis],self.problem.Q2, self.problem.D, self.problem.makes)
+        s_reverted, w_reverted = revert(schools), revert(warehouses)
+        visual = visu(s_reverted,w_reverted, "WFP Inventory problem", self.I_s,self.I_w, km, self.r, self.X, self.q*self.problem.Q1[np.newaxis,:,:,np.newaxis],self.problem.Q2, self.problem.D, self.problem.makes)
         fig = go.Figure(visual)
         offline.plot(fig, filename= self.file, auto_open = False)
         self.running_time["visualisation"] = time()-t0
@@ -1595,5 +1596,11 @@ def theoretical_H(Schools):
     return ceil( np.percentile(  [(s['capacity']-s['lower'])/s['consumption'] for s in Schools], 80  ) )
 
 
+def revert(L):
+    L2 = deepcopy(L)
+    for l in L2 : 
+        gps = l['location']
+        l['location'] = np.array([gps[1],gps[0]])
+    return L2
 
 

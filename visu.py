@@ -228,6 +228,9 @@ def visu(schools, warehouses, TITLE, I_s, I_w, km, routes1,X, q, Q2, D,makes):
     #title = TITLE + "   Truck 1 capacity : {}   Truck 2 capacity : {} ".format(problem.Q1,problem.Q2)
     title = TITLE 
 
+    
+
+
     pos_s = [s["location"] for s in schools]
     pos_w = [w["location"] for w in warehouses]
     central = warehouses[0]["location"]
