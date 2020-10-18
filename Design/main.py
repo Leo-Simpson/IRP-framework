@@ -273,8 +273,8 @@ def create_file_names(path_total):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    output_name = directory + '/output/Output-'+input_name+ time_stamp + '.xlsx'
-    visu_name = directory + '/output/Visualization-'+input_name+ time_stamp + '.html'
+    output_name = directory + '/Output-'+input_name+ time_stamp + '.xlsx'
+    visu_name = directory + '/Visualization-'+input_name+ time_stamp + '.html'
 
     return output_name, visu_name
 
