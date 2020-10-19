@@ -1025,9 +1025,11 @@ class Solution :
             sol.time_cut(Tmin,Tmax, self.T)
             sol.problem.I_w_init, sol.problem.I_s_init = I_w_init[:], I_s_init[:]
             sol.multi_ISI(G,solver = solver, plot = plot, info = info, total_running_time= total_running_time)
-            I_w_init, I_s_init = sol.I_w[-1-t_virt], sol.I_s[-1-t_virt]
-            Tmin, Tmax = Tmax - t_virt, Tmax+H+t_virt
             solutions.append(sol)
+            if l<L-1: 
+                I_w_init, I_s_init = sol.I_w[-1-t_virt], sol.I_s[-1-t_virt]
+                Tmin, Tmax = Tmax - t_virt, Tmax+H
+            
 
         self.fuse(solutions)
         self.compute_costs()
