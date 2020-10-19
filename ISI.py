@@ -91,8 +91,8 @@ class Problem :
         self.T = T # time horizon
         
         if H is None : 
-            self.H = min(T,10)
-        else : self.H = H
+            self.H = T
+        else : self.H =  min(T,H)
 
         
         if K is None : 
