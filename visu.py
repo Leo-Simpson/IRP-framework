@@ -274,7 +274,7 @@ def visu(schools, warehouses, TITLE, I_s, I_w, km, routes1,X, q, Q2, D,makes, ti
         #annotations.append(make_annotation(problem.central,"CENTRAL", 'black'))
 
 
-        step = dict(label="t = "+str(t), method = "update", 
+        step = dict(label="after "+str(t*time_step)+ "week(s)", method = "update", 
                     args=[{"visible" : [True,True,True]+list(visible_arr)  },
                             {"annotations": annotations, "title":title_up }
                         ]
