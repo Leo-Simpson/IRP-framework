@@ -360,7 +360,7 @@ class Problem :
         '''
         
         output_sheet_1 = {}
-        output_sheet_1['Column 1'] = ['Parameters',None,'Planning Period in weeks:', 'Duration of one time step:', 'Times a vehicle can be used per time step:', 'Loading time (in h):', 'Maximum time for a trip (in h):', 'Costs per km (in $):', 'Average speed (in km/h):', 'Capacity of vehicles to central warehouses (in MT):', None]
+        output_sheet_1['Column 1'] = ['Parameters',None,'Planning Period (in weeks):', 'Duration of one time step:', 'Times a vehicle can be used per time step:', 'Loading time (in h):', 'Maximum time for a trip (in h):', 'Costs per km (in $):', 'Average speed (in km/h):', 'Capacity of vehicles to central warehouses (in MT):', None]
         output_sheet_1['Column 2'] = [None,None,self.T*self.time_step, self.time_step, solution.param.input_var_more[6], self.t_load, self.Tmax, self.c_per_km, self.v, self.Q2, None]
         if solution.param.input_var_more[0] or solution.param.input_var_more[2]:
             output_sheet_1['Column 1'] += ['Details', None, 'Vehicle Fleet taken from excel input file:']
@@ -376,8 +376,8 @@ class Problem :
             if solution.param.input_var_more[0] and solution.param.input_var_more[2]:
                 output_sheet_1['Column 1'] += [None]
                 output_sheet_1['Column 2'] += [None]
-        output_sheet_1['Column 1'] += ['More', None, 'Starting point of tau:', 'Ending point of tau:', 'Cooling factor:']
-        output_sheet_1['Column 2'] += [None,None, solution.param.tau_start, solution.param.tau_end, solution.param.cooling]
+        output_sheet_1['Column 1'] += ['More', None, 'Starting point of tau:', 'Ending point of tau:', 'Cooling factor:', 'Length of the virtual time window (in weeks):']
+        output_sheet_1['Column 2'] += [None,None, solution.param.tau_start, solution.param.tau_end, solution.param.cooling, solution.param.input_var_more[7]]
         
         do1=pd.DataFrame(output_sheet_1, columns = list(output_sheet_1.keys()))
         

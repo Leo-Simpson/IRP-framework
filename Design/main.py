@@ -119,6 +119,7 @@ class Window(QtWidgets.QMainWindow):
         self.tau_start = self.ui.doubleSpinBox_starttau.value()
         self.tau_end = self.ui.doubleSpinBox_endtau.value()
         self.cooling = self.ui.doubleSpinBox_cooling.value()
+        self.H = self.ui.spinBox_virt_timewindow.value()
 
 
     def get_parameters(self):
@@ -134,6 +135,8 @@ class Window(QtWidgets.QMainWindow):
         self.c_per_km = self.ui.doubleSpinBox_costsperkm.value()
         self.Tmax = self.ui.doubleSpinBox_maxtime.value()
         self.get_meta_parameters()
+        
+        if self.H > self.time_horizon: self.H = self.time_horizon
         
         
         if self.ui.checkBox_vehiclefleet.isChecked():
@@ -229,13 +232,13 @@ class Window(QtWidgets.QMainWindow):
             problem_global = Problem(Schools = self.schools, Warehouses = self.warehouses,
                                 T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v,
                                 t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, V_number = self.V_number,
-                                central = self.central, makes = self.makes, t_virt=1)
+                                central = self.central, makes = self.makes, t_virt=1, H = self.H)
 
             param = Meta_param(seed=1)
             param.tau_start = self.tau_start
             param.tau_end = self.tau_end
             param.cooling = self.cooling
-            param.input_var_more = [self.ui.checkBox_vehiclefleet.isChecked(), self.ui.spinBox_veh_used.value(), self.ui.spinBox_Q1.value(), self.ui.checkBox_central.isChecked(), [self.ui.doubleSpinBox_cw1.value(), self.ui.doubleSpinBox_cw2.value()], self.ui.spinBox_vehicles_central.value(), self.number_vehicles_used].copy()
+            param.input_var_more = [self.ui.checkBox_vehiclefleet.isChecked(), self.ui.spinBox_veh_used.value(), self.ui.spinBox_Q1.value(), self.ui.checkBox_central.isChecked(), [self.ui.doubleSpinBox_cw1.value(), self.ui.doubleSpinBox_cw2.value()], self.ui.spinBox_vehicles_central.value(), self.number_vehicles_used, self.H].copy()
             
             output_name, visu_name = create_file_names(self.p)
             
