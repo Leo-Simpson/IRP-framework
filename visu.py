@@ -199,7 +199,7 @@ def plot_arr(start,end,distance, color, quantity, name):
 
 
 
-def visu(schools, warehouses, TITLE, I_s, I_w, km, routes1,X, q, Q2, D,makes):
+def visu(schools, warehouses, TITLE, I_s, I_w, km, routes1,X, q, Q2, D,makes, time_step):
     '''
         Main function, that build a dict, compatible with the plotly.figure object , that contain all the data of the visualisation of the solution
 
@@ -217,6 +217,7 @@ def visu(schools, warehouses, TITLE, I_s, I_w, km, routes1,X, q, Q2, D,makes):
             Q2 (int): Capacity of the second type of vehicle : the one that serve the warehouses.
             D (np.ndarray): Matrix of distances. If None, the geodesic distance will be taken.
             makes (np.array, optional) : NxK matrix with the string of the names of the vehicles. 
+            time_step (float) : length of a time step in weeks 
 
 
     '''
@@ -273,7 +274,7 @@ def visu(schools, warehouses, TITLE, I_s, I_w, km, routes1,X, q, Q2, D,makes):
         #annotations.append(make_annotation(problem.central,"CENTRAL", 'black'))
 
 
-        step = dict(label="t = "+str(t), method = "update", 
+        step = dict(label="after "+str(t*time_step)+ "week(s)", method = "update", 
                     args=[{"visible" : [True,True,True]+list(visible_arr)  },
                             {"annotations": annotations, "title":title_up }
                         ]

@@ -360,7 +360,7 @@ class Problem :
         '''
         
         output_sheet_1 = {}
-        output_sheet_1['Column 1'] = ['Parameters',None,'Planning Period in weeks:', 'Duration of one time step:', 'Times a vehicle can be used per time step:', 'Loading time (in h):', 'Maximum time for a trip (in h):', 'Costs per km (in $):', 'Average speed (in km/h):', 'Capacity of vehicles to central warehouses (in MT):', None]
+        output_sheet_1['Column 1'] = ['Parameters',None,'Planning Period (in weeks):', 'Duration of one time step:', 'Times a vehicle can be used per time step:', 'Loading time (in h):', 'Maximum time for a trip (in h):', 'Costs per km (in $):', 'Average speed (in km/h):', 'Capacity of vehicles to central warehouses (in MT):', None]
         output_sheet_1['Column 2'] = [None,None,self.T*self.time_step, self.time_step, solution.param.input_var_more[6], self.t_load, self.Tmax, self.c_per_km, self.v, self.Q2, None]
         if solution.param.input_var_more[0] or solution.param.input_var_more[2]:
             output_sheet_1['Column 1'] += ['Details', None, 'Vehicle Fleet taken from excel input file:']
@@ -376,8 +376,8 @@ class Problem :
             if solution.param.input_var_more[0] and solution.param.input_var_more[2]:
                 output_sheet_1['Column 1'] += [None]
                 output_sheet_1['Column 2'] += [None]
-        output_sheet_1['Column 1'] += ['More', None, 'Starting point of tau:', 'Ending point of tau:', 'Cooling factor:']
-        output_sheet_1['Column 2'] += [None,None, solution.param.tau_start, solution.param.tau_end, solution.param.cooling]
+        output_sheet_1['Column 1'] += ['More', None, 'Starting point of tau:', 'Ending point of tau:', 'Cooling factor:', 'Length of the virtual time window (in weeks):']
+        output_sheet_1['Column 2'] += [None,None, solution.param.tau_start, solution.param.tau_end, solution.param.cooling, solution.param.input_var_more[7]]
         
         do1=pd.DataFrame(output_sheet_1, columns = list(output_sheet_1.keys()))
         
@@ -1076,7 +1076,7 @@ class Solution :
         schools,warehouses = self.problem.Schools, self.problem.Warehouses
         km = np.sum(self.dist, axis = (1,2))
         s_reverted, w_reverted = revert(schools), revert(warehouses)
-        visual = visu(s_reverted,w_reverted, "WFP Inventory problem", self.I_s,self.I_w, km, self.r, self.X, self.q*self.problem.Q1[np.newaxis,:,:,np.newaxis],self.problem.Q2, self.problem.D, self.problem.makes)
+        visual = visu(s_reverted,w_reverted, "WFP Inventory problem", self.I_s,self.I_w, km, self.r, self.X, self.q*self.problem.Q1[np.newaxis,:,:,np.newaxis],self.problem.Q2, self.problem.D, self.problem.makes,self.problem.time_step)
         fig = go.Figure(visual)
         offline.plot(fig, filename= self.file, auto_open = False)
         self.running_time["visualisation"] = time()-t0
@@ -1278,7 +1278,7 @@ class Matheuristic :
         
         step = {"Step":0, "Tau":round(tau,2),"Operator":"None","Current cost":round(self.solution.cost,1),"Current best cost":round(self.solution_best.cost,1),"Running time" : round(time()-t0,2)}
         #print("Step : ", 0,"Tau : ",round(tau,2), "Current cost is : ",round(self.solution.cost,1) , "Current best cost is : ", round(self.solution_best.cost,1), "Running time : ",round(time()-t0,2) )
-        #print(step)
+        print(step)
         self.steps = [step]
         self.operators_infos = []
         while tau > param.tau_end and iterations < param.max_loop : 
@@ -1332,7 +1332,7 @@ class Matheuristic :
 
             step = {"Step":iterations, "Tau":round(tau,2),"Operator":self.operators[i]["name"],"Current cost":round(self.solution.cost,1),"Current best cost":round(self.solution_best.cost,1),"Running time" : round(dt,2)}
             #print("Step : ", iterations,"Tau : ",round(tau,2), "Current cost is : ",round(self.solution.cost,1) , "Current best cost is : ", round(self.solution_best.cost,1), "Running time : ",round(dt,2) )
-            #print(step)
+            print(step)
             self.steps.append(step)
 
 
