@@ -724,7 +724,7 @@ class Ui_MainWindow(object):
         self.spinBox_virt_timewindow.setAccelerated(True)
         self.spinBox_virt_timewindow.setMinimum(1)
         self.spinBox_virt_timewindow.setMaximum(12)
-        self.spinBox_virt_timewindow.setProperty("value", 2)
+        self.spinBox_virt_timewindow.setProperty("value", 4)
         self.spinBox_virt_timewindow.setObjectName("spinBox_virt_timewindow")
         self.gridLayout_9.addWidget(self.spinBox_virt_timewindow, 3, 1, 1, 1)
         self.doubleSpinBox_starttau = QtWidgets.QDoubleSpinBox(self.tab_more)
