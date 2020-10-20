@@ -54,6 +54,8 @@ An optional step here that would help would be to create a separate python envir
  pip install plotly
   
  pip install PuPL
+ 
+ pip install xlrd
    
  pip install XlsxWriter
     
