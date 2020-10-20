@@ -57,6 +57,12 @@ An optional step here that would help would be to create a separate python envir
  
  ```
  
+ For last line, you might need to use instead : 
+ ```shell
+ python3.7 -m pip install PyQt5
+ ```
+ 
+ 
  If one is using conda, one can also replace ```pip```with ```conda``` on any of those commands. 
  
  
