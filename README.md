@@ -57,6 +57,10 @@ An optional step here that would help would be to create a separate python envir
  
  ```
  
+ If one is using conda, one can also replace ```pip```with ```conda``` on any of those commands. 
+ 
+ 
+ 
 
 Then one should be able to run the tool by enterring : 
 ```shell
