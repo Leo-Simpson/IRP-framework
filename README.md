@@ -41,10 +41,11 @@ An optional step here that would help would be to create a separate python envir
  Now a second step here is to install all the packages that are needed to run the python code : 
  
  ```shell 
- 
+ pip install numpy
  
  pip install pandas 
  
+ pip install scipy 
 
  pip install sklearn
  
@@ -64,7 +65,7 @@ An optional step here that would help would be to create a separate python envir
  
 If one of those does not work, one can alternatievly use : 
  ```shell
- python3.7 -m pip install name-package
+ python -m pip install name-package
  ```
  
  
