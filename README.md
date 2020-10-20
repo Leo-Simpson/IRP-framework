@@ -41,6 +41,13 @@ An optional step here that would help would be to create a separate python envir
  Now a second step here is to install all the packages that are needed to run the python code : 
  
  ```shell 
+ 
+ pip install numpy
+ 
+ pip install pandas 
+ 
+ pip install scipy
+ 
  pip install sklearn
  
  pip install geopy
