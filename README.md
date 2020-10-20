@@ -33,8 +33,13 @@ An optional step here that would help would be to create a separate python envir
  source activate envLastMile
  ```
  
+ Then one should make sure he can use ```pip```, the python package installer : 
+ ```shell
+ sudo easy_install pip
+ ```
  
  Now a second step here is to install all the packages that are needed to run the python code : 
+ 
  ```shell 
  pip install sklearn
  
