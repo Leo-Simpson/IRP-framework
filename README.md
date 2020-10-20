@@ -14,7 +14,57 @@ The files ```OR_tools_solve_tsp.py``` and ```OR_tools_solve_tsp.py```provides au
 
 THe file ```visu.py``` uses plotly package in order to 
 
-## Dependencies of the package
+
+
+
+## Guide to run the tool using python
+
+If one have python on his computer, (or even better, having conda installed) one can run the tool using this GitHub. 
+
+The first step would be to download this repository. 
+
+Then one could launch a terminal window from the folder called Design.
+
+
+An optional step here that would help would be to create a separate python environment using conda (if one have conda already installed) : 
+ ```shell
+ conda create envLastMile
+ 
+ source activate envLastMile
+ ```
+ 
+ 
+ Now a second step here is to install all the packages that are needed to run the python code : 
+ ```shell 
+ pip install sklearn
+ 
+ pip install geopy
+ 
+ pip install plotly
+  
+ pip install PuPL
+   
+ pip install XlsxWriter
+    
+ pip install ortools
+     
+ pip install PyQt5
+ 
+ ```
+ 
+
+Then one should be able to run the tool by enterring : 
+```shell
+python main.py
+```
+ 
+Remark : sometimes, your python app is called python3 instead, then simply run ```python3 main.py```
+
+
+
+
+
+## Packags used in the code 
 
 Several open source python packages are needed to use the tool : 
 
