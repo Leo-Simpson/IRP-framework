@@ -232,7 +232,7 @@ class Window(QtWidgets.QMainWindow):
             problem_global = Problem(Schools = self.schools, Warehouses = self.warehouses,
                                 T = self.time_horizon, K = self.K, Q1 = self.Q1, Q2 = self.Q2, v = self.v,
                                 t_load = self.t_load, c_per_km = self.c_per_km, Tmax = self.Tmax, V_number = self.V_number,
-                                central = self.central, makes = self.makes, t_virt=1, H = self.H)
+                                central = self.central, makes = self.makes, t_virt=self.step_duration, H = self.H)
 
             param = Meta_param(seed=1)
             param.tau_start = self.tau_start
