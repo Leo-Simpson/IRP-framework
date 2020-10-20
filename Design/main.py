@@ -57,7 +57,7 @@ class Window(QtWidgets.QMainWindow):
         self.get_parameters()
         self.solveModel()
         
-        self.close()    # if the window should stay open at the end, take this out
+        #self.close()    # if the window should stay open at the end, take this out
         
         
     def pushButton_handler_calculate(self):
