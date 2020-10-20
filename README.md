@@ -42,12 +42,10 @@ An optional step here that would help would be to create a separate python envir
  
  ```shell 
  
- pip install numpy
  
  pip install pandas 
  
- pip install scipy
- 
+
  pip install sklearn
  
  pip install geopy
@@ -64,9 +62,9 @@ An optional step here that would help would be to create a separate python envir
  
  ```
  
- For last line, you might need to use instead : 
+If one of those does not work, one can alternatievly use : 
  ```shell
- python3.7 -m pip install PyQt5
+ python3.7 -m pip install name-package
  ```
  
  
